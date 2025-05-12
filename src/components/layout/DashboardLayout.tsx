@@ -1,36 +1,10 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, RoleType } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { 
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarProvider,
-  SidebarTrigger,
-} from '@/components/ui/sidebar';
-import { 
-  Settings,
-  Users,
-  ShoppingBag,
-  Landmark,
-  CreditCard,
-  ChefHat,
-  BarChart,
-  Database,
-  LogOut,
-  User
-} from 'lucide-react';
+import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { Settings, Users, ShoppingBag, Landmark, CreditCard, ChefHat, BarChart, Database, LogOut, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
@@ -40,88 +14,77 @@ const roleMenuMap: Record<RoleType, string[]> = {
   owner: ['dashboard', 'users', 'branches', 'products', 'cashier', 'production', 'reports', 'settings'],
   kepala_produksi: ['dashboard', 'production'],
   kasir_cabang: ['dashboard', 'cashier', 'inventory'],
-  admin_pusat: ['dashboard', 'products', 'branches', 'inventory', 'bundles'],
+  admin_pusat: ['dashboard', 'products', 'branches', 'inventory', 'bundles']
 };
-
-export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
-  const { user, logout } = useAuth();
+export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
+  children
+}) => {
+  const {
+    user,
+    logout
+  } = useAuth();
   const navigate = useNavigate();
-  
   if (!user) {
     return null; // Seharusnya tidak terjadi karena ada protected route
   }
 
   // Menu items berdasarkan role
   const allowedMenus = roleMenuMap[user.role] || [];
-
-  const menuItems = [
-    {
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: Landmark,
-      access: allowedMenus.includes('dashboard'),
-    },
-    {
-      title: "Pengguna",
-      url: "/users",
-      icon: Users,
-      access: allowedMenus.includes('users'),
-    },
-    {
-      title: "Cabang",
-      url: "/branches",
-      icon: Landmark,
-      access: allowedMenus.includes('branches'),
-    },
-    {
-      title: "Produk",
-      url: "/products",
-      icon: ShoppingBag,
-      access: allowedMenus.includes('products'),
-    },
-    {
-      title: "Bundling Produk",
-      url: "/bundles",
-      icon: Database,
-      access: allowedMenus.includes('bundles'),
-    },
-    {
-      title: "Kasir",
-      url: "/cashier",
-      icon: CreditCard,
-      access: allowedMenus.includes('cashier'),
-    },
-    {
-      title: "Produksi",
-      url: "/production",
-      icon: ChefHat,
-      access: allowedMenus.includes('production'),
-    },
-    {
-      title: "Stok",
-      url: "/inventory",
-      icon: Database,
-      access: allowedMenus.includes('inventory'),
-    },
-    {
-      title: "Laporan",
-      url: "/reports",
-      icon: BarChart,
-      access: allowedMenus.includes('reports'),
-    },
-    {
-      title: "Pengaturan",
-      url: "/settings",
-      icon: Settings,
-      access: allowedMenus.includes('settings'),
-    },
-  ];
+  const menuItems = [{
+    title: "Dashboard",
+    url: "/dashboard",
+    icon: Landmark,
+    access: allowedMenus.includes('dashboard')
+  }, {
+    title: "Pengguna",
+    url: "/users",
+    icon: Users,
+    access: allowedMenus.includes('users')
+  }, {
+    title: "Cabang",
+    url: "/branches",
+    icon: Landmark,
+    access: allowedMenus.includes('branches')
+  }, {
+    title: "Produk",
+    url: "/products",
+    icon: ShoppingBag,
+    access: allowedMenus.includes('products')
+  }, {
+    title: "Bundling Produk",
+    url: "/bundles",
+    icon: Database,
+    access: allowedMenus.includes('bundles')
+  }, {
+    title: "Kasir",
+    url: "/cashier",
+    icon: CreditCard,
+    access: allowedMenus.includes('cashier')
+  }, {
+    title: "Produksi",
+    url: "/production",
+    icon: ChefHat,
+    access: allowedMenus.includes('production')
+  }, {
+    title: "Stok",
+    url: "/inventory",
+    icon: Database,
+    access: allowedMenus.includes('inventory')
+  }, {
+    title: "Laporan",
+    url: "/reports",
+    icon: BarChart,
+    access: allowedMenus.includes('reports')
+  }, {
+    title: "Pengaturan",
+    url: "/settings",
+    icon: Settings,
+    access: allowedMenus.includes('settings')
+  }];
 
   // Filter hanya menu yang diperbolehkan
   const filteredMenu = menuItems.filter(item => item.access);
-
-  return (
-    <SidebarProvider>
+  return <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <Sidebar className="border-r">
           <SidebarHeader className="px-2 flex justify-center items-center h-16 border-b">
@@ -135,20 +98,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
               <SidebarGroupLabel>Menu</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {filteredMenu.map((item) => (
-                    <SidebarMenuItem key={item.title}>
+                  {filteredMenu.map(item => <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton asChild>
-                        <Button 
-                          variant="ghost" 
-                          className="w-full justify-start"
-                          onClick={() => navigate(item.url)}
-                        >
+                        <Button variant="ghost" className="w-full justify-start" onClick={() => navigate(item.url)}>
                           <item.icon className="mr-2 h-4 w-4" />
                           <span>{item.title}</span>
                         </Button>
                       </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                    </SidebarMenuItem>)}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -165,18 +122,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                     {user.name}
                   </span>
                   <span className="text-xs text-sidebar-foreground/70">
-                    {user.role === 'owner' ? 'Pemilik' : 
-                     user.role === 'kepala_produksi' ? 'Kepala Produksi' :
-                     user.role === 'kasir_cabang' ? 'Kasir Cabang' : 'Admin Pusat'}
+                    {user.role === 'owner' ? 'Pemilik' : user.role === 'kepala_produksi' ? 'Kepala Produksi' : user.role === 'kasir_cabang' ? 'Kasir Cabang' : 'Admin Pusat'}
                   </span>
                 </div>
               </div>
-              <Button 
-                variant="outline" 
-                className="w-full" 
-                onClick={() => logout()}
-                size="sm"
-              >
+              <Button variant="outline" className="w-full" onClick={() => logout()} size="sm">
                 <LogOut className="mr-2 h-4 w-4" /> Keluar
               </Button>
             </div>
@@ -188,15 +138,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             <header className="flex h-14 items-center gap-4 px-4 sm:px-6">
               <SidebarTrigger />
               <div className="flex-1">
-                <h1 className="font-semibold text-lg">
-                  Bakery Guru Management System
-                </h1>
+                <h1 className="font-semibold text-lg">Icha Bakery  Management System</h1>
               </div>
             </header>
           </div>
           <main className="flex-1 p-4 md:p-6">{children}</main>
         </div>
       </div>
-    </SidebarProvider>
-  );
+    </SidebarProvider>;
 };
