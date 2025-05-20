@@ -1,37 +1,122 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { CreditCard, Delete, Printer, Search, ShoppingCart } from 'lucide-react';
+import { CreditCard, Delete, Printer, Search, ShoppingCart, Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from '@/hooks/use-toast';
+
+interface Product {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  image_url: string | null;
+}
+
+interface Branch {
+  id: string;
+  name: string;
+}
 
 const Cashier = () => {
   const { user } = useAuth();
   
-  // Data dummy untuk produk yang dijual
-  const products = [
-    { id: '1', name: 'Roti Tawar', price: 15000, image: '🍞' },
-    { id: '2', name: 'Croissant', price: 12000, image: '🥐' },
-    { id: '3', name: 'Donat', price: 8000, image: '🍩' },
-    { id: '4', name: 'Cupcake', price: 10000, image: '🧁' },
-    { id: '5', name: 'Kue Tar', price: 200000, image: '🎂' },
-    { id: '6', name: 'Roti Coklat', price: 18000, image: '🍫' },
-    { id: '7', name: 'Bakpau', price: 14000, image: '🧁' },
-    { id: '8', name: 'Baguette', price: 25000, image: '🥖' },
-  ];
+  const [products, setProducts] = useState<Product[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [lastTransactionId, setLastTransactionId] = useState<string | null>(null);
+  
+  // State for items dalam keranjang
+  const [cart, setCart] = useState<Array<{ product: Product, quantity: number }>>([]);
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  
+  useEffect(() => {
+    fetchBranches();
+  }, []);
+  
+  useEffect(() => {
+    if (user?.role === 'kasir_cabang' && user.branchId) {
+      setSelectedBranch(user.branchId);
+    }
+  }, [user]);
 
-  // State untuk items dalam keranjang
-  const [cart, setCart] = React.useState<Array<{ product: any, quantity: number }>>([]);
-  const [searchQuery, setSearchQuery] = React.useState('');
+  useEffect(() => {
+    if (selectedBranch) {
+      fetchProducts();
+    }
+  }, [selectedBranch]);
+
+  const fetchBranches = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('branches')
+        .select('id, name')
+        .order('name');
+
+      if (error) {
+        throw error;
+      }
+
+      setBranches(data || []);
+      
+      if (user?.role === 'kasir_cabang' && user.branchId) {
+        setSelectedBranch(user.branchId);
+      } else if (data && data.length > 0) {
+        setSelectedBranch(data[0].id);
+      }
+    } catch (error: any) {
+      console.error('Error fetching branches:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Gagal memuat data cabang: ${error.message}`,
+      });
+    }
+  };
+
+  const fetchProducts = async () => {
+    setLoading(true);
+    try {
+      // In a real implementation, we would fetch from inventory to ensure we only show products with stock
+      // For now, fetch all products
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('active', true)
+        .order('name');
+
+      if (error) {
+        throw error;
+      }
+
+      setProducts(data || []);
+    } catch (error: any) {
+      console.error('Error fetching products:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Gagal memuat data produk: ${error.message}`,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Filter produk berdasarkan pencarian
   const filteredProducts = products.filter(product => 
     product.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
-  const addToCart = (product: any) => {
+  const addToCart = (product: Product) => {
     // Cek apakah produk sudah ada di keranjang
     const existingItem = cart.find(item => item.product.id === product.id);
     
@@ -46,6 +131,11 @@ const Cashier = () => {
       // Tambah item baru ke keranjang
       setCart([...cart, { product, quantity: 1 }]);
     }
+
+    toast({
+      title: "Produk ditambahkan",
+      description: `${product.name} ditambahkan ke keranjang`,
+    });
   };
   
   const removeFromCart = (productId: string) => {
@@ -69,6 +159,70 @@ const Cashier = () => {
     return cart.reduce((total, item) => total + (item.product.price * item.quantity), 0);
   };
 
+  const handleProcessPayment = async () => {
+    if (cart.length === 0 || !selectedBranch) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Keranjang kosong atau cabang belum dipilih",
+      });
+      return;
+    }
+
+    try {
+      // Create transaction
+      const { data: transactionData, error: transactionError } = await supabase
+        .from('transactions')
+        .insert({
+          branch_id: selectedBranch,
+          cashier_id: user?.id || '1', // For demo, use mock ID if needed
+          total_amount: calculateTotal(),
+          payment_method: paymentMethod
+        })
+        .select()
+        .single();
+
+      if (transactionError) throw transactionError;
+
+      // Create transaction items
+      const transactionItems = cart.map(item => ({
+        transaction_id: transactionData.id,
+        product_id: item.product.id,
+        quantity: item.quantity,
+        price_per_item: item.product.price,
+        subtotal: item.product.price * item.quantity
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('transaction_items')
+        .insert(transactionItems);
+
+      if (itemsError) throw itemsError;
+
+      // Update inventory (decrease stock) - in a real app
+      // For each item in cart, we would reduce the inventory quantity
+
+      // Success
+      setLastTransactionId(transactionData.id);
+      setShowSuccessDialog(true);
+      
+      // Clear cart
+      setCart([]);
+      
+      toast({
+        title: "Pembayaran Berhasil",
+        description: `Transaksi selesai dengan ID: ${transactionData.id.substring(0, 8)}...`,
+      });
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      toast({
+        variant: "destructive",
+        title: "Error Pembayaran",
+        description: `Gagal memproses pembayaran: ${error.message}`,
+      });
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="flex flex-col md:flex-row gap-6 h-full">
@@ -78,7 +232,7 @@ const Cashier = () => {
             <div>
               <h2 className="text-3xl font-bold tracking-tight">Kasir</h2>
               <p className="text-muted-foreground">
-                {user?.role === 'kasir_cabang' && 'Cabang: Cabang Utama'}
+                {branches.find(b => b.id === selectedBranch)?.name || 'Pilih Cabang'}
               </p>
             </div>
             
@@ -93,25 +247,47 @@ const Cashier = () => {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filteredProducts.map(product => (
-              <Card 
-                key={product.id}
-                onClick={() => addToCart(product)}
-                className="cursor-pointer hover:shadow-md transition-shadow"
-              >
-                <CardHeader className="p-4 pb-0">
-                  <div className="text-4xl mb-2 flex justify-center">{product.image}</div>
-                </CardHeader>
-                <CardContent className="p-4 pt-2">
-                  <CardTitle className="text-sm font-medium">{product.name}</CardTitle>
-                  <p className="text-sm font-bold mt-1">
-                    Rp {product.price.toLocaleString('id-ID')}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filteredProducts.map(product => (
+                <Card 
+                  key={product.id}
+                  onClick={() => addToCart(product)}
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                >
+                  <CardHeader className="p-4 pb-0">
+                    <div className="text-4xl mb-2 flex justify-center">
+                      {product.name.includes('Roti') ? '🍞' : 
+                       product.name.includes('Donat') ? '🍩' : 
+                       product.name.includes('Coklat') ? '🍫' : 
+                       product.name.includes('Kue') ? '🍰' : '🧁'}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-2">
+                    <CardTitle className="text-sm font-medium">{product.name}</CardTitle>
+                    <p className="text-sm font-bold mt-1">
+                      Rp {product.price.toLocaleString('id-ID')}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+              
+              {filteredProducts.length === 0 && (
+                <div className="col-span-4 flex items-center justify-center h-64 border rounded-md">
+                  <div className="text-center">
+                    <ShoppingCart className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">
+                      {searchQuery ? 'Produk tidak ditemukan' : 'Belum ada produk yang tersedia'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         
         {/* Panel Keranjang */}
@@ -126,6 +302,47 @@ const Cashier = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="h-full flex flex-col">
+              {/* Select branch for owner and admin_pusat */}
+              {(user?.role === 'owner' || user?.role === 'admin_pusat') && (
+                <div className="mb-4">
+                  <label className="text-sm font-medium mb-1 block">Cabang</label>
+                  <Select
+                    value={selectedBranch || ''}
+                    onValueChange={(value) => setSelectedBranch(value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Cabang" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {branches.map((branch) => (
+                        <SelectItem key={branch.id} value={branch.id}>
+                          {branch.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Metode Pembayaran */}
+              <div className="mb-4">
+                <label className="text-sm font-medium mb-1 block">Metode Pembayaran</label>
+                <Select
+                  value={paymentMethod}
+                  onValueChange={(value) => setPaymentMethod(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Tunai</SelectItem>
+                    <SelectItem value="card">Kartu Kredit/Debit</SelectItem>
+                    <SelectItem value="transfer">Transfer Bank</SelectItem>
+                    <SelectItem value="qris">QRIS</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
               {/* Daftar item di keranjang */}
               <div className="flex-1 overflow-auto">
                 {cart.length > 0 ? (
@@ -198,7 +415,8 @@ const Cashier = () => {
                 <div className="space-y-2">
                   <Button 
                     className="w-full"
-                    disabled={cart.length === 0}
+                    disabled={cart.length === 0 || !selectedBranch}
+                    onClick={handleProcessPayment}
                   >
                     <CreditCard className="mr-2 h-4 w-4" />
                     Bayar
@@ -218,6 +436,54 @@ const Cashier = () => {
           </Card>
         </div>
       </div>
+
+      {/* Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Check className="h-6 w-6 text-green-500 mr-2" />
+              Pembayaran Berhasil
+            </DialogTitle>
+            <DialogDescription>
+              Transaksi telah berhasil diproses
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="bg-muted p-4 rounded-lg">
+            <p className="font-medium">ID Transaksi: {lastTransactionId?.substring(0, 8)}...</p>
+            <p>Total: Rp {calculateTotal().toLocaleString('id-ID')}</p>
+            <p>Metode: {paymentMethod === 'cash' ? 'Tunai' : 
+                        paymentMethod === 'card' ? 'Kartu Kredit/Debit' : 
+                        paymentMethod === 'transfer' ? 'Transfer Bank' : 'QRIS'}</p>
+            <p>Waktu: {new Date().toLocaleString('id-ID')}</p>
+          </div>
+          
+          <DialogFooter className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowSuccessDialog(false)}
+              className="flex-1"
+            >
+              Tutup
+            </Button>
+            <Button 
+              onClick={() => {
+                setShowSuccessDialog(false);
+                // Here you would trigger the actual printing
+                toast({
+                  title: "Cetak Nota",
+                  description: "Nota sedang dicetak...",
+                });
+              }}
+              className="flex-1"
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              Cetak Nota
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };

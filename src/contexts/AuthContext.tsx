@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export type RoleType = "owner" | "kepala_produksi" | "kasir_cabang" | "admin_pusat";
 
@@ -40,13 +41,20 @@ const MOCK_USERS: User[] = [
     name: "Kasir Cabang Utama",
     email: "kasir@bakeryguru.com",
     role: "kasir_cabang",
-    branchId: "branch-1",
+    branchId: "00000000-0000-0000-0000-000000000001",
   },
   {
     id: "4",
     name: "Admin Pusat",
     email: "admin@bakeryguru.com",
     role: "admin_pusat",
+  },
+  {
+    id: "5",
+    name: "Kasir Cabang Selatan",
+    email: "kasir2@bakeryguru.com",
+    role: "kasir_cabang",
+    branchId: "00000000-0000-0000-0000-000000000002",
   },
 ];
 
@@ -67,6 +75,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (user) {
       localStorage.setItem("bakeryUser", JSON.stringify(user));
+      
+      // If we have a real user, store their branch association in user_branches
+      if (user.branchId && user.id && user.id !== "1" && user.id !== "2" && user.id !== "3" && user.id !== "4" && user.id !== "5") {
+        supabase.from('user_branches').upsert(
+          { user_id: user.id, branch_id: user.branchId },
+          { onConflict: 'user_id' }
+        ).then(({ error }) => {
+          if (error) console.error("Failed to save user branch:", error);
+        });
+      }
     }
   }, [user]);
 

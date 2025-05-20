@@ -9,7 +9,205 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      branches: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          name: string
+          phone: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          phone?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      inventory: {
+        Row: {
+          branch_id: string
+          id: string
+          last_updated: string
+          product_id: string
+          quantity: number
+        }
+        Insert: {
+          branch_id: string
+          id?: string
+          last_updated?: string
+          product_id: string
+          quantity?: number
+        }
+        Update: {
+          branch_id?: string
+          id?: string
+          last_updated?: string
+          product_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          price: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          price: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          price?: number
+        }
+        Relationships: []
+      }
+      transaction_items: {
+        Row: {
+          id: string
+          price_per_item: number
+          product_id: string
+          quantity: number
+          subtotal: number
+          transaction_id: string
+        }
+        Insert: {
+          id?: string
+          price_per_item: number
+          product_id: string
+          quantity: number
+          subtotal: number
+          transaction_id: string
+        }
+        Update: {
+          id?: string
+          price_per_item?: number
+          product_id?: string
+          quantity?: number
+          subtotal?: number
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_items_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          branch_id: string
+          cashier_id: string
+          id: string
+          notes: string | null
+          payment_method: string
+          status: string
+          total_amount: number
+          transaction_date: string
+        }
+        Insert: {
+          branch_id: string
+          cashier_id: string
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          status?: string
+          total_amount?: number
+          transaction_date?: string
+        }
+        Update: {
+          branch_id?: string
+          cashier_id?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          status?: string
+          total_amount?: number
+          transaction_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_branches: {
+        Row: {
+          branch_id: string
+          user_id: string
+        }
+        Insert: {
+          branch_id: string
+          user_id: string
+        }
+        Update: {
+          branch_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_branches_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

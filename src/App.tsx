@@ -13,6 +13,9 @@ import UserManagement from "./pages/Users";
 import Production from "./pages/Production";
 import Cashier from "./pages/Cashier";
 import Products from "./pages/Products";
+import Reports from "./pages/Reports";
+import Inventory from "./pages/Inventory";
+import BranchesManagement from "./pages/Branches";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +28,9 @@ const App = () => {
     production: ["owner", "kepala_produksi"],
     cashier: ["owner", "kasir_cabang"],
     products: ["owner", "admin_pusat"],
+    branches: ["owner", "admin_pusat"],
+    inventory: ["owner", "admin_pusat", "kasir_cabang", "kepala_produksi"],
+    reports: ["owner", "admin_pusat", "kasir_cabang"],
   };
 
   return (
@@ -60,6 +66,16 @@ const App = () => {
                   </AuthGuard>
                 } 
               />
+
+              {/* Branch Management */}
+              <Route 
+                path="/branches" 
+                element={
+                  <AuthGuard allowedRoles={rolePermissions.branches}>
+                    <BranchesManagement />
+                  </AuthGuard>
+                } 
+              />
               
               {/* Production Management */}
               <Route 
@@ -87,6 +103,26 @@ const App = () => {
                 element={
                   <AuthGuard allowedRoles={rolePermissions.products}>
                     <Products />
+                  </AuthGuard>
+                } 
+              />
+
+              {/* Inventory Management */}
+              <Route 
+                path="/inventory" 
+                element={
+                  <AuthGuard allowedRoles={rolePermissions.inventory}>
+                    <Inventory />
+                  </AuthGuard>
+                } 
+              />
+
+              {/* Financial Reports */}
+              <Route 
+                path="/reports" 
+                element={
+                  <AuthGuard allowedRoles={rolePermissions.reports}>
+                    <Reports />
                   </AuthGuard>
                 } 
               />

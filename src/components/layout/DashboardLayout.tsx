@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, RoleType } from '@/contexts/AuthContext';
@@ -5,17 +6,20 @@ import { Button } from '@/components/ui/button';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Settings, Users, ShoppingBag, Landmark, CreditCard, ChefHat, BarChart, Database, LogOut, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
+
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 // Mapping untuk menentukan menu mana yang ditampilkan berdasarkan role
 const roleMenuMap: Record<RoleType, string[]> = {
-  owner: ['dashboard', 'users', 'branches', 'products', 'cashier', 'production', 'reports', 'settings'],
-  kepala_produksi: ['dashboard', 'production'],
-  kasir_cabang: ['dashboard', 'cashier', 'inventory'],
-  admin_pusat: ['dashboard', 'products', 'branches', 'inventory', 'bundles']
+  owner: ['dashboard', 'users', 'branches', 'products', 'cashier', 'production', 'inventory', 'reports', 'settings'],
+  kepala_produksi: ['dashboard', 'production', 'inventory'],
+  kasir_cabang: ['dashboard', 'cashier', 'inventory', 'reports'],
+  admin_pusat: ['dashboard', 'products', 'branches', 'inventory', 'reports', 'bundles']
 };
+
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children
 }) => {
@@ -24,6 +28,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     logout
   } = useAuth();
   const navigate = useNavigate();
+  
   if (!user) {
     return null; // Seharusnya tidak terjadi karena ada protected route
   }
@@ -84,6 +89,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
   // Filter hanya menu yang diperbolehkan
   const filteredMenu = menuItems.filter(item => item.access);
+  
+  // Handle menu click
+  const handleMenuClick = (url: string) => {
+    navigate(url);
+    toast({
+      title: "Navigasi",
+      description: `Halaman ${url.replace('/', '')} dibuka`,
+    });
+  };
+  
   return <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <Sidebar className="border-r">
@@ -100,7 +115,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 <SidebarMenu>
                   {filteredMenu.map(item => <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton asChild>
-                        <Button variant="ghost" className="w-full justify-start" onClick={() => navigate(item.url)}>
+                        <Button variant="ghost" className="w-full justify-start" onClick={() => handleMenuClick(item.url)}>
                           <item.icon className="mr-2 h-4 w-4" />
                           <span>{item.title}</span>
                         </Button>
@@ -122,7 +137,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     {user.name}
                   </span>
                   <span className="text-xs text-sidebar-foreground/70">
-                    {user.role === 'owner' ? 'Pemilik' : user.role === 'kepala_produksi' ? 'Kepala Produksi' : user.role === 'kasir_cabang' ? 'Kasir Cabang' : 'Admin Pusat'}
+                    {user.role === 'owner' ? 'Pemilik' : 
+                     user.role === 'kepala_produksi' ? 'Kepala Produksi' : 
+                     user.role === 'kasir_cabang' ? 'Kasir Cabang' : 'Admin Pusat'}
+                    {user.branchId && user.role === 'kasir_cabang' && (
+                      user.branchId === '00000000-0000-0000-0000-000000000001' ? ' - Pusat' : 
+                      user.branchId === '00000000-0000-0000-0000-000000000002' ? ' - Selatan' : 
+                      user.branchId === '00000000-0000-0000-0000-000000000003' ? ' - Timur' : ''
+                    )}
                   </span>
                 </div>
               </div>
@@ -138,7 +160,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <header className="flex h-14 items-center gap-4 px-4 sm:px-6">
               <SidebarTrigger />
               <div className="flex-1">
-                <h1 className="font-semibold text-lg">Icha Bakery  Management System</h1>
+                <h1 className="font-semibold text-lg">Icha Bakery Management System</h1>
               </div>
             </header>
           </div>

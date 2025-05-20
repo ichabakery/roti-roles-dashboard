@@ -8,39 +8,38 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash, Search } from 'lucide-react';
+import { Plus, Edit, Trash, Search, Home } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
-interface Product {
+interface Branch {
   id: string;
   name: string;
-  description: string | null;
-  price: number;
-  active: boolean;
+  address: string | null;
+  phone: string | null;
 }
 
-const Products = () => {
-  const [products, setProducts] = useState<Product[]>([]);
+const BranchesManagement = () => {
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [newProduct, setNewProduct] = useState({
+  const [newBranch, setNewBranch] = useState({
     name: '',
-    description: '',
-    price: 0
+    address: '',
+    phone: ''
   });
   
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchProducts();
+    fetchBranches();
   }, []);
 
-  const fetchProducts = async () => {
+  const fetchBranches = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('products')
+        .from('branches')
         .select('*')
         .order('name');
 
@@ -48,47 +47,37 @@ const Products = () => {
         throw error;
       }
 
-      setProducts(data || []);
+      setBranches(data || []);
     } catch (error: any) {
-      console.error('Error fetching products:', error);
+      console.error('Error fetching branches:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: `Gagal memuat data produk: ${error.message}`,
+        description: `Gagal memuat data cabang: ${error.message}`,
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddProduct = async () => {
+  const handleAddBranch = async () => {
     try {
       // Validation
-      if (!newProduct.name) {
+      if (!newBranch.name) {
         toast({
           variant: "destructive",
           title: "Validasi Gagal",
-          description: "Nama produk harus diisi",
-        });
-        return;
-      }
-
-      if (newProduct.price <= 0) {
-        toast({
-          variant: "destructive",
-          title: "Validasi Gagal",
-          description: "Harga produk harus lebih dari 0",
+          description: "Nama cabang harus diisi",
         });
         return;
       }
 
       const { data, error } = await supabase
-        .from('products')
+        .from('branches')
         .insert({
-          name: newProduct.name,
-          description: newProduct.description || null,
-          price: newProduct.price,
-          active: true
+          name: newBranch.name,
+          address: newBranch.address || null,
+          phone: newBranch.phone || null
         })
         .select();
 
@@ -97,27 +86,27 @@ const Products = () => {
       }
 
       toast({
-        title: "Produk Ditambahkan",
-        description: `Produk ${newProduct.name} berhasil ditambahkan`,
+        title: "Cabang Ditambahkan",
+        description: `Cabang ${newBranch.name} berhasil ditambahkan`,
       });
 
-      setNewProduct({ name: '', description: '', price: 0 });
+      setNewBranch({ name: '', address: '', phone: '' });
       setIsAddDialogOpen(false);
-      fetchProducts();
+      fetchBranches();
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: `Gagal menambahkan produk: ${error.message}`,
+        description: `Gagal menambahkan cabang: ${error.message}`,
       });
     }
   };
 
-  const handleDeleteProduct = async (id: string, name: string) => {
-    if (confirm(`Anda yakin ingin menghapus produk "${name}"?`)) {
+  const handleDeleteBranch = async (id: string, name: string) => {
+    if (confirm(`Anda yakin ingin menghapus cabang "${name}"?`)) {
       try {
         const { error } = await supabase
-          .from('products')
+          .from('branches')
           .delete()
           .eq('id', id);
 
@@ -126,24 +115,25 @@ const Products = () => {
         }
 
         toast({
-          title: "Produk Dihapus",
-          description: `Produk ${name} berhasil dihapus`,
+          title: "Cabang Dihapus",
+          description: `Cabang ${name} berhasil dihapus`,
         });
 
-        fetchProducts();
+        fetchBranches();
       } catch (error: any) {
         toast({
           variant: "destructive",
           title: "Error",
-          description: `Gagal menghapus produk: ${error.message}`,
+          description: `Gagal menghapus cabang: ${error.message}`,
         });
       }
     }
   };
 
-  const filteredProducts = products.filter(product => 
-    product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredBranches = branches.filter(branch => 
+    branch.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    branch.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    branch.phone?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -151,9 +141,9 @@ const Products = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Manajemen Produk</h2>
+            <h2 className="text-3xl font-bold tracking-tight">Manajemen Cabang</h2>
             <p className="text-muted-foreground">
-              Kelola data master produk toko roti
+              Kelola data cabang toko roti
             </p>
           </div>
           
@@ -161,43 +151,42 @@ const Products = () => {
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                Tambah Produk
+                Tambah Cabang
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Tambah Produk Baru</DialogTitle>
+                <DialogTitle>Tambah Cabang Baru</DialogTitle>
                 <DialogDescription>
-                  Masukkan informasi produk yang akan ditambahkan
+                  Masukkan informasi cabang yang akan ditambahkan
                 </DialogDescription>
               </DialogHeader>
               
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="name">Nama Produk</Label>
+                  <Label htmlFor="name">Nama Cabang</Label>
                   <Input 
                     id="name" 
-                    value={newProduct.name}
-                    onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                    value={newBranch.name}
+                    onChange={(e) => setNewBranch({ ...newBranch, name: e.target.value })}
                   />
                 </div>
                 
                 <div className="grid gap-2">
-                  <Label htmlFor="description">Deskripsi</Label>
+                  <Label htmlFor="address">Alamat</Label>
                   <Input 
-                    id="description" 
-                    value={newProduct.description}
-                    onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                    id="address" 
+                    value={newBranch.address}
+                    onChange={(e) => setNewBranch({ ...newBranch, address: e.target.value })}
                   />
                 </div>
                 
                 <div className="grid gap-2">
-                  <Label htmlFor="price">Harga (Rp)</Label>
+                  <Label htmlFor="phone">Telepon</Label>
                   <Input 
-                    id="price" 
-                    type="number"
-                    value={newProduct.price}
-                    onChange={(e) => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) })}
+                    id="phone" 
+                    value={newBranch.phone}
+                    onChange={(e) => setNewBranch({ ...newBranch, phone: e.target.value })}
                   />
                 </div>
               </div>
@@ -206,7 +195,7 @@ const Products = () => {
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                   Batal
                 </Button>
-                <Button onClick={handleAddProduct}>
+                <Button onClick={handleAddBranch}>
                   Simpan
                 </Button>
               </DialogFooter>
@@ -219,7 +208,7 @@ const Products = () => {
             <div className="mb-4 flex items-center">
               <Search className="mr-2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Cari produk..."
+                placeholder="Cari cabang..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="max-w-sm"
@@ -234,25 +223,19 @@ const Products = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nama Produk</TableHead>
-                    <TableHead>Deskripsi</TableHead>
-                    <TableHead>Harga</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Nama Cabang</TableHead>
+                    <TableHead>Alamat</TableHead>
+                    <TableHead>Telepon</TableHead>
                     <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredProducts.length > 0 ? (
-                    filteredProducts.map((product) => (
-                      <TableRow key={product.id}>
-                        <TableCell className="font-medium">{product.name}</TableCell>
-                        <TableCell>{product.description || '-'}</TableCell>
-                        <TableCell>Rp {product.price.toLocaleString('id-ID')}</TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${product.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            {product.active ? 'Aktif' : 'Nonaktif'}
-                          </span>
-                        </TableCell>
+                  {filteredBranches.length > 0 ? (
+                    filteredBranches.map((branch) => (
+                      <TableRow key={branch.id}>
+                        <TableCell className="font-medium">{branch.name}</TableCell>
+                        <TableCell>{branch.address || '-'}</TableCell>
+                        <TableCell>{branch.phone || '-'}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button size="icon" variant="outline">
@@ -262,7 +245,7 @@ const Products = () => {
                               size="icon" 
                               variant="outline"
                               className="text-destructive hover:bg-destructive/10"
-                              onClick={() => handleDeleteProduct(product.id, product.name)}
+                              onClick={() => handleDeleteBranch(branch.id, branch.name)}
                             >
                               <Trash className="h-4 w-4" />
                             </Button>
@@ -272,8 +255,8 @@ const Products = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
-                        {searchQuery ? 'Tidak ada produk yang sesuai dengan pencarian' : 'Belum ada produk yang ditambahkan'}
+                      <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">
+                        {searchQuery ? 'Tidak ada cabang yang sesuai dengan pencarian' : 'Belum ada cabang yang ditambahkan'}
                       </TableCell>
                     </TableRow>
                   )}
@@ -287,4 +270,4 @@ const Products = () => {
   );
 };
 
-export default Products;
+export default BranchesManagement;
