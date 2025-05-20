@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { User as SupabaseUser, Session } from "@supabase/supabase-js";
 
 export type RoleType = "owner" | "kepala_produksi" | "kasir_cabang" | "admin_pusat";
 
@@ -14,6 +15,7 @@ export interface User {
 
 interface AuthContextValue {
   user: User | null;
+  supabaseUser: SupabaseUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -58,55 +60,117 @@ const MOCK_USERS: User[] = [
   },
 ];
 
+// Map email to role for demo
+const emailToRoleMap: Record<string, { role: RoleType; branchId?: string }> = {
+  "owner@bakeryguru.com": { role: "owner" },
+  "owner@icha.com": { role: "owner" },
+  "produksi@bakeryguru.com": { role: "kepala_produksi" },
+  "kasir@bakeryguru.com": { role: "kasir_cabang", branchId: "00000000-0000-0000-0000-000000000001" },
+  "admin@bakeryguru.com": { role: "admin_pusat" },
+  "kasir2@bakeryguru.com": { role: "kasir_cabang", branchId: "00000000-0000-0000-0000-000000000002" },
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Cek apakah ada sesi tersimpan
+  // Handle auth state changes and initialize session
   useEffect(() => {
-    const storedUser = localStorage.getItem("bakeryUser");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
-  }, []);
-
-  // Simpan user saat berubah
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem("bakeryUser", JSON.stringify(user));
-      
-      // If we have a real user, store their branch association in user_branches
-      if (user.branchId && user.id && user.id !== "1" && user.id !== "2" && user.id !== "3" && user.id !== "4" && user.id !== "5") {
-        supabase.from('user_branches').upsert(
-          { user_id: user.id, branch_id: user.branchId },
-          { onConflict: 'user_id' }
-        ).then(({ error }) => {
-          if (error) console.error("Failed to save user branch:", error);
-        });
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setLoading(true);
+        
+        if (session?.user) {
+          const email = session.user.email?.toLowerCase();
+          setSupabaseUser(session.user);
+          
+          // For demo, map email to role
+          if (email && emailToRoleMap[email]) {
+            // Create user object
+            const newUser: User = {
+              id: session.user.id,
+              name: email.split('@')[0],
+              email: email,
+              role: emailToRoleMap[email].role,
+              branchId: emailToRoleMap[email].branchId,
+            };
+            setUser(newUser);
+            localStorage.setItem("bakeryUser", JSON.stringify(newUser));
+          } else {
+            // Default to kasir_cabang if we don't have this email mapped
+            const newUser: User = {
+              id: session.user.id,
+              name: email ? email.split('@')[0] : 'User',
+              email: email || 'unknown@example.com',
+              role: "kasir_cabang",
+              branchId: "00000000-0000-0000-0000-000000000001", // Default branch
+            };
+            setUser(newUser);
+            localStorage.setItem("bakeryUser", JSON.stringify(newUser));
+          }
+        } else {
+          // No session, clear user
+          setSupabaseUser(null);
+          setUser(null);
+          localStorage.removeItem("bakeryUser");
+        }
+        setLoading(false);
       }
-    }
-  }, [user]);
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const email = session.user.email?.toLowerCase();
+        setSupabaseUser(session.user);
+        
+        // For demo, map email to role
+        if (email && emailToRoleMap[email]) {
+          // Create user object
+          const newUser: User = {
+            id: session.user.id,
+            name: email.split('@')[0],
+            email: email,
+            role: emailToRoleMap[email].role,
+            branchId: emailToRoleMap[email].branchId,
+          };
+          setUser(newUser);
+          localStorage.setItem("bakeryUser", JSON.stringify(newUser));
+        } else {
+          // Default to kasir_cabang if we don't have this email mapped
+          const newUser: User = {
+            id: session.user.id,
+            name: email ? email.split('@')[0] : 'User',
+            email: email || 'unknown@example.com',
+            role: "kasir_cabang",
+            branchId: "00000000-0000-0000-0000-000000000001", // Default branch
+          };
+          setUser(newUser);
+          localStorage.setItem("bakeryUser", JSON.stringify(newUser));
+        }
+      }
+      setLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // Login function
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      // Simulasi delay network
-      await new Promise(resolve => setTimeout(resolve, 800));
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       
-      // Cari user berdasarkan email
-      const foundUser = MOCK_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
+      if (error) throw error;
       
-      if (!foundUser) {
-        throw new Error("Email atau password salah");
-      }
-      
-      // Dalam implementasi nyata, kita akan check password di sini
-      // Untuk demo, kita tidak check password
-      
-      // Set user
-      setUser(foundUser);
+      // The user will be set by the auth state change listener
     } catch (error) {
       console.error("Login error:", error);
       throw error;
@@ -116,9 +180,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Logout function
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("bakeryUser");
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      // The user will be cleared by the auth state change listener
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   // Check apakah user memiliki role yang diizinkan
@@ -129,6 +197,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value = {
     user,
+    supabaseUser,
     loading,
     login,
     logout,
