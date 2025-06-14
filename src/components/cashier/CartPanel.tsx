@@ -37,6 +37,7 @@ interface CartPanelProps {
   onProcessPayment: () => void;
   calculateTotal: () => number;
   branchError?: string | null;
+  processingPayment?: boolean;
 }
 
 export const CartPanel: React.FC<CartPanelProps> = ({
@@ -51,7 +52,8 @@ export const CartPanel: React.FC<CartPanelProps> = ({
   onRemoveFromCart,
   onProcessPayment,
   calculateTotal,
-  branchError
+  branchError,
+  processingPayment = false
 }) => {
   return (
     <Card className="h-full">
@@ -177,11 +179,11 @@ export const CartPanel: React.FC<CartPanelProps> = ({
           <div className="space-y-2">
             <Button 
               className="w-full"
-              disabled={cart.length === 0 || !selectedBranch || !!branchError}
+              disabled={cart.length === 0 || !selectedBranch || !!branchError || processingPayment}
               onClick={onProcessPayment}
             >
               <CreditCard className="mr-2 h-4 w-4" />
-              Bayar
+              {processingPayment ? 'Memproses...' : 'Bayar'}
             </Button>
             
             <Button 
