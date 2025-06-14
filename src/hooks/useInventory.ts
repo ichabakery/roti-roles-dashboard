@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -256,10 +257,15 @@ export const useInventory = () => {
         (payload) => {
           console.log('📡 Real-time inventory change received:', payload);
           
+          // Type-safe check for branch_id property
+          const newRecord = payload.new as any;
+          const oldRecord = payload.old as any;
+          
           // Only refresh if the change affects current user's view
           if (user?.role === 'kasir_cabang') {
             // Kasir only cares about their branch
-            if (payload.new?.branch_id === user.branchId || payload.old?.branch_id === user.branchId) {
+            const relevantBranchId = newRecord?.branch_id || oldRecord?.branch_id;
+            if (relevantBranchId === user.branchId) {
               fetchInventory();
             }
           } else {
