@@ -36,6 +36,8 @@ const Cashier = () => {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [lastTransactionId, setLastTransactionId] = useState<string | null>(null);
   const [branchError, setBranchError] = useState<string | null>(null);
+  const [hasAccess, setHasAccess] = useState(false);
+  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   
   // State for items dalam keranjang
   const [cart, setCart] = useState<Array<{ product: Product, quantity: number }>>([]);
@@ -52,17 +54,24 @@ const Cashier = () => {
       console.log('Setting branch for kasir:', user.branchId);
       setSelectedBranch(user.branchId);
       setBranchError(null);
+      setHasAccess(true);
+      setIsCheckingAccess(false);
     } else if (user?.role === 'kasir_cabang' && !user.branchId) {
       console.error('Kasir user without branch assignment:', user);
       setBranchError('Akun kasir Anda belum dikaitkan dengan cabang. Silakan hubungi administrator.');
+      setHasAccess(false);
+      setIsCheckingAccess(false);
+    } else {
+      setHasAccess(true);
+      setIsCheckingAccess(false);
     }
   }, [user]);
 
   useEffect(() => {
-    if (selectedBranch) {
+    if (selectedBranch && hasAccess) {
       fetchProducts();
     }
-  }, [selectedBranch]);
+  }, [selectedBranch, hasAccess]);
 
   const initializeData = async () => {
     try {
@@ -75,6 +84,29 @@ const Cashier = () => {
         title: "Error",
         description: "Gagal menginisialisasi data aplikasi",
       });
+    }
+  };
+
+  const verifyBranchAccess = async (branchId: string): Promise<boolean> => {
+    if (!user?.id) return false;
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_branches')
+        .select('branch_id')
+        .eq('user_id', user.id)
+        .eq('branch_id', branchId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error verifying branch access:', error);
+        return false;
+      }
+
+      return !!data;
+    } catch (error) {
+      console.error('Error verifying branch access:', error);
+      return false;
     }
   };
 
@@ -105,6 +137,7 @@ const Cashier = () => {
         if (error) {
           console.error('Error fetching user branches:', error);
           setBranchError('Gagal memuat data cabang yang dikaitkan dengan akun Anda');
+          setHasAccess(false);
           return;
         }
 
@@ -121,8 +154,10 @@ const Cashier = () => {
         
         if (branchData.length > 0 && !selectedBranch) {
           setSelectedBranch(branchData[0].id);
+          setHasAccess(true);
         } else if (branchData.length === 0) {
           setBranchError('Akun Anda belum dikaitkan dengan cabang manapun. Silakan hubungi administrator.');
+          setHasAccess(false);
         }
       } else {
         // For owner and admin_pusat, get all branches
@@ -134,6 +169,7 @@ const Cashier = () => {
         if (error) {
           console.error('Error fetching all branches:', error);
           setBranchError('Gagal memuat data cabang');
+          setHasAccess(false);
           return;
         }
 
@@ -141,11 +177,13 @@ const Cashier = () => {
         
         if (data && data.length > 0 && !selectedBranch) {
           setSelectedBranch(data[0].id);
+          setHasAccess(true);
         }
       }
     } catch (error: any) {
       console.error('Error fetching branches:', error);
       setBranchError(`Gagal memuat data cabang: ${error.message}`);
+      setHasAccess(false);
     }
   };
 
@@ -242,15 +280,9 @@ const Cashier = () => {
       
       // Verify user has access to this branch
       if (user.role === 'kasir_cabang') {
-        const { data: branchAccess, error: accessError } = await supabase
-          .from('user_branches')
-          .select('branch_id')
-          .eq('user_id', user.id)
-          .eq('branch_id', selectedBranch)
-          .single();
-
-        if (accessError || !branchAccess) {
-          console.error('User does not have access to this branch:', accessError);
+        const accessVerified = await verifyBranchAccess(selectedBranch);
+        if (!accessVerified) {
+          console.error('User does not have access to this branch');
           toast({
             variant: "destructive",
             title: "Error",
@@ -327,11 +359,27 @@ const Cashier = () => {
   };
 
   // Show loading if user is not ready yet
-  if (!user) {
+  if (!user || isCheckingAccess) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
+    );
+  }
+
+  // Show access denied if user doesn't have access
+  if (!hasAccess) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <Alert variant="destructive" className="max-w-md">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {branchError || 'Anda tidak memiliki akses ke fitur kasir.'}
+            </AlertDescription>
+          </Alert>
+        </div>
+      </DashboardLayout>
     );
   }
 
@@ -600,7 +648,6 @@ const Cashier = () => {
               <Printer className="mr-2 h-4 w-4" />
               Cetak Nota
             </Button>
-          </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
