@@ -124,8 +124,8 @@ export const useInventory = () => {
           branch_id, 
           quantity, 
           last_updated,
-          product:products(id, name), 
-          branch:branches(id, name)
+          product:fk_inventory_product_id(id, name), 
+          branch:fk_inventory_branch_id(id, name)
         `);
 
       // Apply branch filter based on user role

@@ -117,14 +117,14 @@ export const useReports = () => {
           transaction_date,
           total_amount,
           payment_method,
-          branch:branches(id, name),
+          branch:fk_transactions_branch_id(id, name),
           transaction_items(
             id,
             product_id,
             quantity,
             price_per_item,
             subtotal,
-            product:products(name)
+            product:fk_transaction_items_product_id(name)
           )
         `);
 

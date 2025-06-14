@@ -27,7 +27,7 @@ export const useUserBranch = () => {
         .from('user_branches')
         .select(`
           branch_id,
-          branches!inner (
+          branches:fk_user_branches_branch_id (
             id,
             name
           )
