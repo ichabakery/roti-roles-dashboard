@@ -26,7 +26,7 @@ export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
         *,
         user_branches (
           branch_id,
-          branches (
+          branches!fk_user_branches_branch_id (
             id,
             name
           )
@@ -62,13 +62,18 @@ export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
       let branchId: string | undefined;
       let branchName: string | undefined;
       
-      if (profile.user_branches) {
-        // user_branches could be an array or a single object
-        const userBranch = Array.isArray(profile.user_branches) 
-          ? profile.user_branches[0] 
-          : profile.user_branches;
+      if (profile.user_branches && Array.isArray(profile.user_branches)) {
+        // Get the first branch assignment
+        const userBranch = profile.user_branches[0];
         
-        if (userBranch && userBranch.branches) {
+        if (userBranch && userBranch.branches && typeof userBranch.branches === 'object') {
+          branchId = userBranch.branches.id;
+          branchName = userBranch.branches.name;
+        }
+      } else if (profile.user_branches && !Array.isArray(profile.user_branches)) {
+        // Handle single object case
+        const userBranch = profile.user_branches;
+        if (userBranch.branches && typeof userBranch.branches === 'object') {
           branchId = userBranch.branches.id;
           branchName = userBranch.branches.name;
         }
