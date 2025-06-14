@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -25,6 +24,17 @@ interface Branch {
   name: string;
 }
 
+interface Transaction {
+  id: string;
+  branch_id: string;
+  cashier_id: string;
+  transaction_date: string;
+  total_amount: number;
+  payment_method: string;
+  notes: string | null;
+  status: string;
+}
+
 const Cashier = () => {
   const { user } = useAuth();
   
@@ -34,7 +44,7 @@ const Cashier = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-  const [lastTransactionId, setLastTransactionId] = useState<string | null>(null);
+  const [lastTransaction, setLastTransaction] = useState<Transaction | null>(null);
   const [branchError, setBranchError] = useState<string | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
@@ -276,7 +286,9 @@ const Cashier = () => {
       console.log('User ID:', user.id);
       console.log('Branch ID:', selectedBranch);
       console.log('Cart items:', cart.length);
-      console.log('Total amount:', calculateTotal());
+      
+      const totalAmount = calculateTotal();
+      console.log('Total amount:', totalAmount);
       
       // Verify user has access to this branch
       if (user.role === 'kasir_cabang') {
@@ -296,7 +308,7 @@ const Cashier = () => {
       const transactionData = {
         branch_id: selectedBranch,
         cashier_id: user.id,
-        total_amount: calculateTotal(),
+        total_amount: totalAmount,
         payment_method: paymentMethod
       };
 
@@ -337,8 +349,8 @@ const Cashier = () => {
 
       console.log('Transaction items created successfully');
 
-      // Success
-      setLastTransactionId(transaction.id);
+      // Success - Store complete transaction data
+      setLastTransaction(transaction);
       setShowSuccessDialog(true);
       
       // Clear cart
@@ -355,6 +367,16 @@ const Cashier = () => {
         title: "Error Pembayaran",
         description: error.message || "Gagal memproses pembayaran",
       });
+    }
+  };
+
+  const getPaymentMethodLabel = (method: string) => {
+    switch (method) {
+      case 'cash': return 'Tunai';
+      case 'card': return 'Kartu Kredit/Debit';
+      case 'transfer': return 'Transfer Bank';
+      case 'qris': return 'QRIS';
+      default: return method;
     }
   };
 
@@ -619,12 +641,10 @@ const Cashier = () => {
           </DialogHeader>
           
           <div className="bg-muted p-4 rounded-lg">
-            <p className="font-medium">ID Transaksi: {lastTransactionId?.substring(0, 8)}...</p>
-            <p>Total: Rp {calculateTotal().toLocaleString('id-ID')}</p>
-            <p>Metode: {paymentMethod === 'cash' ? 'Tunai' : 
-                        paymentMethod === 'card' ? 'Kartu Kredit/Debit' : 
-                        paymentMethod === 'transfer' ? 'Transfer Bank' : 'QRIS'}</p>
-            <p>Waktu: {new Date().toLocaleString('id-ID')}</p>
+            <p className="font-medium">ID Transaksi: {lastTransaction?.id.substring(0, 8)}...</p>
+            <p>Total: Rp {lastTransaction?.total_amount.toLocaleString('id-ID')}</p>
+            <p>Metode: {getPaymentMethodLabel(lastTransaction?.payment_method || '')}</p>
+            <p>Waktu: {lastTransaction ? new Date(lastTransaction.transaction_date).toLocaleString('id-ID') : ''}</p>
           </div>
           
           <DialogFooter className="flex gap-2">
