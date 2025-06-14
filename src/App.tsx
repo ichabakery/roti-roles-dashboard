@@ -16,6 +16,7 @@ import Products from "./pages/Products";
 import Reports from "./pages/Reports";
 import Inventory from "./pages/Inventory";
 import BranchesManagement from "./pages/Branches";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => {
     branches: ["owner", "admin_pusat"],
     inventory: ["owner", "admin_pusat", "kasir_cabang", "kepala_produksi"],
     reports: ["owner", "admin_pusat", "kasir_cabang"],
+    settings: ["owner", "admin_pusat"],
   };
 
   return (
@@ -123,6 +125,16 @@ const App = () => {
                 element={
                   <AuthGuard allowedRoles={rolePermissions.reports}>
                     <Reports />
+                  </AuthGuard>
+                } 
+              />
+
+              {/* Settings */}
+              <Route 
+                path="/settings" 
+                element={
+                  <AuthGuard allowedRoles={rolePermissions.settings}>
+                    <Settings />
                   </AuthGuard>
                 } 
               />
