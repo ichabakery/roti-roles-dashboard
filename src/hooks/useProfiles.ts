@@ -23,11 +23,13 @@ interface CreateUserData {
 export const useProfiles = () => {
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<ProfileData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchProfiles = async () => {
     try {
       setLoading(true);
+      setError(null);
       console.log('Starting to fetch profiles...');
       
       const { data, error } = await supabase
@@ -39,11 +41,16 @@ export const useProfiles = () => {
 
       if (error) {
         console.error('Error fetching profiles:', error);
-        toast({
-          title: "Error",
-          description: "Gagal memuat data pengguna",
-          variant: "destructive",
-        });
+        setError(error.message);
+        
+        // Don't show toast for permission errors (user might not be owner)
+        if (!error.message.includes('permission') && !error.message.includes('policy')) {
+          toast({
+            title: "Error",
+            description: "Gagal memuat data pengguna",
+            variant: "destructive",
+          });
+        }
         return;
       }
 
@@ -55,13 +62,18 @@ export const useProfiles = () => {
 
       console.log('Setting profiles:', typedProfiles);
       setProfiles(typedProfiles);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in fetchProfiles:', error);
-      toast({
-        title: "Error",
-        description: "Terjadi kesalahan saat memuat data",
-        variant: "destructive",
-      });
+      setError(error.message);
+      
+      // Only show toast for unexpected errors
+      if (!error.message?.includes('permission') && !error.message?.includes('policy')) {
+        toast({
+          title: "Error",
+          description: "Terjadi kesalahan saat memuat data",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -210,6 +222,7 @@ export const useProfiles = () => {
   return {
     profiles,
     loading,
+    error,
     createUser,
     deleteUser,
     filterProfiles,

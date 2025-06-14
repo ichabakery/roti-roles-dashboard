@@ -33,7 +33,7 @@ const fetchUserBranch = async (userId: string) => {
       .select('branch_id')
       .eq('user_id', userId)
       .limit(1)
-      .single();
+      .maybeSingle();
     
     if (error && error.code !== 'PGRST116') {
       console.error('Error fetching user branch:', error);
@@ -56,17 +56,30 @@ const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User | null
       .from('profiles')
       .select('*')
       .eq('id', supabaseUser.id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching profile:', error);
-      // If no profile found, return basic user with kasir_cabang role
-      return {
+      // If no profile found, create a basic one
+      const basicUser: User = {
         id: supabaseUser.id,
         name: supabaseUser.email?.split('@')[0] || 'User',
         email: supabaseUser.email || '',
         role: 'kasir_cabang'
       };
+      console.log('Created basic user object:', basicUser);
+      return basicUser;
+    }
+
+    if (!profile) {
+      console.log('No profile found, creating basic user');
+      const basicUser: User = {
+        id: supabaseUser.id,
+        name: supabaseUser.email?.split('@')[0] || 'User',
+        email: supabaseUser.email || '',
+        role: 'kasir_cabang'
+      };
+      return basicUser;
     }
 
     let branchId: string | undefined;
@@ -84,11 +97,18 @@ const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User | null
       branchId
     };
 
-    console.log('Created user object:', user);
+    console.log('Created user object from profile:', user);
     return user;
   } catch (error) {
     console.error('Error in fetchUserProfile:', error);
-    return null;
+    // Return basic user instead of null to prevent blocking
+    const basicUser: User = {
+      id: supabaseUser.id,
+      name: supabaseUser.email?.split('@')[0] || 'User',
+      email: supabaseUser.email || '',
+      role: 'kasir_cabang'
+    };
+    return basicUser;
   }
 };
 
@@ -96,24 +116,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initializing, setInitializing] = useState(true);
 
   // Handle auth state changes and initialize session
   useEffect(() => {
-    // Set up auth state listener FIRST
+    let mounted = true;
+    
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state change:', event, session?.user?.email);
-        setLoading(true);
+        
+        if (!mounted) return;
+        
+        // Don't set loading to true on token refresh
+        if (event !== 'TOKEN_REFRESHED') {
+          setLoading(true);
+        }
         
         if (session?.user) {
           setSupabaseUser(session.user);
           
-          // Fetch user profile from database
-          const userProfile = await fetchUserProfile(session.user);
-          setUser(userProfile);
-          
-          if (userProfile) {
-            localStorage.setItem("bakeryUser", JSON.stringify(userProfile));
+          // Only fetch profile if we don't have a user or user ID changed
+          if (!user || user.id !== session.user.id) {
+            console.log('Fetching user profile...');
+            const userProfile = await fetchUserProfile(session.user);
+            if (mounted && userProfile) {
+              setUser(userProfile);
+              localStorage.setItem("bakeryUser", JSON.stringify(userProfile));
+            }
           }
         } else {
           // No session, clear user
@@ -121,31 +152,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
           localStorage.removeItem("bakeryUser");
         }
-        setLoading(false);
+        
+        if (mounted) {
+          setLoading(false);
+          setInitializing(false);
+        }
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log('Initial session check:', session?.user?.email);
-      if (session?.user) {
-        setSupabaseUser(session.user);
+    // Check for existing session only once
+    if (initializing) {
+      supabase.auth.getSession().then(async ({ data: { session } }) => {
+        console.log('Initial session check:', session?.user?.email);
         
-        // Fetch user profile from database
-        const userProfile = await fetchUserProfile(session.user);
-        setUser(userProfile);
+        if (!mounted) return;
         
-        if (userProfile) {
-          localStorage.setItem("bakeryUser", JSON.stringify(userProfile));
+        if (session?.user) {
+          setSupabaseUser(session.user);
+          
+          // Check if we have cached user data first
+          const cachedUser = localStorage.getItem("bakeryUser");
+          if (cachedUser) {
+            try {
+              const parsedUser = JSON.parse(cachedUser) as User;
+              if (parsedUser.id === session.user.id) {
+                console.log('Using cached user data');
+                setUser(parsedUser);
+                setLoading(false);
+                setInitializing(false);
+                return;
+              }
+            } catch (error) {
+              console.error('Error parsing cached user:', error);
+            }
+          }
+          
+          // Fetch fresh profile if no valid cache
+          const userProfile = await fetchUserProfile(session.user);
+          if (mounted && userProfile) {
+            setUser(userProfile);
+            localStorage.setItem("bakeryUser", JSON.stringify(userProfile));
+          }
         }
-      }
-      setLoading(false);
-    });
+        
+        if (mounted) {
+          setLoading(false);
+          setInitializing(false);
+        }
+      });
+    }
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [initializing]); // Only depend on initializing
 
   // Login function
   const login = async (email: string, password: string) => {
