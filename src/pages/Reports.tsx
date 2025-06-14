@@ -25,7 +25,9 @@ const Reports = () => {
     fetchReportsData,
     getTotalRevenue,
     getTotalTransactions,
-    getAverageTransaction
+    getAverageTransaction,
+    isBranchSelectionDisabled,
+    availableBranches
   } = useReports();
 
   const { exportTransactions, exportSummary, printReport } = useExportReports();
@@ -74,6 +76,8 @@ const Reports = () => {
           isKasir={isKasir}
           onExportSummary={exportSummary}
           onExportTransactions={exportTransactions}
+          isBranchSelectionDisabled={isBranchSelectionDisabled}
+          availableBranches={availableBranches}
         />
       </div>
     </DashboardLayout>

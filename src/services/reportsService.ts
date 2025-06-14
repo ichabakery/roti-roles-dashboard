@@ -18,7 +18,12 @@ export const fetchTransactionsFromDB = async (
   selectedBranch?: string,
   dateRange?: { start: string; end: string }
 ) => {
-  console.log('Fetching reports data for user:', userRole, 'selectedBranch:', selectedBranch);
+  console.log('Fetching reports data for user:', userRole, 'userBranchId:', userBranchId, 'selectedBranch:', selectedBranch);
+
+  // Validate kasir_cabang has branch assignment
+  if (userRole === 'kasir_cabang' && !userBranchId) {
+    throw new Error('Kasir cabang belum dikaitkan dengan cabang manapun. Silakan hubungi administrator.');
+  }
 
   // Build query based on user role and selected branch
   let transactionQuery = supabase
@@ -42,12 +47,21 @@ export const fetchTransactionsFromDB = async (
     `);
 
   // Apply role-based filtering
-  if (userRole === 'kasir_cabang' && userBranchId) {
-    transactionQuery = transactionQuery.eq('branch_id', userBranchId);
-    console.log('Filtering for kasir branch:', userBranchId);
-  } else if (selectedBranch && selectedBranch !== 'all') {
-    transactionQuery = transactionQuery.eq('branch_id', selectedBranch);
-    console.log('Filtering for selected branch:', selectedBranch);
+  if (userRole === 'kasir_cabang') {
+    // Kasir cabang hanya bisa melihat data cabang mereka sendiri
+    transactionQuery = transactionQuery.eq('branch_id', userBranchId!);
+    console.log('Filtering for kasir branch only:', userBranchId);
+  } else if (userRole === 'owner' || userRole === 'admin_pusat') {
+    // Owner dan admin pusat bisa melihat semua cabang atau cabang tertentu
+    if (selectedBranch && selectedBranch !== 'all') {
+      transactionQuery = transactionQuery.eq('branch_id', selectedBranch);
+      console.log('Filtering for selected branch:', selectedBranch);
+    } else {
+      console.log('Showing all branches for:', userRole);
+    }
+  } else {
+    // Role lain tidak diizinkan akses
+    throw new Error('Anda tidak memiliki akses untuk melihat laporan.');
   }
 
   // Apply date range filter

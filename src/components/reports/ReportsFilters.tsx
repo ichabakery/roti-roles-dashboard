@@ -24,6 +24,8 @@ interface ReportsFiltersProps {
   branches: Branch[];
   isKasir: boolean;
   onApplyFilter: () => void;
+  isBranchSelectionDisabled?: boolean;
+  availableBranches?: Branch[];
 }
 
 export const ReportsFilters: React.FC<ReportsFiltersProps> = ({
@@ -33,7 +35,9 @@ export const ReportsFilters: React.FC<ReportsFiltersProps> = ({
   setSelectedBranch,
   branches,
   isKasir,
-  onApplyFilter
+  onApplyFilter,
+  isBranchSelectionDisabled = false,
+  availableBranches = branches
 }) => {
   return (
     <div className="p-4 flex flex-wrap gap-4 border-b">
@@ -59,27 +63,33 @@ export const ReportsFilters: React.FC<ReportsFiltersProps> = ({
         />
       </div>
       
-      {!isKasir && (
-        <div className="flex items-center gap-2">
-          <Label htmlFor="branch-filter">Cabang:</Label>
-          <Select 
-            value={selectedBranch}
-            onValueChange={setSelectedBranch}
-          >
-            <SelectTrigger id="branch-filter" className="w-[180px]">
-              <SelectValue placeholder="Pilih Cabang" />
-            </SelectTrigger>
-            <SelectContent>
+      <div className="flex items-center gap-2">
+        <Label htmlFor="branch-filter">Cabang:</Label>
+        <Select 
+          value={selectedBranch}
+          onValueChange={setSelectedBranch}
+          disabled={isBranchSelectionDisabled}
+        >
+          <SelectTrigger id="branch-filter" className="w-[180px]">
+            <SelectValue placeholder="Pilih Cabang" />
+          </SelectTrigger>
+          <SelectContent>
+            {!isKasir && (
               <SelectItem value="all">Semua Cabang</SelectItem>
-              {branches.map(branch => (
-                <SelectItem key={branch.id} value={branch.id}>
-                  {branch.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+            )}
+            {availableBranches.map(branch => (
+              <SelectItem key={branch.id} value={branch.id}>
+                {branch.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {isBranchSelectionDisabled && (
+          <span className="text-sm text-muted-foreground">
+            (Cabang Anda)
+          </span>
+        )}
+      </div>
       
       <Button variant="outline" onClick={onApplyFilter}>
         <FilterIcon className="mr-2 h-4 w-4" />

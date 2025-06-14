@@ -65,6 +65,8 @@ interface ReportsContentProps {
   isKasir: boolean;
   onExportSummary: (summary: TransactionSummary[]) => void;
   onExportTransactions: (transactions: Transaction[]) => void;
+  isBranchSelectionDisabled?: boolean;
+  availableBranches?: Branch[];
 }
 
 export const ReportsContent: React.FC<ReportsContentProps> = ({
@@ -81,7 +83,9 @@ export const ReportsContent: React.FC<ReportsContentProps> = ({
   fetchReportsData,
   isKasir,
   onExportSummary,
-  onExportTransactions
+  onExportTransactions,
+  isBranchSelectionDisabled = false,
+  availableBranches = branches
 }) => {
   return (
     <div className="space-y-6">
@@ -134,6 +138,8 @@ export const ReportsContent: React.FC<ReportsContentProps> = ({
               branches={branches}
               isKasir={isKasir}
               onApplyFilter={fetchReportsData}
+              isBranchSelectionDisabled={isBranchSelectionDisabled}
+              availableBranches={availableBranches}
             />
             
             {/* Export Buttons */}

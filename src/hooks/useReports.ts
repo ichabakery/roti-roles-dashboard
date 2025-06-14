@@ -20,7 +20,9 @@ export const useReports = () => {
     selectedBranch,
     setSelectedBranch,
     dateRange,
-    setDateRange
+    setDateRange,
+    isBranchSelectionDisabled,
+    getAvailableBranches
   } = useReportsFilters(branches);
 
   const {
@@ -55,6 +57,8 @@ export const useReports = () => {
     fetchReportsData: handleFetchReportsData,
     getTotalRevenue,
     getTotalTransactions,
-    getAverageTransaction
+    getAverageTransaction,
+    isBranchSelectionDisabled: isBranchSelectionDisabled(),
+    availableBranches: getAvailableBranches()
   };
 };
