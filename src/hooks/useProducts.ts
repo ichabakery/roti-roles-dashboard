@@ -31,52 +31,53 @@ export const useProducts = (options: UseProductsOptions = {}) => {
       setError(null);
       console.log('Fetching products from Supabase...');
       
-      let query = supabase.from('products').select('*');
-      
-      // If filtering by stock and branch is provided, join with inventory
+      // If filtering by stock and branch is provided, use separate queries
       if (filterByStock && branchId) {
         console.log('Filtering products by branch stock:', branchId);
         
-        const { data, error } = await supabase
-          .from('products')
-          .select(`
-            id,
-            name,
-            description,
-            price,
-            active,
-            image_url,
-            created_at,
-            inventory!inner(quantity)
-          `)
-          .eq('active', true)
-          .eq('inventory.branch_id', branchId)
-          .gt('inventory.quantity', 0)
-          .order('name');
+        // First, get products that have inventory in the specified branch
+        const { data: inventoryData, error: inventoryError } = await supabase
+          .from('inventory')
+          .select('product_id')
+          .eq('branch_id', branchId)
+          .gt('quantity', 0);
 
-        if (error) {
-          console.error('Error fetching products with stock filter:', error);
-          throw error;
+        if (inventoryError) {
+          console.error('Error fetching inventory:', inventoryError);
+          throw inventoryError;
         }
 
-        console.log('Products with stock fetched successfully:', data);
-        // Transform data to match Product interface
-        const transformedData = (data || []).map(item => ({
-          id: item.id,
-          name: item.name,
-          description: item.description,
-          price: item.price,
-          active: item.active,
-          image_url: item.image_url,
-          created_at: item.created_at
-        }));
+        if (!inventoryData || inventoryData.length === 0) {
+          console.log('No products found with stock in this branch');
+          setProducts([]);
+          return;
+        }
+
+        // Get unique product IDs that have stock
+        const productIds = [...new Set(inventoryData.map(item => item.product_id))];
         
-        setProducts(transformedData);
+        // Then fetch the actual products
+        const { data: productsData, error: productsError } = await supabase
+          .from('products')
+          .select('*')
+          .eq('active', true)
+          .in('id', productIds)
+          .order('name');
+
+        if (productsError) {
+          console.error('Error fetching products:', productsError);
+          throw productsError;
+        }
+
+        console.log('Products with stock fetched successfully:', productsData);
+        setProducts(productsData || []);
         return;
       }
       
       // Default behavior: fetch all active products
-      const { data, error } = await query
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
         .eq('active', true)
         .order('name');
 
