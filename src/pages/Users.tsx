@@ -63,6 +63,7 @@ const UserManagement = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(false);
+  const [branchesLoading, setBranchesLoading] = useState(false);
   
   // State untuk form tambah user baru
   const [newUser, setNewUser] = useState({
@@ -73,7 +74,7 @@ const UserManagement = () => {
     branchId: '',
   });
 
-  // Hapus data dummy - mulai dengan array kosong
+  // Mulai dengan array kosong - tidak ada data dummy
   const [users, setUsers] = useState<UserData[]>([]);
 
   // Fetch data cabang real dari Supabase
@@ -83,19 +84,23 @@ const UserManagement = () => {
 
   const fetchBranches = async () => {
     try {
-      setLoading(true);
+      setBranchesLoading(true);
+      console.log('Fetching branches from Supabase...');
+      
       const { data, error } = await supabase
         .from('branches')
         .select('*')
         .order('name');
 
       if (error) {
+        console.error('Error fetching branches:', error);
         throw error;
       }
 
+      console.log('Branches fetched successfully:', data);
       setBranches(data || []);
       
-      // Set default branch ID jika ada cabang
+      // Set default branch ID jika ada cabang dan belum ada yang dipilih
       if (data && data.length > 0 && !newUser.branchId) {
         setNewUser(prev => ({ ...prev, branchId: data[0].id }));
       }
@@ -107,7 +112,7 @@ const UserManagement = () => {
         description: `Gagal memuat data cabang: ${error.message}`,
       });
     } finally {
-      setLoading(false);
+      setBranchesLoading(false);
     }
   };
 
@@ -122,6 +127,7 @@ const UserManagement = () => {
   };
   
   const handleAddUser = () => {
+    // Validasi field wajib
     if (!newUser.name || !newUser.email || !newUser.password) {
       toast({
         title: "Error",
@@ -134,8 +140,19 @@ const UserManagement = () => {
     // Validasi cabang untuk kasir_cabang
     if (newUser.role === 'kasir_cabang' && !newUser.branchId) {
       toast({
-        title: "Error",
+        title: "Error", 
         description: "Pilih cabang untuk kasir cabang",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validasi email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newUser.email)) {
+      toast({
+        title: "Error",
+        description: "Format email tidak valid",
         variant: "destructive",
       });
       return;
@@ -192,6 +209,13 @@ const UserManagement = () => {
     user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     user.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Fungsi untuk mendapatkan nama cabang berdasarkan ID
+  const getBranchName = (branchId?: string) => {
+    if (!branchId) return '-';
+    const branch = branches.find(b => b.id === branchId);
+    return branch ? branch.name : 'Cabang tidak ditemukan';
+  };
 
   return (
     <DashboardLayout>
@@ -256,7 +280,15 @@ const UserManagement = () => {
                   <Label htmlFor="role">Peran</Label>
                   <Select 
                     value={newUser.role} 
-                    onValueChange={(value) => setNewUser({...newUser, role: value as RoleType})}
+                    onValueChange={(value) => {
+                      setNewUser({...newUser, role: value as RoleType});
+                      // Reset branchId ketika role berubah ke bukan kasir_cabang
+                      if (value !== 'kasir_cabang') {
+                        setNewUser(prev => ({...prev, branchId: ''}));
+                      } else if (branches.length > 0) {
+                        setNewUser(prev => ({...prev, branchId: branches[0].id}));
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih Peran" />
@@ -272,8 +304,8 @@ const UserManagement = () => {
                 {newUser.role === 'kasir_cabang' && (
                   <div className="space-y-2">
                     <Label htmlFor="branch">Cabang</Label>
-                    {loading ? (
-                      <div className="flex items-center space-x-2">
+                    {branchesLoading ? (
+                      <div className="flex items-center space-x-2 p-3 border rounded-md bg-gray-50">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                         <span className="text-sm text-muted-foreground">Memuat cabang...</span>
                       </div>
@@ -289,6 +321,11 @@ const UserManagement = () => {
                           {branches.map(branch => (
                             <SelectItem key={branch.id} value={branch.id}>
                               {branch.name}
+                              {branch.address && (
+                                <span className="text-xs text-muted-foreground ml-2">
+                                  ({branch.address})
+                                </span>
+                              )}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -313,7 +350,7 @@ const UserManagement = () => {
                 </Button>
                 <Button 
                   onClick={handleAddUser}
-                  disabled={newUser.role === 'kasir_cabang' && branches.length === 0}
+                  disabled={newUser.role === 'kasir_cabang' && (branches.length === 0 || !newUser.branchId)}
                 >
                   <Check className="mr-2 h-4 w-4" />
                   Tambah
@@ -347,54 +384,48 @@ const UserManagement = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => {
-                const branch = user.branchId 
-                  ? branches.find((b) => b.id === user.branchId)?.name 
-                  : '-';
-                  
-                return (
-                  <TableRow key={user.id}>
-                    <TableCell>{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <span className="bg-primary/10 text-primary px-2 py-1 rounded text-xs">
-                        {getRoleName(user.role)}
-                      </span>
-                    </TableCell>
-                    <TableCell>{branch}</TableCell>
-                    <TableCell>{user.createdAt.toLocaleDateString('id-ID')}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                          <DropdownMenuItem 
-                            onClick={() => {
-                              toast({
-                                title: "Edit",
-                                description: `Edit ${user.name} (fitur akan datang)`,
-                              });
-                            }}
-                          >
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => handleDeleteUser(user.id)}
-                          >
-                            Hapus
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {filteredUsers.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>{user.name}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>
+                    <span className="bg-primary/10 text-primary px-2 py-1 rounded text-xs">
+                      {getRoleName(user.role)}
+                    </span>
+                  </TableCell>
+                  <TableCell>{getBranchName(user.branchId)}</TableCell>
+                  <TableCell>{user.createdAt.toLocaleDateString('id-ID')}</TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Open menu</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            toast({
+                              title: "Edit",
+                              description: `Edit ${user.name} (fitur akan datang)`,
+                            });
+                          }}
+                        >
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => handleDeleteUser(user.id)}
+                        >
+                          Hapus
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
           
