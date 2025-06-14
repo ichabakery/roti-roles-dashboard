@@ -72,39 +72,6 @@ export const useCashierPayment = () => {
     }
   };
 
-  // Removed manual updateInventoryStock function since we now rely on database trigger
-  // The trigger will automatically update inventory when transaction_items are inserted
-
-  const verifyStockUpdate = async (cart: CartItem[], selectedBranch: string, transactionId: string) => {
-    try {
-      console.log('🔄 Verifying stock updates after transaction...');
-      
-      // Wait a moment for trigger to execute
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      for (const cartItem of cart) {
-        const { data: updatedInventory, error } = await supabase
-          .from('inventory')
-          .select('quantity, last_updated')
-          .eq('product_id', cartItem.product.id)
-          .eq('branch_id', selectedBranch)
-          .maybeSingle();
-
-        if (error) {
-          console.error('❌ Error verifying stock update:', error);
-          continue;
-        }
-
-        console.log(`📊 Post-transaction stock - ${cartItem.product.name}: ${updatedInventory?.quantity || 0}`);
-      }
-      
-      console.log('✅ Stock verification completed');
-    } catch (error: any) {
-      console.error('⚠️ Stock verification error:', error);
-      // Non-critical error, don't fail the transaction
-    }
-  };
-
   const processPayment = async (
     cart: CartItem[],
     selectedBranch: string,
@@ -178,7 +145,7 @@ export const useCashierPayment = () => {
 
       console.log('✅ Transaction created successfully:', transaction.id);
 
-      // Step 3: Create transaction items (trigger will auto-update inventory)
+      // Step 3: Create transaction items (trigger will auto-update inventory with SECURITY DEFINER)
       const transactionItems = cart.map(item => ({
         transaction_id: transaction.id,
         product_id: item.product.id,
@@ -198,10 +165,7 @@ export const useCashierPayment = () => {
         throw new Error(`Gagal menyimpan item transaksi: ${itemsError.message}`);
       }
 
-      console.log('✅ Transaction items created successfully - Database trigger will handle stock update');
-
-      // Step 4: Verify stock was updated by the trigger
-      await verifyStockUpdate(cart, selectedBranch, transaction.id);
+      console.log('✅ Transaction items created successfully - Database trigger updated inventory automatically');
 
       // Success - Store complete transaction data
       setLastTransaction(transaction);
@@ -216,10 +180,22 @@ export const useCashierPayment = () => {
       });
     } catch (error: any) {
       console.error('❌ Payment error:', error);
+      
+      // Enhanced error handling based on common error patterns
+      let errorMessage = error.message || "Gagal memproses pembayaran";
+      
+      if (error.code === '42501') {
+        errorMessage = "Akses ditolak. Silakan hubungi administrator.";
+      } else if (error.message?.includes('violates row-level security')) {
+        errorMessage = "Terjadi masalah keamanan data. Silakan coba lagi atau hubungi administrator.";
+      } else if (error.message?.includes('insufficient stock') || error.message?.includes('stok')) {
+        errorMessage = error.message; // Keep stock-related messages as is
+      }
+      
       toast({
         variant: "destructive",
         title: "Error Pembayaran",
-        description: error.message || "Gagal memproses pembayaran",
+        description: errorMessage,
       });
     } finally {
       setProcessingPayment(false);

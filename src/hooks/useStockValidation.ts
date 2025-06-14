@@ -33,6 +33,10 @@ export const useStockValidation = () => {
 
       if (error) {
         console.error('Error checking product stock:', error);
+        // Handle RLS policy errors more gracefully
+        if (error.code === '42501') {
+          throw new Error('Tidak memiliki akses untuk memeriksa stok cabang ini');
+        }
         throw error;
       }
 
@@ -51,13 +55,35 @@ export const useStockValidation = () => {
     setChecking(true);
     
     try {
-      console.log('Validating stock for cart items...', cart.length);
+      console.log('🔍 Validating stock for cart items...', cart.length);
       
       const stockInfo: StockInfo[] = [];
       let isValid = true;
 
+      // Use batch query for better performance
+      const productIds = cart.map(item => item.product.id);
+      
+      const { data: inventoryData, error } = await supabase
+        .from('inventory')
+        .select('product_id, quantity')
+        .eq('branch_id', branchId)
+        .in('product_id', productIds);
+
+      if (error) {
+        console.error('Batch stock check error:', error);
+        if (error.code === '42501') {
+          throw new Error('Tidak memiliki akses untuk memeriksa stok cabang ini');
+        }
+        throw error;
+      }
+
+      // Create lookup map for inventory data
+      const inventoryMap = new Map(
+        (inventoryData || []).map(item => [item.product_id, item.quantity])
+      );
+
       for (const cartItem of cart) {
-        const availableStock = await checkProductStock(cartItem.product.id, branchId);
+        const availableStock = inventoryMap.get(cartItem.product.id) || 0;
         
         const stockItem: StockInfo = {
           productId: cartItem.product.id,
