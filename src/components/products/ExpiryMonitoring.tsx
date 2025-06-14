@@ -6,6 +6,15 @@ import { Button } from '@/components/ui/button';
 import { AlertTriangle, Calendar, Package } from 'lucide-react';
 import { useProductBatches } from '@/hooks/useProductBatches';
 
+interface ExpiringProduct {
+  product_name: string;
+  branch_name: string;
+  batch_number: string;
+  quantity: number;
+  expiry_date: string;
+  days_until_expiry: number;
+}
+
 export const ExpiryMonitoring = () => {
   const { expiringProducts, fetchExpiring } = useProductBatches();
 
@@ -33,7 +42,10 @@ export const ExpiryMonitoring = () => {
     }
   };
 
-  const groupedProducts = expiringProducts.reduce((acc, product) => {
+  // Type assertion to ensure correct typing
+  const typedExpiringProducts = (expiringProducts as ExpiringProduct[]) || [];
+
+  const groupedProducts = typedExpiringProducts.reduce((acc, product) => {
     const daysUntilExpiry = getDaysUntilExpiry(product.expiry_date);
     
     if (daysUntilExpiry < 0) {
@@ -47,7 +59,7 @@ export const ExpiryMonitoring = () => {
     }
     
     return acc;
-  }, { expired: [], critical: [], warning: [], normal: [] } as any);
+  }, { expired: [] as ExpiringProduct[], critical: [] as ExpiringProduct[], warning: [] as ExpiringProduct[], normal: [] as ExpiringProduct[] });
 
   return (
     <div className="space-y-6">
@@ -99,7 +111,7 @@ export const ExpiryMonitoring = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {expiringProducts.length > 0 ? (
+          {typedExpiringProducts.length > 0 ? (
             <div className="space-y-4">
               {Object.entries(groupedProducts).map(([category, products]) => {
                 if (products.length === 0) return null;
@@ -115,7 +127,7 @@ export const ExpiryMonitoring = () => {
                   <div key={category} className="space-y-2">
                     <h4 className="font-semibold text-lg">{categoryTitles[category as keyof typeof categoryTitles]}</h4>
                     <div className="space-y-2">
-                      {products.map((product: any, index: number) => {
+                      {products.map((product: ExpiringProduct, index: number) => {
                         const daysUntilExpiry = getDaysUntilExpiry(product.expiry_date);
                         
                         return (

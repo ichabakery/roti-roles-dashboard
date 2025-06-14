@@ -33,7 +33,7 @@ export const fetchProductPackages = async (parentProductId: string): Promise<Pro
       quantity,
       created_at,
       component_product:products!component_product_id(
-        id, name, price, product_type
+        id, name, description, price, active, image_url, created_at, product_type
       )
     `)
     .eq('parent_product_id', parentProductId);

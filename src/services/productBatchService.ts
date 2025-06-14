@@ -28,13 +28,15 @@ export const createProductBatch = async (batchData: {
 
   if (error) throw error;
 
-  // Also update inventory with batch info
-  await supabase.rpc('upsert_inventory_with_batch', {
-    p_product_id: batchData.productId,
-    p_branch_id: batchData.branchId,
-    p_batch_id: data.id,
-    p_quantity: batchData.quantity
-  });
+  // Also update inventory directly without using RPC
+  await supabase
+    .from('inventory')
+    .upsert({
+      product_id: batchData.productId,
+      branch_id: batchData.branchId,
+      batch_id: data.id,
+      quantity: batchData.quantity
+    });
 
   return data;
 };
@@ -71,7 +73,12 @@ export const fetchProductBatches = async (
 
   const { data, error } = await query;
   if (error) throw error;
-  return data || [];
+  
+  // Type assertion to ensure correct typing
+  return (data || []).map(batch => ({
+    ...batch,
+    status: batch.status as 'active' | 'expired' | 'sold_out'
+  })) as ProductBatch[];
 };
 
 export const fetchExpiringProducts = async (daysAhead: number = 3) => {

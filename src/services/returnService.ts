@@ -74,7 +74,12 @@ export const fetchReturns = async (branchId?: string): Promise<Return[]> => {
 
   const { data, error } = await query;
   if (error) throw error;
-  return data || [];
+  
+  // Type assertion to ensure correct typing
+  return (data || []).map(returnItem => ({
+    ...returnItem,
+    status: returnItem.status as 'pending' | 'approved' | 'rejected'
+  })) as Return[];
 };
 
 export const fetchReturnItems = async (returnId: string): Promise<ReturnItem[]> => {
@@ -95,7 +100,12 @@ export const fetchReturnItems = async (returnId: string): Promise<ReturnItem[]> 
     .eq('return_id', returnId);
 
   if (error) throw error;
-  return data || [];
+  
+  // Type assertion to ensure correct typing
+  return (data || []).map(item => ({
+    ...item,
+    condition: item.condition as 'resaleable' | 'damaged' | 'expired'
+  })) as ReturnItem[];
 };
 
 export const processReturn = async (
