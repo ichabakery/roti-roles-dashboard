@@ -1,35 +1,14 @@
 
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { format, parseISO } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
-
-export interface ProductionRequest {
-  id: string;
-  product_id: string;
-  productName?: string;
-  branch_id: string;
-  branchName?: string;
-  quantity_requested: number;
-  quantity_produced: number | null;
-  production_date: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  notes: string | null;
-  requested_by: string;
-  requesterName?: string;
-  produced_by: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface NewProductionRequest {
-  product_id: string;
-  branch_id: string;
-  quantity_requested: number;
-  production_date: string;
-  notes?: string;
-}
+import { ProductionRequest, NewProductionRequest } from '@/types/production';
+import {
+  fetchProductionRequestsFromDB,
+  createProductionRequestInDB,
+  updateProductionRequestStatusInDB,
+  deleteProductionRequestFromDB
+} from '@/services/productionService';
 
 export const useProduction = () => {
   const { toast } = useToast();
@@ -42,33 +21,8 @@ export const useProduction = () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching production requests...');
-      
-      const { data, error } = await supabase
-        .from('production_requests')
-        .select(`
-          *,
-          products:product_id (name),
-          branches:branch_id (name)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching production requests:', error);
-        throw error;
-      }
-
-      // Transform data for UI
-      const transformedRequests: ProductionRequest[] = data.map(request => ({
-        ...request,
-        productName: request.products?.name,
-        branchName: request.branches?.name,
-        production_date: format(parseISO(request.production_date), 'yyyy-MM-dd'),
-        status: request.status as 'pending' | 'in_progress' | 'completed' | 'cancelled'
-      }));
-
-      console.log('Production requests fetched:', transformedRequests);
-      setProductionRequests(transformedRequests);
+      const requests = await fetchProductionRequestsFromDB();
+      setProductionRequests(requests);
     } catch (error: any) {
       console.error('Error in fetchProductionRequests:', error);
       setError(error.message);
@@ -94,29 +48,15 @@ export const useProduction = () => {
 
     try {
       setLoading(true);
-      const requestData = {
-        ...newRequest,
-        requested_by: user.id,
-        status: 'pending',
-      };
-
-      const { data, error } = await supabase
-        .from('production_requests')
-        .insert([requestData])
-        .select();
-
-      if (error) {
-        console.error('Error creating production request:', error);
-        throw error;
-      }
-
+      const createdRequest = await createProductionRequestInDB(newRequest, user.id);
+      
       toast({
         title: "Berhasil",
         description: "Permintaan produksi berhasil dibuat",
       });
 
       await fetchProductionRequests();
-      return data[0];
+      return createdRequest;
     } catch (error: any) {
       console.error('Error in createProductionRequest:', error);
       toast({
@@ -146,30 +86,7 @@ export const useProduction = () => {
 
     try {
       setLoading(true);
-      
-      const updateData: any = { 
-        status,
-        updated_at: new Date().toISOString()
-      };
-      
-      if (status === 'in_progress' && !productionRequests.find(r => r.id === id)?.produced_by) {
-        updateData.produced_by = user.id;
-      }
-      
-      if (status === 'completed' && quantity_produced) {
-        updateData.quantity_produced = quantity_produced;
-        updateData.produced_by = user.id;
-      }
-
-      const { error } = await supabase
-        .from('production_requests')
-        .update(updateData)
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error updating production request:', error);
-        throw error;
-      }
+      await updateProductionRequestStatusInDB(id, status, user.id, quantity_produced);
 
       toast({
         title: "Berhasil",
@@ -199,16 +116,7 @@ export const useProduction = () => {
   const deleteProductionRequest = async (id: string) => {
     try {
       setLoading(true);
-      
-      const { error } = await supabase
-        .from('production_requests')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error deleting production request:', error);
-        throw error;
-      }
+      await deleteProductionRequestFromDB(id);
 
       toast({
         title: "Berhasil",
@@ -244,3 +152,6 @@ export const useProduction = () => {
     refreshProductionRequests: fetchProductionRequests
   };
 };
+
+// Re-export types for backward compatibility
+export type { ProductionRequest, NewProductionRequest } from '@/types/production';
