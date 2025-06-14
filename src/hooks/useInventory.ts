@@ -124,8 +124,8 @@ export const useInventory = () => {
           branch_id, 
           quantity, 
           last_updated,
-          product:fk_inventory_product_id(id, name), 
-          branch:fk_inventory_branch_id(id, name)
+          products (id, name), 
+          branches (id, name)
         `);
 
       // Apply branch filter based on user role
@@ -143,7 +143,19 @@ export const useInventory = () => {
       }
       
       console.log('Inventory data fetched:', data);
-      setInventory(data || []);
+      
+      // Transform the data to match InventoryItem interface
+      const transformedData = (data || []).map(item => ({
+        id: item.id,
+        product_id: item.product_id,
+        branch_id: item.branch_id,
+        quantity: item.quantity,
+        last_updated: item.last_updated,
+        product: item.products || { id: '', name: '' },
+        branch: item.branches || { id: '', name: '' }
+      }));
+      
+      setInventory(transformedData);
     } catch (error: any) {
       console.error('Error fetching inventory:', error);
       if (error.code === '42501') {

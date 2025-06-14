@@ -10,8 +10,8 @@ export const fetchProductionRequestsFromDB = async (): Promise<ProductionRequest
     .from('production_requests')
     .select(`
       *,
-      products:fk_production_requests_product_id (name),
-      branches:fk_production_requests_branch_id (name)
+      products (name),
+      branches (name)
     `)
     .order('created_at', { ascending: false });
 
@@ -21,7 +21,7 @@ export const fetchProductionRequestsFromDB = async (): Promise<ProductionRequest
   }
 
   // Transform data for UI
-  const transformedRequests: ProductionRequest[] = data.map(request => ({
+  const transformedRequests: ProductionRequest[] = (data || []).map(request => ({
     ...request,
     productName: request.products?.name,
     branchName: request.branches?.name,

@@ -15,7 +15,7 @@ interface TransactionItem {
   quantity: number;
   price_per_item: number;
   subtotal: number;
-  product?: {
+  products?: {
     name: string;
   };
 }
@@ -27,7 +27,7 @@ interface Transaction {
   transaction_date: string;
   total_amount: number;
   payment_method: string;
-  branch: Branch;
+  branches: Branch;
   transaction_items?: TransactionItem[];
 }
 
@@ -117,14 +117,14 @@ export const useReports = () => {
           transaction_date,
           total_amount,
           payment_method,
-          branch:fk_transactions_branch_id(id, name),
-          transaction_items(
+          branches (id, name),
+          transaction_items (
             id,
             product_id,
             quantity,
             price_per_item,
             subtotal,
-            product:fk_transaction_items_product_id(name)
+            products (name)
           )
         `);
 
@@ -145,10 +145,22 @@ export const useReports = () => {
 
       if (error) throw error;
 
-      setTransactions(transactionData || []);
+      // Transform the data to match Transaction interface
+      const transformedTransactions = (transactionData || []).map(item => ({
+        id: item.id,
+        branch_id: item.branch_id,
+        cashier_id: item.cashier_id,
+        transaction_date: item.transaction_date,
+        total_amount: item.total_amount,
+        payment_method: item.payment_method,
+        branches: item.branches || { id: '', name: '' },
+        transaction_items: item.transaction_items || []
+      }));
+
+      setTransactions(transformedTransactions);
       
       // Generate summaries
-      generateSummaries(transactionData || []);
+      generateSummaries(transformedTransactions);
       
     } catch (error: any) {
       console.error('Error fetching reports data:', error);
@@ -170,7 +182,7 @@ export const useReports = () => {
 
     data.forEach(transaction => {
       const branchId = transaction.branch_id;
-      const branchName = transaction.branch?.name || 'Unknown Branch';
+      const branchName = transaction.branches?.name || 'Unknown Branch';
 
       // Branch summary
       if (!branchSummaryMap.has(branchId)) {
@@ -204,7 +216,7 @@ export const useReports = () => {
       // Product summary
       transaction.transaction_items?.forEach(item => {
         const productId = item.product_id;
-        const productName = item.product?.name || 'Unknown Product';
+        const productName = item.products?.name || 'Unknown Product';
 
         if (!productSummaryMap.has(productId)) {
           productSummaryMap.set(productId, {
