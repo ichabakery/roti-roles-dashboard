@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +39,7 @@ import {
 import { Check, MoreHorizontal, Plus, Search, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, RoleType } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserData {
   id: string;
@@ -49,10 +50,19 @@ interface UserData {
   createdAt: Date;
 }
 
+interface Branch {
+  id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+}
+
 const UserManagement = () => {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [loading, setLoading] = useState(false);
   
   // State untuk form tambah user baru
   const [newUser, setNewUser] = useState({
@@ -60,48 +70,46 @@ const UserManagement = () => {
     email: '',
     password: '',
     role: 'kasir_cabang' as RoleType,
-    branchId: '1',
+    branchId: '',
   });
 
-  // Data dummy untuk users
-  const [users, setUsers] = useState<UserData[]>([
-    { 
-      id: '1', 
-      name: 'Owner', 
-      email: 'owner@bakeryguru.com', 
-      role: 'owner',
-      createdAt: new Date('2023-01-10') 
-    },
-    { 
-      id: '2', 
-      name: 'Kepala Produksi', 
-      email: 'produksi@bakeryguru.com', 
-      role: 'kepala_produksi',
-      createdAt: new Date('2023-03-15') 
-    },
-    { 
-      id: '3', 
-      name: 'Kasir Cabang Utama', 
-      email: 'kasir@bakeryguru.com', 
-      role: 'kasir_cabang',
-      branchId: '1',
-      createdAt: new Date('2023-05-22') 
-    },
-    { 
-      id: '4', 
-      name: 'Admin Pusat', 
-      email: 'admin@bakeryguru.com', 
-      role: 'admin_pusat',
-      createdAt: new Date('2023-08-05') 
-    },
-  ]);
-  
-  // Data dummy untuk cabang
-  const branches = [
-    { id: '1', name: 'Cabang Utama' },
-    { id: '2', name: 'Cabang Timur' },
-    { id: '3', name: 'Cabang Barat' },
-  ];
+  // Hapus data dummy - mulai dengan array kosong
+  const [users, setUsers] = useState<UserData[]>([]);
+
+  // Fetch data cabang real dari Supabase
+  useEffect(() => {
+    fetchBranches();
+  }, []);
+
+  const fetchBranches = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('branches')
+        .select('*')
+        .order('name');
+
+      if (error) {
+        throw error;
+      }
+
+      setBranches(data || []);
+      
+      // Set default branch ID jika ada cabang
+      if (data && data.length > 0 && !newUser.branchId) {
+        setNewUser(prev => ({ ...prev, branchId: data[0].id }));
+      }
+    } catch (error: any) {
+      console.error('Error fetching branches:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Gagal memuat data cabang: ${error.message}`,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getRoleName = (role: RoleType) => {
     switch(role) {
@@ -118,6 +126,16 @@ const UserManagement = () => {
       toast({
         title: "Error",
         description: "Semua field wajib diisi",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validasi cabang untuk kasir_cabang
+    if (newUser.role === 'kasir_cabang' && !newUser.branchId) {
+      toast({
+        title: "Error",
+        description: "Pilih cabang untuk kasir cabang",
         variant: "destructive",
       });
       return;
@@ -142,7 +160,7 @@ const UserManagement = () => {
       email: '',
       password: '',
       role: 'kasir_cabang',
-      branchId: '1',
+      branchId: branches.length > 0 ? branches[0].id : '',
     });
     
     toast({
@@ -152,7 +170,6 @@ const UserManagement = () => {
   };
   
   const handleDeleteUser = (id: string) => {
-    // Jangan izinkan menghapus owner
     const userToDelete = users.find(user => user.id === id);
     if (userToDelete?.role === 'owner') {
       toast({
@@ -255,19 +272,37 @@ const UserManagement = () => {
                 {newUser.role === 'kasir_cabang' && (
                   <div className="space-y-2">
                     <Label htmlFor="branch">Cabang</Label>
-                    <Select 
-                      value={newUser.branchId} 
-                      onValueChange={(value) => setNewUser({...newUser, branchId: value})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih Cabang" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {branches.map(branch => (
-                          <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {loading ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                        <span className="text-sm text-muted-foreground">Memuat cabang...</span>
+                      </div>
+                    ) : branches.length > 0 ? (
+                      <Select 
+                        value={newUser.branchId} 
+                        onValueChange={(value) => setNewUser({...newUser, branchId: value})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih Cabang" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {branches.map(branch => (
+                            <SelectItem key={branch.id} value={branch.id}>
+                              {branch.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="p-3 border rounded-md bg-yellow-50 border-yellow-200">
+                        <p className="text-sm text-yellow-800">
+                          Belum ada cabang tersedia. 
+                          <a href="/branches" className="underline font-medium ml-1">
+                            Tambahkan cabang terlebih dahulu
+                          </a>
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -276,7 +311,10 @@ const UserManagement = () => {
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Batal
                 </Button>
-                <Button onClick={handleAddUser}>
+                <Button 
+                  onClick={handleAddUser}
+                  disabled={newUser.role === 'kasir_cabang' && branches.length === 0}
+                >
                   <Check className="mr-2 h-4 w-4" />
                   Tambah
                 </Button>
@@ -363,9 +401,14 @@ const UserManagement = () => {
           {filteredUsers.length === 0 && (
             <div className="flex flex-col items-center justify-center py-10">
               <Users className="h-10 w-10 text-muted-foreground mb-2" />
-              <h3 className="text-lg font-medium">Tidak ada pengguna ditemukan</h3>
+              <h3 className="text-lg font-medium">
+                {users.length === 0 ? 'Belum ada pengguna' : 'Tidak ada pengguna ditemukan'}
+              </h3>
               <p className="text-sm text-muted-foreground">
-                Coba kata kunci yang berbeda atau tambahkan pengguna baru
+                {users.length === 0 
+                  ? 'Klik "Tambah Pengguna" untuk mulai mengelola pengguna sistem'
+                  : 'Coba kata kunci yang berbeda atau tambahkan pengguna baru'
+                }
               </p>
             </div>
           )}
