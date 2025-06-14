@@ -8,6 +8,8 @@ export const useBranchManagement = () => {
 
   const ensureBranchesExist = async () => {
     try {
+      console.log('Checking if branches exist...');
+      
       // Check if branches exist
       const { data: existingBranches, error: fetchError } = await supabase
         .from('branches')
@@ -18,8 +20,12 @@ export const useBranchManagement = () => {
         return;
       }
 
+      console.log('Existing branches:', existingBranches);
+
       // If no branches exist, create default ones
       if (!existingBranches || existingBranches.length === 0) {
+        console.log('No branches found, creating default branches...');
+        
         const defaultBranches = [
           {
             name: 'Cabang Utama',
@@ -47,6 +53,8 @@ export const useBranchManagement = () => {
         } else {
           console.log('Default branches created successfully');
         }
+      } else {
+        console.log('Branches already exist:', existingBranches.length, 'branches found');
       }
     } catch (error) {
       console.error('Error in ensureBranchesExist:', error);
@@ -55,13 +63,20 @@ export const useBranchManagement = () => {
 
   const linkUserToBranch = async (userId: string, branchId: string) => {
     try {
+      console.log('Linking user to branch:', userId, '->', branchId);
+      
       // Check if link already exists
-      const { data: existingLink } = await supabase
+      const { data: existingLink, error: checkError } = await supabase
         .from('user_branches')
         .select('*')
         .eq('user_id', userId)
         .eq('branch_id', branchId)
         .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error checking existing link:', checkError);
+        return false;
+      }
 
       if (!existingLink) {
         const { error } = await supabase
@@ -75,7 +90,12 @@ export const useBranchManagement = () => {
           console.error('Error linking user to branch:', error);
           return false;
         }
+        
+        console.log('User successfully linked to branch');
+      } else {
+        console.log('User already linked to this branch');
       }
+      
       return true;
     } catch (error) {
       console.error('Error in linkUserToBranch:', error);
@@ -83,8 +103,39 @@ export const useBranchManagement = () => {
     }
   };
 
+  const getUserBranches = async (userId: string) => {
+    try {
+      console.log('Getting branches for user:', userId);
+      
+      const { data: userBranches, error } = await supabase
+        .from('user_branches')
+        .select(`
+          branch_id,
+          branches:branch_id (
+            id,
+            name,
+            address,
+            phone
+          )
+        `)
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('Error fetching user branches:', error);
+        return [];
+      }
+
+      console.log('User branches found:', userBranches);
+      return userBranches || [];
+    } catch (error) {
+      console.error('Error in getUserBranches:', error);
+      return [];
+    }
+  };
+
   return {
     ensureBranchesExist,
-    linkUserToBranch
+    linkUserToBranch,
+    getUserBranches
   };
 };

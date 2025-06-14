@@ -28,7 +28,7 @@ interface Branch {
 
 const Cashier = () => {
   const { user } = useAuth();
-  const { ensureBranchesExist } = useBranchManagement();
+  const { ensureBranchesExist, getUserBranches } = useBranchManagement();
   
   const [products, setProducts] = useState<Product[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -49,9 +49,11 @@ const Cashier = () => {
   
   useEffect(() => {
     if (user?.role === 'kasir_cabang' && user.branchId) {
+      console.log('Setting branch for kasir:', user.branchId);
       setSelectedBranch(user.branchId);
       setBranchError(null);
     } else if (user?.role === 'kasir_cabang' && !user.branchId) {
+      console.error('Kasir user without branch assignment:', user);
       setBranchError('Akun kasir Anda belum dikaitkan dengan cabang. Silakan hubungi administrator.');
     }
   }, [user]);
@@ -64,6 +66,7 @@ const Cashier = () => {
 
   const initializeData = async () => {
     try {
+      console.log('Initializing cashier data...');
       await ensureBranchesExist();
       await fetchBranches();
     } catch (error) {
@@ -78,21 +81,50 @@ const Cashier = () => {
 
   const fetchBranches = async () => {
     try {
-      const { data, error } = await supabase
-        .from('branches')
-        .select('id, name')
-        .order('name');
+      console.log('Fetching branches for current user...');
+      
+      if (!user?.id) {
+        console.log('No user ID available, fetching all branches');
+        const { data, error } = await supabase
+          .from('branches')
+          .select('id, name')
+          .order('name');
 
-      if (error) {
-        throw error;
+        if (error) throw error;
+        setBranches(data || []);
+        return;
       }
 
-      setBranches(data || []);
-      
-      if (user?.role === 'kasir_cabang' && user.branchId) {
-        setSelectedBranch(user.branchId);
-      } else if (data && data.length > 0 && (user?.role === 'owner' || user?.role === 'admin_pusat')) {
-        setSelectedBranch(data[0].id);
+      // For kasir_cabang, get only their assigned branches
+      if (user.role === 'kasir_cabang') {
+        const userBranches = await getUserBranches(user.id);
+        const branchData = userBranches
+          .map(ub => ub.branches)
+          .filter(branch => branch)
+          .map(branch => ({
+            id: branch.id,
+            name: branch.name
+          }));
+        
+        console.log('Kasir branches:', branchData);
+        setBranches(branchData);
+        
+        if (branchData.length > 0 && !selectedBranch) {
+          setSelectedBranch(branchData[0].id);
+        }
+      } else {
+        // For owner and admin_pusat, get all branches
+        const { data, error } = await supabase
+          .from('branches')
+          .select('id, name')
+          .order('name');
+
+        if (error) throw error;
+        setBranches(data || []);
+        
+        if (data && data.length > 0 && !selectedBranch) {
+          setSelectedBranch(data[0].id);
+        }
       }
     } catch (error: any) {
       console.error('Error fetching branches:', error);
@@ -107,6 +139,8 @@ const Cashier = () => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
+      console.log('Fetching products...');
+      
       const { data, error } = await supabase
         .from('products')
         .select('*')
@@ -117,6 +151,7 @@ const Cashier = () => {
         throw error;
       }
 
+      console.log('Products fetched:', data?.length || 0);
       setProducts(data || []);
     } catch (error: any) {
       console.error('Error fetching products:', error);
@@ -195,17 +230,25 @@ const Cashier = () => {
     }
 
     try {
-      console.log('Processing payment with user ID:', user.id, 'branch ID:', selectedBranch);
+      console.log('Processing payment...');
+      console.log('User ID:', user.id);
+      console.log('Branch ID:', selectedBranch);
+      console.log('Cart items:', cart.length);
+      console.log('Total amount:', calculateTotal());
       
       // Create transaction
-      const { data: transactionData, error: transactionError } = await supabase
+      const transactionData = {
+        branch_id: selectedBranch,
+        cashier_id: user.id,
+        total_amount: calculateTotal(),
+        payment_method: paymentMethod
+      };
+
+      console.log('Creating transaction with data:', transactionData);
+
+      const { data: transaction, error: transactionError } = await supabase
         .from('transactions')
-        .insert({
-          branch_id: selectedBranch,
-          cashier_id: user.id,
-          total_amount: calculateTotal(),
-          payment_method: paymentMethod
-        })
+        .insert(transactionData)
         .select()
         .single();
 
@@ -214,16 +257,18 @@ const Cashier = () => {
         throw new Error(`Gagal membuat transaksi: ${transactionError.message}`);
       }
 
-      console.log('Transaction created:', transactionData);
+      console.log('Transaction created successfully:', transaction);
 
       // Create transaction items
       const transactionItems = cart.map(item => ({
-        transaction_id: transactionData.id,
+        transaction_id: transaction.id,
         product_id: item.product.id,
         quantity: item.quantity,
         price_per_item: item.product.price,
         subtotal: item.product.price * item.quantity
       }));
+
+      console.log('Creating transaction items:', transactionItems);
 
       const { error: itemsError } = await supabase
         .from('transaction_items')
@@ -234,8 +279,10 @@ const Cashier = () => {
         throw new Error(`Gagal menyimpan item transaksi: ${itemsError.message}`);
       }
 
+      console.log('Transaction items created successfully');
+
       // Success
-      setLastTransactionId(transactionData.id);
+      setLastTransactionId(transaction.id);
       setShowSuccessDialog(true);
       
       // Clear cart
@@ -243,7 +290,7 @@ const Cashier = () => {
       
       toast({
         title: "Pembayaran Berhasil",
-        description: `Transaksi selesai dengan ID: ${transactionData.id.substring(0, 8)}...`,
+        description: `Transaksi selesai dengan ID: ${transaction.id.substring(0, 8)}...`,
       });
     } catch (error: any) {
       console.error('Payment error:', error);

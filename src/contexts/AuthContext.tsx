@@ -36,70 +36,92 @@ const emailToRoleMap: Record<string, { role: RoleType; branchId?: string }> = {
 
 const ensureUserBranchLink = async (userId: string, email: string) => {
   try {
+    console.log('Ensuring user-branch link for user:', userId, 'email:', email);
+    
     // Check if user-branch link exists
-    const { data: existingLink } = await supabase
+    const { data: existingLinks, error: checkError } = await supabase
       .from('user_branches')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
+      .select('branch_id')
+      .eq('user_id', userId);
 
-    if (!existingLink) {
-      // Get the first available branch for demo purposes
-      const { data: branches } = await supabase
+    if (checkError) {
+      console.error('Error checking existing user-branch links:', checkError);
+      return null;
+    }
+
+    console.log('Existing user-branch links:', existingLinks);
+
+    if (!existingLinks || existingLinks.length === 0) {
+      // No existing links, create one
+      const { data: branches, error: branchError } = await supabase
         .from('branches')
-        .select('id')
-        .limit(1);
+        .select('id, name')
+        .order('name');
+
+      if (branchError) {
+        console.error('Error fetching branches:', branchError);
+        return null;
+      }
 
       if (branches && branches.length > 0) {
-        let branchId = branches[0].id;
+        let targetBranchId = branches[0].id;
         
         // Assign specific branches based on email for demo
         if (email === 'kasir@bakeryguru.com') {
-          const { data: branch1 } = await supabase
-            .from('branches')
-            .select('id')
-            .eq('name', 'Cabang Utama')
-            .single();
-          if (branch1) branchId = branch1.id;
+          const utamaBranch = branches.find(b => b.name === 'Cabang Utama');
+          if (utamaBranch) targetBranchId = utamaBranch.id;
         } else if (email === 'kasir2@bakeryguru.com') {
-          const { data: branch2 } = await supabase
-            .from('branches')
-            .select('id')
-            .eq('name', 'Cabang Selatan')
-            .single();
-          if (branch2) branchId = branch2.id;
+          const selatanBranch = branches.find(b => b.name === 'Cabang Selatan');
+          if (selatanBranch) targetBranchId = selatanBranch.id;
         }
 
         // Create user-branch link
-        await supabase
+        const { error: insertError } = await supabase
           .from('user_branches')
           .insert({
             user_id: userId,
-            branch_id: branchId
+            branch_id: targetBranchId
           });
 
-        return branchId;
+        if (insertError) {
+          console.error('Error creating user-branch link:', insertError);
+          return null;
+        }
+
+        console.log('Created new user-branch link:', userId, '->', targetBranchId);
+        return targetBranchId;
       }
     } else {
-      return existingLink.branch_id;
+      // Use existing link (for kasir, use first one; for others, they might have multiple)
+      console.log('Using existing user-branch link:', existingLinks[0].branch_id);
+      return existingLinks[0].branch_id;
     }
   } catch (error) {
-    console.error('Error ensuring user-branch link:', error);
+    console.error('Error in ensureUserBranchLink:', error);
   }
   return null;
 };
 
 const fetchUserBranch = async (userId: string) => {
   try {
-    const { data: userBranch } = await supabase
+    console.log('Fetching user branch for user:', userId);
+    
+    const { data: userBranch, error } = await supabase
       .from('user_branches')
       .select('branch_id')
       .eq('user_id', userId)
+      .limit(1)
       .single();
     
+    if (error) {
+      console.error('Error fetching user branch:', error);
+      return null;
+    }
+
+    console.log('User branch found:', userBranch?.branch_id);
     return userBranch?.branch_id || null;
   } catch (error) {
-    console.error('Error fetching user branch:', error);
+    console.error('Error in fetchUserBranch:', error);
     return null;
   }
 };
@@ -125,13 +147,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    return {
+    const userObj = {
       id: supabaseUser.id,
       name: email.split('@')[0],
       email: email,
       role: userRole,
       branchId: branchId || undefined,
     };
+
+    console.log('Created user object:', userObj);
+    return userObj;
   };
 
   // Handle auth state changes and initialize session
@@ -139,6 +164,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state change:', event, session?.user?.email);
         setLoading(true);
         
         if (session?.user) {
@@ -160,6 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Check for existing session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.email);
       if (session?.user) {
         setSupabaseUser(session.user);
         
@@ -180,6 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
+      console.log('Attempting login for:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -187,6 +215,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) throw error;
       
+      console.log('Login successful for:', email);
       // The user will be set by the auth state change listener
     } catch (error) {
       console.error("Login error:", error);
@@ -199,6 +228,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logout function
   const logout = async () => {
     try {
+      console.log('Logging out user');
       await supabase.auth.signOut();
       // The user will be cleared by the auth state change listener
     } catch (error) {
