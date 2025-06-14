@@ -43,7 +43,13 @@ export const useProfiles = () => {
         return;
       }
 
-      setProfiles(data || []);
+      // Type casting untuk memastikan role sebagai RoleType
+      const typedProfiles = (data || []).map(profile => ({
+        ...profile,
+        role: profile.role as RoleType
+      }));
+
+      setProfiles(typedProfiles);
     } catch (error) {
       console.error('Error in fetchProfiles:', error);
       toast({
