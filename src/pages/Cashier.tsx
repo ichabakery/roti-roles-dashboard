@@ -10,7 +10,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { useBranchManagement } from '@/hooks/useBranchManagement';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface Product {
@@ -28,7 +27,6 @@ interface Branch {
 
 const Cashier = () => {
   const { user } = useAuth();
-  const { ensureBranchesExist, getUserBranches } = useBranchManagement();
   
   const [products, setProducts] = useState<Product[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -44,8 +42,10 @@ const Cashier = () => {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   
   useEffect(() => {
-    initializeData();
-  }, []);
+    if (user) {
+      initializeData();
+    }
+  }, [user]);
   
   useEffect(() => {
     if (user?.role === 'kasir_cabang' && user.branchId) {
@@ -67,7 +67,6 @@ const Cashier = () => {
   const initializeData = async () => {
     try {
       console.log('Initializing cashier data...');
-      await ensureBranchesExist();
       await fetchBranches();
     } catch (error) {
       console.error('Error initializing data:', error);
@@ -84,21 +83,32 @@ const Cashier = () => {
       console.log('Fetching branches for current user...');
       
       if (!user?.id) {
-        console.log('No user ID available, fetching all branches');
-        const { data, error } = await supabase
-          .from('branches')
-          .select('id, name')
-          .order('name');
-
-        if (error) throw error;
-        setBranches(data || []);
+        console.log('No user ID available');
         return;
       }
 
       // For kasir_cabang, get only their assigned branches
       if (user.role === 'kasir_cabang') {
-        const userBranches = await getUserBranches(user.id);
-        const branchData = userBranches
+        const { data: userBranches, error } = await supabase
+          .from('user_branches')
+          .select(`
+            branch_id,
+            branches:branch_id (
+              id,
+              name,
+              address,
+              phone
+            )
+          `)
+          .eq('user_id', user.id);
+
+        if (error) {
+          console.error('Error fetching user branches:', error);
+          setBranchError('Gagal memuat data cabang yang dikaitkan dengan akun Anda');
+          return;
+        }
+
+        const branchData = (userBranches || [])
           .map(ub => ub.branches)
           .filter(branch => branch)
           .map(branch => ({
@@ -111,6 +121,8 @@ const Cashier = () => {
         
         if (branchData.length > 0 && !selectedBranch) {
           setSelectedBranch(branchData[0].id);
+        } else if (branchData.length === 0) {
+          setBranchError('Akun Anda belum dikaitkan dengan cabang manapun. Silakan hubungi administrator.');
         }
       } else {
         // For owner and admin_pusat, get all branches
@@ -119,7 +131,12 @@ const Cashier = () => {
           .select('id, name')
           .order('name');
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching all branches:', error);
+          setBranchError('Gagal memuat data cabang');
+          return;
+        }
+
         setBranches(data || []);
         
         if (data && data.length > 0 && !selectedBranch) {
@@ -128,11 +145,7 @@ const Cashier = () => {
       }
     } catch (error: any) {
       console.error('Error fetching branches:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: `Gagal memuat data cabang: ${error.message}`,
-      });
+      setBranchError(`Gagal memuat data cabang: ${error.message}`);
     }
   };
 
@@ -211,20 +224,11 @@ const Cashier = () => {
   };
 
   const handleProcessPayment = async () => {
-    if (cart.length === 0 || !selectedBranch) {
+    if (cart.length === 0 || !selectedBranch || !user?.id) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Keranjang kosong atau cabang belum dipilih",
-      });
-      return;
-    }
-
-    if (!user?.id) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "User tidak terautentikasi",
+        description: "Keranjang kosong, cabang belum dipilih, atau user tidak terautentikasi",
       });
       return;
     }
@@ -236,6 +240,26 @@ const Cashier = () => {
       console.log('Cart items:', cart.length);
       console.log('Total amount:', calculateTotal());
       
+      // Verify user has access to this branch
+      if (user.role === 'kasir_cabang') {
+        const { data: branchAccess, error: accessError } = await supabase
+          .from('user_branches')
+          .select('branch_id')
+          .eq('user_id', user.id)
+          .eq('branch_id', selectedBranch)
+          .single();
+
+        if (accessError || !branchAccess) {
+          console.error('User does not have access to this branch:', accessError);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Anda tidak memiliki akses ke cabang ini",
+          });
+          return;
+        }
+      }
+
       // Create transaction
       const transactionData = {
         branch_id: selectedBranch,
@@ -301,6 +325,15 @@ const Cashier = () => {
       });
     }
   };
+
+  // Show loading if user is not ready yet
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -567,6 +600,7 @@ const Cashier = () => {
               <Printer className="mr-2 h-4 w-4" />
               Cetak Nota
             </Button>
+          </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

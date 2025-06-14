@@ -113,7 +113,7 @@ const fetchUserBranch = async (userId: string) => {
       .limit(1)
       .single();
     
-    if (error) {
+    if (error && error.code !== 'PGRST116') {
       console.error('Error fetching user branch:', error);
       return null;
     }
@@ -141,9 +141,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // For kasir_cabang, ensure they have a branch assignment
     if (userRole === 'kasir_cabang') {
-      branchId = await ensureUserBranchLink(supabaseUser.id, email);
+      branchId = await fetchUserBranch(supabaseUser.id);
       if (!branchId) {
-        branchId = await fetchUserBranch(supabaseUser.id);
+        branchId = await ensureUserBranchLink(supabaseUser.id, email);
       }
     }
 
