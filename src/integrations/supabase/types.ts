@@ -72,6 +72,110 @@ export type Database = {
           },
         ]
       }
+      production_batches: {
+        Row: {
+          batch_number: string
+          created_at: string
+          id: string
+          produced_by: string
+          production_end: string | null
+          production_request_id: string
+          production_start: string | null
+          quality_notes: string | null
+          quantity_produced: number
+        }
+        Insert: {
+          batch_number: string
+          created_at?: string
+          id?: string
+          produced_by: string
+          production_end?: string | null
+          production_request_id: string
+          production_start?: string | null
+          quality_notes?: string | null
+          quantity_produced: number
+        }
+        Update: {
+          batch_number?: string
+          created_at?: string
+          id?: string
+          produced_by?: string
+          production_end?: string | null
+          production_request_id?: string
+          production_start?: string | null
+          quality_notes?: string | null
+          quantity_produced?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_batches_production_request_id_fkey"
+            columns: ["production_request_id"]
+            isOneToOne: false
+            referencedRelation: "production_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_requests: {
+        Row: {
+          branch_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          produced_by: string | null
+          product_id: string
+          production_date: string
+          quantity_produced: number | null
+          quantity_requested: number
+          requested_by: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          produced_by?: string | null
+          product_id: string
+          production_date: string
+          quantity_produced?: number | null
+          quantity_requested: number
+          requested_by: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          produced_by?: string | null
+          product_id?: string
+          production_date?: string
+          quantity_produced?: number | null
+          quantity_requested?: number
+          requested_by?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_requests_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           active: boolean
