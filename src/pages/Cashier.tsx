@@ -42,11 +42,107 @@ const Cashier = () => {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [lastTransaction, setLastTransaction] = useState<Transaction | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [processingPayment, setProcessingPayment] = useState(false);
   
   // Filter produk berdasarkan pencarian
   const filteredProducts = products.filter(product => 
     product.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Validasi stok sebelum transaksi
+  const validateStock = async () => {
+    if (!selectedBranch) return false;
+
+    try {
+      console.log('Validating stock for cart items...');
+      
+      for (const cartItem of cart) {
+        const { data: inventoryData, error } = await supabase
+          .from('inventory')
+          .select('quantity')
+          .eq('product_id', cartItem.product.id)
+          .eq('branch_id', selectedBranch)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error checking inventory:', error);
+          throw new Error(`Gagal memeriksa stok untuk ${cartItem.product.name}`);
+        }
+
+        const availableStock = inventoryData?.quantity || 0;
+        
+        if (availableStock < cartItem.quantity) {
+          throw new Error(`Stok tidak mencukupi untuk ${cartItem.product.name}. Tersedia: ${availableStock}, Dibutuhkan: ${cartItem.quantity}`);
+        }
+      }
+      
+      return true;
+    } catch (error: any) {
+      console.error('Stock validation error:', error);
+      toast({
+        variant: "destructive",
+        title: "Stok Tidak Mencukupi",
+        description: error.message,
+      });
+      return false;
+    }
+  };
+
+  // Update stok inventory
+  const updateInventoryStock = async () => {
+    if (!selectedBranch) return false;
+
+    try {
+      console.log('Updating inventory stock...');
+      
+      for (const cartItem of cart) {
+        // Ambil stok saat ini
+        const { data: currentInventory, error: fetchError } = await supabase
+          .from('inventory')
+          .select('quantity')
+          .eq('product_id', cartItem.product.id)
+          .eq('branch_id', selectedBranch)
+          .maybeSingle();
+
+        if (fetchError) {
+          console.error('Error fetching current inventory:', fetchError);
+          throw new Error(`Gagal mengambil data stok untuk ${cartItem.product.name}`);
+        }
+
+        if (!currentInventory) {
+          throw new Error(`Stok untuk ${cartItem.product.name} tidak ditemukan di cabang ini`);
+        }
+
+        const newQuantity = currentInventory.quantity - cartItem.quantity;
+        
+        if (newQuantity < 0) {
+          throw new Error(`Stok ${cartItem.product.name} tidak mencukupi`);
+        }
+
+        // Update stok
+        const { error: updateError } = await supabase
+          .from('inventory')
+          .update({ 
+            quantity: newQuantity,
+            last_updated: new Date().toISOString()
+          })
+          .eq('product_id', cartItem.product.id)
+          .eq('branch_id', selectedBranch);
+
+        if (updateError) {
+          console.error('Error updating inventory:', updateError);
+          throw new Error(`Gagal memperbarui stok untuk ${cartItem.product.name}`);
+        }
+
+        console.log(`Stock updated for ${cartItem.product.name}: ${currentInventory.quantity} -> ${newQuantity}`);
+      }
+      
+      return true;
+    } catch (error: any) {
+      console.error('Inventory update error:', error);
+      throw error;
+    }
+  };
 
   const handleProcessPayment = async () => {
     if (cart.length === 0 || !selectedBranch || !user?.id) {
@@ -57,6 +153,10 @@ const Cashier = () => {
       });
       return;
     }
+
+    if (processingPayment) return;
+
+    setProcessingPayment(true);
 
     try {
       console.log('Processing payment...');
@@ -81,7 +181,13 @@ const Cashier = () => {
         }
       }
 
-      // Create transaction
+      // Step 1: Validate stock availability
+      const stockValid = await validateStock();
+      if (!stockValid) {
+        return;
+      }
+
+      // Step 2: Create transaction
       const transactionData = {
         branch_id: selectedBranch,
         cashier_id: user.id,
@@ -104,7 +210,7 @@ const Cashier = () => {
 
       console.log('Transaction created successfully:', transaction);
 
-      // Create transaction items
+      // Step 3: Create transaction items
       const transactionItems = cart.map(item => ({
         transaction_id: transaction.id,
         product_id: item.product.id,
@@ -126,6 +232,9 @@ const Cashier = () => {
 
       console.log('Transaction items created successfully');
 
+      // Step 4: Update inventory stock
+      await updateInventoryStock();
+
       // Success - Store complete transaction data
       setLastTransaction(transaction);
       setShowSuccessDialog(true);
@@ -135,7 +244,7 @@ const Cashier = () => {
       
       toast({
         title: "Pembayaran Berhasil",
-        description: `Transaksi selesai dengan ID: ${transaction.id.substring(0, 8)}...`,
+        description: `Transaksi selesai dengan ID: ${transaction.id.substring(0, 8)}... Stok telah diperbarui.`,
       });
     } catch (error: any) {
       console.error('Payment error:', error);
@@ -144,6 +253,8 @@ const Cashier = () => {
         title: "Error Pembayaran",
         description: error.message || "Gagal memproses pembayaran",
       });
+    } finally {
+      setProcessingPayment(false);
     }
   };
 
@@ -227,6 +338,7 @@ const Cashier = () => {
             onProcessPayment={handleProcessPayment}
             calculateTotal={calculateTotal}
             branchError={branchError}
+            processingPayment={processingPayment}
           />
         </div>
       </div>

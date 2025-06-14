@@ -223,6 +223,30 @@ export const useInventory = () => {
     }
   };
 
+  // Auto-refresh inventory untuk real-time updates
+  const setupRealTimeUpdates = () => {
+    const channel = supabase
+      .channel('inventory-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'inventory'
+        },
+        (payload) => {
+          console.log('Inventory changed:', payload);
+          // Refresh data saat ada perubahan
+          fetchInventory();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
+
   // Initialize data
   useEffect(() => {
     if (user) {
@@ -237,6 +261,12 @@ export const useInventory = () => {
       fetchInventory();
     }
   }, [selectedBranch, user]);
+
+  // Setup real-time updates
+  useEffect(() => {
+    const cleanup = setupRealTimeUpdates();
+    return cleanup;
+  }, []);
 
   return {
     inventory,
