@@ -45,14 +45,14 @@ export const InventoryFilters: React.FC<InventoryFiltersProps> = ({
         <div className="flex items-center gap-2">
           <Label htmlFor="branch-filter">Cabang:</Label>
           <Select 
-            value={selectedBranch} 
+            value={selectedBranch || ""} 
             onValueChange={setSelectedBranch}
           >
             <SelectTrigger id="branch-filter" className="w-[180px]">
               <SelectValue placeholder="Pilih Cabang" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Semua Cabang</SelectItem>
+              <SelectItem value="all">Semua Cabang</SelectItem>
               {branches.map(branch => (
                 <SelectItem key={branch.id} value={branch.id}>
                   {branch.name}

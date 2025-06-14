@@ -50,15 +50,7 @@ export const AddStockDialog: React.FC<AddStockDialogProps> = ({
   }, [userRole, userBranchId, branches]);
 
   const handleSubmit = async () => {
-    if (!productId) {
-      return;
-    }
-
-    if (!branchId) {
-      return;
-    }
-
-    if (quantity <= 0) {
+    if (!productId || !branchId || quantity <= 0) {
       return;
     }
 
@@ -91,7 +83,7 @@ export const AddStockDialog: React.FC<AddStockDialogProps> = ({
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="product-select">Produk *</Label>
-            <Select value={productId} onValueChange={setProductId}>
+            <Select value={productId || ""} onValueChange={setProductId}>
               <SelectTrigger id="product-select">
                 <SelectValue placeholder="Pilih Produk" />
               </SelectTrigger>
@@ -108,7 +100,7 @@ export const AddStockDialog: React.FC<AddStockDialogProps> = ({
           <div className="grid gap-2">
             <Label htmlFor="branch-select">Cabang *</Label>
             <Select 
-              value={branchId} 
+              value={branchId || ""} 
               onValueChange={setBranchId}
               disabled={!canChangeBranch}
             >

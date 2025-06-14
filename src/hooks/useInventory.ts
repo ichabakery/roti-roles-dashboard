@@ -97,7 +97,20 @@ export const useInventory = () => {
 
   // Fetch inventory
   const fetchInventory = async () => {
-    if (!selectedBranch && user?.role !== 'owner' && user?.role !== 'admin_pusat') {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    // For kasir_cabang, ensure they have a branch assigned
+    if (user.role === 'kasir_cabang' && !user.branchId) {
+      console.error('Kasir user without branch assignment');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Akun kasir Anda belum dikaitkan dengan cabang. Silakan hubungi administrator.",
+      });
+      setLoading(false);
       return;
     }
 
@@ -116,23 +129,36 @@ export const useInventory = () => {
         `);
 
       // Apply branch filter based on user role
-      if (user?.role === 'kasir_cabang' && user.branchId) {
+      if (user.role === 'kasir_cabang' && user.branchId) {
         query = query.eq('branch_id', user.branchId);
-      } else if (selectedBranch) {
+      } else if (selectedBranch && selectedBranch !== 'all') {
         query = query.eq('branch_id', selectedBranch);
       }
 
       const { data, error } = await query.order('last_updated', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Inventory fetch error:', error);
+        throw error;
+      }
+      
+      console.log('Inventory data fetched:', data);
       setInventory(data || []);
     } catch (error: any) {
       console.error('Error fetching inventory:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: `Gagal memuat data stok: ${error.message}`,
-      });
+      if (error.code === '42501') {
+        toast({
+          variant: "destructive",
+          title: "Akses Ditolak",
+          description: "Anda tidak memiliki izin untuk mengakses data inventory. Silakan hubungi administrator.",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: `Gagal memuat data stok: ${error.message}`,
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -205,9 +231,9 @@ export const useInventory = () => {
     }
   }, [user]);
 
-  // Fetch inventory when branch changes
+  // Fetch inventory when branch changes or user is available
   useEffect(() => {
-    if (selectedBranch || user?.role === 'owner' || user?.role === 'admin_pusat') {
+    if (user && (selectedBranch || user.role === 'kasir_cabang')) {
       fetchInventory();
     }
   }, [selectedBranch, user]);
