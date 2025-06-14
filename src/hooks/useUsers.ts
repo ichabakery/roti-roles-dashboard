@@ -1,5 +1,6 @@
 
 import { useProfiles } from './useProfiles';
+import { useBranchManagement } from './useBranchManagement';
 import { RoleType } from '@/contexts/AuthContext';
 
 interface UserData {
@@ -27,6 +28,7 @@ interface UpdateUser {
 
 export const useUsers = () => {
   const { profiles, loading, createUser, deleteUser, updateUser, filterProfiles } = useProfiles();
+  const { getUserBranches } = useBranchManagement();
 
   // Transform profiles to UserData format for compatibility
   const users: UserData[] = profiles.map(profile => ({
@@ -44,7 +46,25 @@ export const useUsers = () => {
 
   const editUser = async (userId: string, updateData: UpdateUser) => {
     console.log('useUsers: Editing user:', userId, updateData);
-    return await updateUser(userId, updateData);
+    
+    try {
+      const result = await updateUser(userId, updateData);
+      
+      if (result.success) {
+        console.log('User updated successfully, checking branch assignment...');
+        
+        // Log branch assignment for verification
+        if (updateData.role === 'kasir_cabang' && updateData.branchId) {
+          const userBranches = await getUserBranches(userId);
+          console.log('User branches after update:', userBranches);
+        }
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error in editUser:', error);
+      throw error;
+    }
   };
 
   const deleteUserById = async (id: string) => {

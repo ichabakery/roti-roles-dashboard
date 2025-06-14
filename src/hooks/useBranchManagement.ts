@@ -65,37 +65,31 @@ export const useBranchManagement = () => {
     try {
       console.log('Linking user to branch:', userId, '->', branchId);
       
-      // Check if link already exists
-      const { data: existingLink, error: checkError } = await supabase
+      // Remove existing assignments first
+      const { error: deleteError } = await supabase
         .from('user_branches')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('branch_id', branchId)
-        .single();
+        .delete()
+        .eq('user_id', userId);
 
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.error('Error checking existing link:', checkError);
+      if (deleteError && deleteError.code !== 'PGRST116') {
+        console.error('Error removing existing assignments:', deleteError);
+        // Continue anyway as this might not exist
+      }
+
+      // Insert new assignment
+      const { error: insertError } = await supabase
+        .from('user_branches')
+        .insert({
+          user_id: userId,
+          branch_id: branchId
+        });
+
+      if (insertError) {
+        console.error('Error linking user to branch:', insertError);
         return false;
       }
-
-      if (!existingLink) {
-        const { error } = await supabase
-          .from('user_branches')
-          .insert({
-            user_id: userId,
-            branch_id: branchId
-          });
-
-        if (error) {
-          console.error('Error linking user to branch:', error);
-          return false;
-        }
-        
-        console.log('User successfully linked to branch');
-      } else {
-        console.log('User already linked to this branch');
-      }
       
+      console.log('User successfully linked to branch');
       return true;
     } catch (error) {
       console.error('Error in linkUserToBranch:', error);

@@ -9,17 +9,11 @@ export interface UpdateUserData {
   branchId?: string;
 }
 
-export const updateUserInSystem = async (userId: string, userData: UpdateUserData, profiles: ProfileData[]) => {
-  console.log('Attempting to update user:', userId, userData);
-  
-  // Check if trying to update owner
-  const profile = profiles.find(p => p.id === userId);
-  if (profile?.role === 'owner') {
-    throw new Error('Owner tidak dapat diubah');
-  }
+export const updateUserInSystem = async (userId: string, userData: UpdateUserData, currentProfiles: ProfileData[]) => {
+  console.log('updateUserInSystem: Starting update for user:', userId, userData);
 
   try {
-    // First, update the profile
+    // Update profile data
     const { error: profileError } = await supabase
       .from('profiles')
       .update({
@@ -31,40 +25,55 @@ export const updateUserInSystem = async (userId: string, userData: UpdateUserDat
 
     if (profileError) {
       console.error('Error updating profile:', profileError);
-      throw new Error('Gagal memperbarui profil pengguna: ' + profileError.message);
+      throw new Error('Gagal memperbarui profil pengguna');
     }
+
+    console.log('Profile updated successfully');
 
     // Handle branch assignment for kasir_cabang
-    if (userData.role === 'kasir_cabang') {
-      // First, remove any existing branch assignments
-      await supabase
+    if (userData.role === 'kasir_cabang' && userData.branchId) {
+      console.log('Assigning kasir to branch:', userData.branchId);
+      
+      // First, remove any existing branch assignments for this user
+      const { error: deleteError } = await supabase
         .from('user_branches')
         .delete()
         .eq('user_id', userId);
 
-      // If branchId is provided, add new assignment
-      if (userData.branchId) {
-        const { error: branchError } = await supabase
-          .from('user_branches')
-          .insert({
-            user_id: userId,
-            branch_id: userData.branchId
-          });
-
-        if (branchError) {
-          console.error('Error updating user branch:', branchError);
-          // Continue even if this fails, as it's not critical
-        }
+      if (deleteError && deleteError.code !== 'PGRST116') {
+        console.error('Error removing existing branch assignments:', deleteError);
+        // Don't throw error here, just log it as it might not exist
       }
-    } else {
-      // For non-kasir roles, remove any branch assignments
-      await supabase
+
+      // Add new branch assignment
+      const { error: branchError } = await supabase
+        .from('user_branches')
+        .insert({
+          user_id: userId,
+          branch_id: userData.branchId
+        });
+
+      if (branchError) {
+        console.error('Error assigning user to branch:', branchError);
+        throw new Error('Gagal mengassign pengguna ke cabang');
+      }
+
+      console.log('User successfully assigned to branch');
+    } else if (userData.role !== 'kasir_cabang') {
+      // If role is not kasir_cabang, remove any existing branch assignments
+      console.log('Removing branch assignments for non-kasir role');
+      
+      const { error: deleteError } = await supabase
         .from('user_branches')
         .delete()
         .eq('user_id', userId);
+
+      if (deleteError && deleteError.code !== 'PGRST116') {
+        console.error('Error removing branch assignments:', deleteError);
+        // Don't throw error here, just log it
+      }
     }
 
-    console.log('User updated successfully:', userId);
     return { success: true };
   } catch (error: any) {
     console.error('Error in updateUserInSystem:', error);
