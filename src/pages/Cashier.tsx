@@ -15,7 +15,6 @@ import { CashierHeader } from '@/components/cashier/CashierHeader';
 import { StockValidationAlert } from '@/components/cashier/StockValidationAlert';
 
 const Cashier = () => {
-  const { products, loading: productsLoading } = useProducts();
   const { cart, addToCart, removeFromCart, updateQuantity, calculateTotal, clearCart } = useCart();
   const { 
     user, 
@@ -27,6 +26,12 @@ const Cashier = () => {
     isCheckingAccess, 
     verifyBranchAccess 
   } = useCashierAuth();
+  
+  // Use products hook with branch filtering for cashier
+  const { products, loading: productsLoading } = useProducts({
+    branchId: selectedBranch,
+    filterByStock: true
+  });
   
   const {
     processingPayment,
