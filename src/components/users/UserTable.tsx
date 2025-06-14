@@ -31,6 +31,8 @@ import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Users, Trash2, Edit, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RoleType } from '@/contexts/AuthContext';
+import UserDetailDialog from './UserDetailDialog';
+import EditUserDialog from './EditUserDialog';
 
 interface UserData {
   id: string;
@@ -52,12 +54,15 @@ interface UserTableProps {
   users: UserData[];
   branches: Branch[];
   onDeleteUser: (id: string) => Promise<{ success: boolean }>;
+  onEditUser: (userId: string, data: { name: string; role: RoleType; branchId?: string }) => Promise<{ success: boolean }>;
 }
 
-const UserTable: React.FC<UserTableProps> = ({ users, branches, onDeleteUser }) => {
+const UserTable: React.FC<UserTableProps> = ({ users, branches, onDeleteUser, onEditUser }) => {
   const { toast } = useToast();
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
+  const [userToView, setUserToView] = useState<UserData | null>(null);
+  const [userToEdit, setUserToEdit] = useState<UserData | null>(null);
 
   const getRoleName = (role: RoleType) => {
     switch(role) {
@@ -86,17 +91,11 @@ const UserTable: React.FC<UserTableProps> = ({ users, branches, onDeleteUser }) 
   };
 
   const handleViewUser = (user: UserData) => {
-    toast({
-      title: "Detail Pengguna",
-      description: `Melihat detail ${user.name} - ${getRoleName(user.role)}`,
-    });
+    setUserToView(user);
   };
 
   const handleEditUser = (user: UserData) => {
-    toast({
-      title: "Edit Pengguna",
-      description: `Edit ${user.name} (fitur akan segera tersedia)`,
-    });
+    setUserToEdit(user);
   };
 
   const handleDeleteClick = (user: UserData) => {
@@ -136,6 +135,10 @@ const UserTable: React.FC<UserTableProps> = ({ users, branches, onDeleteUser }) 
       setDeletingUserId(null);
       setUserToDelete(null);
     }
+  };
+
+  const handleEditUserSubmit = async (userId: string, data: { name: string; role: RoleType; branchId?: string }) => {
+    return await onEditUser(userId, data);
   };
 
   if (users.length === 0) {
@@ -211,6 +214,23 @@ const UserTable: React.FC<UserTableProps> = ({ users, branches, onDeleteUser }) 
           ))}
         </TableBody>
       </Table>
+
+      {/* User Detail Dialog */}
+      <UserDetailDialog
+        user={userToView}
+        branches={branches}
+        open={!!userToView}
+        onOpenChange={(open) => !open && setUserToView(null)}
+      />
+
+      {/* Edit User Dialog */}
+      <EditUserDialog
+        user={userToEdit}
+        branches={branches}
+        open={!!userToEdit}
+        onOpenChange={(open) => !open && setUserToEdit(null)}
+        onEditUser={handleEditUserSubmit}
+      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!userToDelete} onOpenChange={() => setUserToDelete(null)}>

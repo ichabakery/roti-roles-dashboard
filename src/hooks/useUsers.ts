@@ -19,8 +19,14 @@ interface NewUser {
   branchId?: string;
 }
 
+interface UpdateUser {
+  name: string;
+  role: RoleType;
+  branchId?: string;
+}
+
 export const useUsers = () => {
-  const { profiles, loading, createUser, deleteUser, filterProfiles } = useProfiles();
+  const { profiles, loading, createUser, deleteUser, updateUser, filterProfiles } = useProfiles();
 
   // Transform profiles to UserData format for compatibility
   const users: UserData[] = profiles.map(profile => ({
@@ -34,6 +40,11 @@ export const useUsers = () => {
   const addUser = async (newUserData: NewUser) => {
     console.log('useUsers: Adding new user:', newUserData);
     return await createUser(newUserData);
+  };
+
+  const editUser = async (userId: string, updateData: UpdateUser) => {
+    console.log('useUsers: Editing user:', userId, updateData);
+    return await updateUser(userId, updateData);
   };
 
   const deleteUserById = async (id: string) => {
@@ -56,6 +67,7 @@ export const useUsers = () => {
     users,
     loading,
     addUser,
+    editUser,
     deleteUser: deleteUserById,
     filterUsers
   };

@@ -1,10 +1,13 @@
+
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { fetchProfilesFromDB, filterProfilesByName, ProfileData } from '@/services/profilesService';
 import { createUserInSystem, CreateUserData } from '@/services/userCreationService';
 import { deleteUserFromSystem } from '@/services/userDeletionService';
+import { updateUserInSystem, UpdateUserData } from '@/services/userUpdateService';
 
 export type { ProfileData, CreateUserData };
+export type { UpdateUserData };
 
 export const useProfiles = () => {
   const { toast } = useToast();
@@ -72,6 +75,30 @@ export const useProfiles = () => {
     }
   };
 
+  const updateUser = async (userId: string, userData: UpdateUserData) => {
+    try {
+      await updateUserInSystem(userId, userData, profiles);
+
+      toast({
+        title: "Berhasil",
+        description: "Data pengguna berhasil diperbarui",
+      });
+
+      // Refresh profiles list
+      await fetchProfiles();
+      
+      return { success: true };
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Gagal memperbarui data pengguna",
+        variant: "destructive",
+      });
+      return { success: false };
+    }
+  };
+
   const deleteUser = async (userId: string) => {
     try {
       await deleteUserFromSystem(userId, profiles);
@@ -110,6 +137,7 @@ export const useProfiles = () => {
     loading,
     error,
     createUser,
+    updateUser,
     deleteUser,
     filterProfiles,
     refreshProfiles: fetchProfiles

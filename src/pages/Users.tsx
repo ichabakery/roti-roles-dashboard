@@ -14,7 +14,7 @@ const UserManagement = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const { user, loading: authLoading } = useAuth();
   const { branches, loading: branchesLoading } = useBranches();
-  const { users, addUser, deleteUser, filterUsers, loading: usersLoading } = useUsers();
+  const { users, addUser, editUser, deleteUser, filterUsers, loading: usersLoading } = useUsers();
   
   console.log('UserManagement render - authLoading:', authLoading, 'usersLoading:', usersLoading, 'user:', user);
   
@@ -90,6 +90,7 @@ const UserManagement = () => {
             users={filteredUsers}
             branches={branches}
             onDeleteUser={deleteUser}
+            onEditUser={editUser}
           />
         )}
       </div>
