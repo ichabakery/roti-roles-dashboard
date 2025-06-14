@@ -7,18 +7,20 @@ export const fetchUserBranch = async (userId: string): Promise<string | null> =>
   try {
     console.log('Fetching user branch for user:', userId);
     
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-    
-    const { data: userBranch, error } = await supabase
+    // Create timeout promise
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Timeout')), 5000);
+    });
+
+    // Create the query promise
+    const queryPromise = supabase
       .from('user_branches')
       .select('branch_id')
       .eq('user_id', userId)
       .limit(1)
-      .maybeSingle()
-      .abortSignal(controller.signal);
+      .maybeSingle();
     
-    clearTimeout(timeoutId);
+    const { data: userBranch, error } = await Promise.race([queryPromise, timeoutPromise]);
     
     if (error && error.code !== 'PGRST116') {
       console.error('Error fetching user branch:', error);
@@ -28,7 +30,7 @@ export const fetchUserBranch = async (userId: string): Promise<string | null> =>
     console.log('User branch found:', userBranch?.branch_id);
     return userBranch?.branch_id || null;
   } catch (error: any) {
-    if (error.name === 'AbortError') {
+    if (error.message === 'Timeout') {
       console.error('User branch fetch timeout');
     } else {
       console.error('Error in fetchUserBranch:', error);
@@ -42,22 +44,25 @@ export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User
     console.log('=== Starting fetchUserProfile ===');
     console.log('User ID:', supabaseUser.id, 'Email:', supabaseUser.email);
     
-    // Add timeout to prevent hanging
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      console.log('Profile fetch timeout - aborting request');
-      controller.abort();
-    }, 8000); // 8 second timeout
+    // Create timeout promise
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        console.log('Profile fetch timeout - rejecting request');
+        reject(new Error('Timeout'));
+      }, 8000);
+    });
 
     console.log('Querying profiles table...');
-    const { data: profile, error } = await supabase
+    
+    // Create the query promise
+    const queryPromise = supabase
       .from('profiles')
       .select('*')
       .eq('id', supabaseUser.id)
-      .maybeSingle()
-      .abortSignal(controller.signal);
+      .maybeSingle();
 
-    clearTimeout(timeoutId);
+    const { data: profile, error } = await Promise.race([queryPromise, timeoutPromise]);
+
     console.log('Profile query completed. Data:', profile, 'Error:', error);
 
     if (error) {
@@ -96,7 +101,7 @@ export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User
     console.error('=== fetchUserProfile failed ===');
     console.error('Error details:', error);
     
-    if (error.name === 'AbortError') {
+    if (error.message === 'Timeout') {
       throw new Error('Timeout: Gagal memuat profil pengguna. Silakan coba login ulang.');
     }
     
