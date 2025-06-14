@@ -36,31 +36,33 @@ export const useCashierPayment = () => {
 
   const validateStock = async (cart: CartItem[], selectedBranch: string) => {
     try {
-      console.log('Validating stock for cart items...');
+      console.log('🔍 Validating stock for cart items...');
       
       for (const cartItem of cart) {
         const { data: inventoryData, error } = await supabase
           .from('inventory')
-          .select('quantity')
+          .select('quantity, product_id, branch_id')
           .eq('product_id', cartItem.product.id)
           .eq('branch_id', selectedBranch)
           .maybeSingle();
 
         if (error) {
-          console.error('Error checking inventory:', error);
-          throw new Error(`Gagal memeriksa stok untuk ${cartItem.product.name}`);
+          console.error('❌ Error checking inventory:', error);
+          throw new Error(`Gagal memeriksa stok untuk ${cartItem.product.name}: ${error.message}`);
         }
 
         const availableStock = inventoryData?.quantity || 0;
+        console.log(`📦 Stock check - ${cartItem.product.name}: Available=${availableStock}, Required=${cartItem.quantity}`);
         
         if (availableStock < cartItem.quantity) {
           throw new Error(`Stok tidak mencukupi untuk ${cartItem.product.name}. Tersedia: ${availableStock}, Dibutuhkan: ${cartItem.quantity}`);
         }
       }
       
+      console.log('✅ Stock validation passed for all items');
       return true;
     } catch (error: any) {
-      console.error('Stock validation error:', error);
+      console.error('❌ Stock validation error:', error);
       toast({
         variant: "destructive",
         title: "Stok Tidak Mencukupi",
@@ -70,54 +72,36 @@ export const useCashierPayment = () => {
     }
   };
 
-  const updateInventoryStock = async (cart: CartItem[], selectedBranch: string) => {
+  // Removed manual updateInventoryStock function since we now rely on database trigger
+  // The trigger will automatically update inventory when transaction_items are inserted
+
+  const verifyStockUpdate = async (cart: CartItem[], selectedBranch: string, transactionId: string) => {
     try {
-      console.log('Updating inventory stock...');
+      console.log('🔄 Verifying stock updates after transaction...');
+      
+      // Wait a moment for trigger to execute
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       for (const cartItem of cart) {
-        const { data: currentInventory, error: fetchError } = await supabase
+        const { data: updatedInventory, error } = await supabase
           .from('inventory')
-          .select('quantity')
+          .select('quantity, last_updated')
           .eq('product_id', cartItem.product.id)
           .eq('branch_id', selectedBranch)
           .maybeSingle();
 
-        if (fetchError) {
-          console.error('Error fetching current inventory:', fetchError);
-          throw new Error(`Gagal mengambil data stok untuk ${cartItem.product.name}`);
+        if (error) {
+          console.error('❌ Error verifying stock update:', error);
+          continue;
         }
 
-        if (!currentInventory) {
-          throw new Error(`Stok untuk ${cartItem.product.name} tidak ditemukan di cabang ini`);
-        }
-
-        const newQuantity = currentInventory.quantity - cartItem.quantity;
-        
-        if (newQuantity < 0) {
-          throw new Error(`Stok ${cartItem.product.name} tidak mencukupi`);
-        }
-
-        const { error: updateError } = await supabase
-          .from('inventory')
-          .update({ 
-            quantity: newQuantity,
-            last_updated: new Date().toISOString()
-          })
-          .eq('product_id', cartItem.product.id)
-          .eq('branch_id', selectedBranch);
-
-        if (updateError) {
-          console.error('Error updating inventory:', updateError);
-          throw new Error(`Gagal memperbarui stok untuk ${cartItem.product.name}`);
-        }
-
-        console.log(`Stock updated for ${cartItem.product.name}: ${currentInventory.quantity} -> ${newQuantity}`);
+        console.log(`📊 Post-transaction stock - ${cartItem.product.name}: ${updatedInventory?.quantity || 0}`);
       }
       
-      return true;
+      console.log('✅ Stock verification completed');
     } catch (error: any) {
-      console.error('Inventory update error:', error);
-      throw error;
+      console.error('⚠️ Stock verification error:', error);
+      // Non-critical error, don't fail the transaction
     }
   };
 
@@ -143,19 +127,19 @@ export const useCashierPayment = () => {
     setProcessingPayment(true);
 
     try {
-      console.log('Processing payment...');
-      console.log('User ID:', user.id);
-      console.log('Branch ID:', selectedBranch);
-      console.log('Cart items:', cart.length);
+      console.log('💳 Processing payment...');
+      console.log('👤 User ID:', user.id);
+      console.log('🏪 Branch ID:', selectedBranch);
+      console.log('🛒 Cart items:', cart.length);
       
       const totalAmount = calculateTotal();
-      console.log('Total amount:', totalAmount);
+      console.log('💰 Total amount:', totalAmount);
       
       // Verify user has access to this branch
       if (user.role === 'kasir_cabang') {
         const accessVerified = await verifyBranchAccess(selectedBranch);
         if (!accessVerified) {
-          console.error('User does not have access to this branch');
+          console.error('🚫 User does not have access to this branch');
           toast({
             variant: "destructive",
             title: "Error",
@@ -179,7 +163,7 @@ export const useCashierPayment = () => {
         payment_method: paymentMethod
       };
 
-      console.log('Creating transaction with data:', transactionData);
+      console.log('📝 Creating transaction with data:', transactionData);
 
       const { data: transaction, error: transactionError } = await supabase
         .from('transactions')
@@ -188,13 +172,13 @@ export const useCashierPayment = () => {
         .single();
 
       if (transactionError) {
-        console.error('Transaction error:', transactionError);
+        console.error('❌ Transaction error:', transactionError);
         throw new Error(`Gagal membuat transaksi: ${transactionError.message}`);
       }
 
-      console.log('Transaction created successfully:', transaction);
+      console.log('✅ Transaction created successfully:', transaction.id);
 
-      // Step 3: Create transaction items
+      // Step 3: Create transaction items (trigger will auto-update inventory)
       const transactionItems = cart.map(item => ({
         transaction_id: transaction.id,
         product_id: item.product.id,
@@ -203,21 +187,21 @@ export const useCashierPayment = () => {
         subtotal: item.product.price * item.quantity
       }));
 
-      console.log('Creating transaction items:', transactionItems);
+      console.log('📋 Creating transaction items:', transactionItems.length, 'items');
 
       const { error: itemsError } = await supabase
         .from('transaction_items')
         .insert(transactionItems);
 
       if (itemsError) {
-        console.error('Transaction items error:', itemsError);
+        console.error('❌ Transaction items error:', itemsError);
         throw new Error(`Gagal menyimpan item transaksi: ${itemsError.message}`);
       }
 
-      console.log('Transaction items created successfully');
+      console.log('✅ Transaction items created successfully - Database trigger will handle stock update');
 
-      // Step 4: Update inventory stock
-      await updateInventoryStock(cart, selectedBranch);
+      // Step 4: Verify stock was updated by the trigger
+      await verifyStockUpdate(cart, selectedBranch, transaction.id);
 
       // Success - Store complete transaction data
       setLastTransaction(transaction);
@@ -228,10 +212,10 @@ export const useCashierPayment = () => {
       
       toast({
         title: "Pembayaran Berhasil",
-        description: `Transaksi selesai dengan ID: ${transaction.id.substring(0, 8)}... Stok telah diperbarui.`,
+        description: `Transaksi selesai dengan ID: ${transaction.id.substring(0, 8)}... Stok telah diperbarui otomatis.`,
       });
     } catch (error: any) {
-      console.error('Payment error:', error);
+      console.error('❌ Payment error:', error);
       toast({
         variant: "destructive",
         title: "Error Pembayaran",

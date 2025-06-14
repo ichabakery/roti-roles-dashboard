@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -34,9 +33,9 @@ export const useInventory = () => {
   const { user } = useAuth();
 
   // Fetch branches based on user role
-  const fetchBranches = async () => {
+  const fetchBranches = useCallback(async () => {
     try {
-      console.log('Fetching branches for user role:', user?.role);
+      console.log('📍 Fetching branches for user role:', user?.role);
       
       if (user?.role === 'kasir_cabang' && user.branchId) {
         // For kasir, only get their assigned branch
@@ -65,17 +64,17 @@ export const useInventory = () => {
         }
       }
     } catch (error: any) {
-      console.error('Error fetching branches:', error);
+      console.error('❌ Error fetching branches:', error);
       toast({
         variant: "destructive",
         title: "Error",
         description: `Gagal memuat data cabang: ${error.message}`,
       });
     }
-  };
+  }, [user, selectedBranch]);
 
   // Fetch products
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('products')
@@ -86,17 +85,17 @@ export const useInventory = () => {
       if (error) throw error;
       setProducts(data || []);
     } catch (error: any) {
-      console.error('Error fetching products:', error);
+      console.error('❌ Error fetching products:', error);
       toast({
         variant: "destructive",
         title: "Error",
         description: `Gagal memuat data produk: ${error.message}`,
       });
     }
-  };
+  }, []);
 
-  // Fetch inventory
-  const fetchInventory = async () => {
+  // Fetch inventory with improved error handling
+  const fetchInventory = useCallback(async () => {
     if (!user) {
       setLoading(false);
       return;
@@ -104,7 +103,7 @@ export const useInventory = () => {
 
     // For kasir_cabang, ensure they have a branch assigned
     if (user.role === 'kasir_cabang' && !user.branchId) {
-      console.error('Kasir user without branch assignment');
+      console.error('❌ Kasir user without branch assignment');
       toast({
         variant: "destructive",
         title: "Error",
@@ -116,6 +115,8 @@ export const useInventory = () => {
 
     setLoading(true);
     try {
+      console.log('📦 Fetching inventory data...');
+      
       let query = supabase
         .from('inventory')
         .select(`
@@ -138,11 +139,11 @@ export const useInventory = () => {
       const { data, error } = await query.order('last_updated', { ascending: false });
 
       if (error) {
-        console.error('Inventory fetch error:', error);
+        console.error('❌ Inventory fetch error:', error);
         throw error;
       }
       
-      console.log('Inventory data fetched:', data);
+      console.log('✅ Inventory data fetched:', data?.length, 'records');
       
       // Transform the data to match InventoryItem interface
       const transformedData = (data || []).map(item => ({
@@ -157,7 +158,7 @@ export const useInventory = () => {
       
       setInventory(transformedData);
     } catch (error: any) {
-      console.error('Error fetching inventory:', error);
+      console.error('❌ Error fetching inventory:', error);
       if (error.code === '42501') {
         toast({
           variant: "destructive",
@@ -174,11 +175,13 @@ export const useInventory = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, selectedBranch]);
 
   // Add or update stock
-  const addStock = async (productId: string, branchId: string, quantity: number) => {
+  const addStock = useCallback(async (productId: string, branchId: string, quantity: number) => {
     try {
+      console.log('➕ Adding stock:', { productId, branchId, quantity });
+      
       // Check if inventory item already exists
       const { data: existing, error: fetchError } = await supabase
         .from('inventory')
@@ -201,6 +204,7 @@ export const useInventory = () => {
           .eq('id', existing.id);
 
         if (updateError) throw updateError;
+        console.log('✅ Stock updated:', existing.quantity, '->', newQuantity);
       } else {
         // Insert new inventory
         const { error: insertError } = await supabase
@@ -212,6 +216,7 @@ export const useInventory = () => {
           });
 
         if (insertError) throw insertError;
+        console.log('✅ New stock record created');
       }
 
       const productName = products.find(p => p.id === productId)?.name;
@@ -225,7 +230,7 @@ export const useInventory = () => {
       fetchInventory();
       return true;
     } catch (error: any) {
-      console.error('Error adding stock:', error);
+      console.error('❌ Error adding stock:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -233,12 +238,14 @@ export const useInventory = () => {
       });
       return false;
     }
-  };
+  }, [products, branches, fetchInventory]);
 
-  // Auto-refresh inventory untuk real-time updates
-  const setupRealTimeUpdates = () => {
+  // Enhanced real-time updates setup
+  const setupRealTimeUpdates = useCallback(() => {
+    console.log('🔄 Setting up real-time inventory updates...');
+    
     const channel = supabase
-      .channel('inventory-changes')
+      .channel('inventory-realtime-updates')
       .on(
         'postgres_changes',
         {
@@ -247,17 +254,29 @@ export const useInventory = () => {
           table: 'inventory'
         },
         (payload) => {
-          console.log('Inventory changed:', payload);
-          // Refresh data saat ada perubahan
-          fetchInventory();
+          console.log('📡 Real-time inventory change received:', payload);
+          
+          // Only refresh if the change affects current user's view
+          if (user?.role === 'kasir_cabang') {
+            // Kasir only cares about their branch
+            if (payload.new?.branch_id === user.branchId || payload.old?.branch_id === user.branchId) {
+              fetchInventory();
+            }
+          } else {
+            // Other roles see all branches
+            fetchInventory();
+          }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Real-time subscription status:', status);
+      });
 
     return () => {
+      console.log('🔌 Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
-  };
+  }, [user, fetchInventory]);
 
   // Initialize data
   useEffect(() => {
@@ -265,20 +284,20 @@ export const useInventory = () => {
       fetchBranches();
       fetchProducts();
     }
-  }, [user]);
+  }, [user, fetchBranches, fetchProducts]);
 
   // Fetch inventory when branch changes or user is available
   useEffect(() => {
     if (user && (selectedBranch || user.role === 'kasir_cabang')) {
       fetchInventory();
     }
-  }, [selectedBranch, user]);
+  }, [selectedBranch, user, fetchInventory]);
 
   // Setup real-time updates
   useEffect(() => {
     const cleanup = setupRealTimeUpdates();
     return cleanup;
-  }, []);
+  }, [setupRealTimeUpdates]);
 
   return {
     inventory,

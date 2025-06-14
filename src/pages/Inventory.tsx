@@ -8,6 +8,7 @@ import { InventoryStats } from '@/components/inventory/InventoryStats';
 import { InventoryFilters } from '@/components/inventory/InventoryFilters';
 import { InventoryTable } from '@/components/inventory/InventoryTable';
 import { AddStockDialog } from '@/components/inventory/AddStockDialog';
+import { StockMonitoring } from '@/components/inventory/StockMonitoring';
 
 const Inventory = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,6 +30,9 @@ const Inventory = () => {
     return await addStock(productId, branchId, quantity);
   };
 
+  // Show monitoring for admin roles
+  const showMonitoring = user?.role === 'owner' || user?.role === 'admin_pusat';
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -38,6 +42,11 @@ const Inventory = () => {
           setIsAddDialogOpen={setIsAddDialogOpen}
           onRefresh={fetchInventory}
         />
+        
+        {/* Stock Monitoring for Admin */}
+        {showMonitoring && (
+          <StockMonitoring />
+        )}
         
         <InventoryStats
           inventory={inventory}
