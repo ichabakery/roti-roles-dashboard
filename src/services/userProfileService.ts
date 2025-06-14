@@ -31,34 +31,28 @@ export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User
   try {
     console.log('Fetching profile for user:', supabaseUser.id);
     
-    const { data: profile, error } = await supabase
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Profile fetch timeout')), 10000);
+    });
+    
+    const profilePromise = supabase
       .from('profiles')
       .select('*')
       .eq('id', supabaseUser.id)
       .maybeSingle();
 
+    const { data: profile, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
+
     if (error) {
       console.error('Error fetching profile:', error);
-      // If no profile found, create a basic one
-      const basicUser: User = {
-        id: supabaseUser.id,
-        name: supabaseUser.email?.split('@')[0] || 'User',
-        email: supabaseUser.email || '',
-        role: 'kasir_cabang'
-      };
-      console.log('Created basic user object:', basicUser);
-      return basicUser;
+      // Return basic user instead of null to prevent blocking
+      return createBasicUser(supabaseUser);
     }
 
     if (!profile) {
       console.log('No profile found, creating basic user');
-      const basicUser: User = {
-        id: supabaseUser.id,
-        name: supabaseUser.email?.split('@')[0] || 'User',
-        email: supabaseUser.email || '',
-        role: 'kasir_cabang'
-      };
-      return basicUser;
+      return createBasicUser(supabaseUser);
     }
 
     let branchId: string | undefined;
@@ -81,12 +75,15 @@ export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User
   } catch (error) {
     console.error('Error in fetchUserProfile:', error);
     // Return basic user instead of null to prevent blocking
-    const basicUser: User = {
-      id: supabaseUser.id,
-      name: supabaseUser.email?.split('@')[0] || 'User',
-      email: supabaseUser.email || '',
-      role: 'kasir_cabang'
-    };
-    return basicUser;
+    return createBasicUser(supabaseUser);
   }
+};
+
+const createBasicUser = (supabaseUser: SupabaseUser): User => {
+  return {
+    id: supabaseUser.id,
+    name: supabaseUser.email?.split('@')[0] || 'User',
+    email: supabaseUser.email || '',
+    role: 'kasir_cabang'
+  };
 };

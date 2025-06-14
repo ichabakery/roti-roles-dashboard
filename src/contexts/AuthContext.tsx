@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { signInWithEmail, signOut, getSession, onAuthStateChange } from "@/services/authService";
 import { fetchUserProfile } from "@/services/userProfileService";
@@ -30,90 +30,122 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [initializing, setInitializing] = useState(true);
+  
+  // Use ref to track which user we've fetched profile for to prevent infinite loops
+  const lastFetchedUserId = useRef<string | null>(null);
+  const mounted = useRef(true);
 
-  // Handle auth state changes and initialize session
+  // Handle auth state changes
   useEffect(() => {
-    let mounted = true;
+    console.log('Setting up auth state listener...');
     
-    // Set up auth state listener
     const { data: { subscription } } = onAuthStateChange(
       async (event, session) => {
         console.log('Auth state change:', event, session?.user?.email);
         
-        if (!mounted) return;
-        
-        // Don't set loading to true on token refresh
-        if (event !== 'TOKEN_REFRESHED') {
-          setLoading(true);
-        }
+        if (!mounted.current) return;
         
         if (session?.user) {
           setSupabaseUser(session.user);
           
-          // Only fetch profile if we don't have a user or user ID changed
-          if (!user || user.id !== session.user.id) {
-            console.log('Fetching user profile...');
-            const userProfile = await fetchUserProfile(session.user);
-            if (mounted && userProfile) {
-              setUser(userProfile);
-              setCachedUser(userProfile);
+          // Only fetch profile if we haven't fetched it for this user yet
+          if (lastFetchedUserId.current !== session.user.id) {
+            console.log('Fetching user profile for new user:', session.user.id);
+            lastFetchedUserId.current = session.user.id;
+            
+            try {
+              const userProfile = await fetchUserProfile(session.user);
+              if (mounted.current && userProfile) {
+                setUser(userProfile);
+                setCachedUser(userProfile);
+              }
+            } catch (error) {
+              console.error('Error fetching user profile:', error);
+              // Create a basic user profile as fallback
+              const basicUser: User = {
+                id: session.user.id,
+                name: session.user.email?.split('@')[0] || 'User',
+                email: session.user.email || '',
+                role: 'kasir_cabang'
+              };
+              if (mounted.current) {
+                setUser(basicUser);
+                setCachedUser(basicUser);
+              }
             }
           }
         } else {
-          // No session, clear user
+          // No session, clear everything
           setSupabaseUser(null);
           setUser(null);
+          lastFetchedUserId.current = null;
           removeCachedUser();
         }
         
-        if (mounted) {
+        if (mounted.current) {
           setLoading(false);
-          setInitializing(false);
         }
       }
     );
 
-    // Check for existing session only once
-    if (initializing) {
-      getSession().then(async ({ data: { session } }) => {
-        console.log('Initial session check:', session?.user?.email);
+    // Check for existing session once
+    getSession().then(async ({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.email);
+      
+      if (!mounted.current) return;
+      
+      if (session?.user) {
+        setSupabaseUser(session.user);
         
-        if (!mounted) return;
+        // Check cached user first
+        const cachedUser = getCachedUser();
+        if (cachedUser && cachedUser.id === session.user.id) {
+          console.log('Using cached user data');
+          setUser(cachedUser);
+          lastFetchedUserId.current = session.user.id;
+          setLoading(false);
+          return;
+        }
         
-        if (session?.user) {
-          setSupabaseUser(session.user);
-          
-          // Check if we have cached user data first
-          const cachedUser = getCachedUser();
-          if (cachedUser && cachedUser.id === session.user.id) {
-            console.log('Using cached user data');
-            setUser(cachedUser);
-            setLoading(false);
-            setInitializing(false);
-            return;
-          }
-          
-          // Fetch fresh profile if no valid cache
+        // Fetch fresh profile
+        lastFetchedUserId.current = session.user.id;
+        try {
           const userProfile = await fetchUserProfile(session.user);
-          if (mounted && userProfile) {
+          if (mounted.current && userProfile) {
             setUser(userProfile);
             setCachedUser(userProfile);
           }
+        } catch (error) {
+          console.error('Error fetching initial user profile:', error);
+          // Create basic user as fallback
+          const basicUser: User = {
+            id: session.user.id,
+            name: session.user.email?.split('@')[0] || 'User',
+            email: session.user.email || '',
+            role: 'kasir_cabang'
+          };
+          if (mounted.current) {
+            setUser(basicUser);
+            setCachedUser(basicUser);
+          }
         }
-        
-        if (mounted) {
-          setLoading(false);
-          setInitializing(false);
-        }
-      });
-    }
+      }
+      
+      if (mounted.current) {
+        setLoading(false);
+      }
+    }).catch((error) => {
+      console.error('Error during initial session check:', error);
+      if (mounted.current) {
+        setLoading(false);
+      }
+    });
 
     return () => {
-      mounted = false;
+      mounted.current = false;
       subscription.unsubscribe();
     };
-  }, [initializing]); // Only depend on initializing
+  }, []); // No dependencies to prevent re-running
 
   // Login function
   const login = async (email: string, password: string) => {
@@ -123,15 +155,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // The user will be set by the auth state change listener
     } catch (error) {
       console.error("Login error:", error);
+      setLoading(false); // Set loading to false on error
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
   // Logout function
   const logout = async () => {
     try {
+      lastFetchedUserId.current = null;
       await signOut();
       // The user will be cleared by the auth state change listener
     } catch (error) {
@@ -139,7 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Check apakah user memiliki role yang diizinkan
+  // Check if user has authorized role
   const isAuthorized = (allowedRoles: RoleType[]): boolean => {
     if (!user) return false;
     return allowedRoles.includes(user.role);
