@@ -16,7 +16,7 @@ interface NewUser {
   email: string;
   password: string;
   role: RoleType;
-  branchId: string;
+  branchId?: string;
 }
 
 export const useUsers = () => {
@@ -32,10 +32,12 @@ export const useUsers = () => {
   }));
 
   const addUser = async (newUserData: NewUser) => {
+    console.log('useUsers: Adding new user:', newUserData);
     return await createUser(newUserData);
   };
 
   const deleteUserById = async (id: string) => {
+    console.log('useUsers: Deleting user:', id);
     return await deleteUser(id);
   };
 
