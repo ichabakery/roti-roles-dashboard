@@ -2,10 +2,9 @@
 import React, { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogTrigger } from '@/components/ui/dialog';
-import { PackagePlus, RefreshCw } from 'lucide-react';
 import { useInventory } from '@/hooks/useInventory';
+import { InventoryHeader } from '@/components/inventory/InventoryHeader';
+import { InventoryStats } from '@/components/inventory/InventoryStats';
 import { InventoryFilters } from '@/components/inventory/InventoryFilters';
 import { InventoryTable } from '@/components/inventory/InventoryTable';
 import { AddStockDialog } from '@/components/inventory/AddStockDialog';
@@ -33,30 +32,17 @@ const Inventory = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">Manajemen Stok</h2>
-            <p className="text-muted-foreground">
-              Kelola stok produk di setiap cabang
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={fetchInventory} disabled={loading}>
-              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-            
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <PackagePlus className="mr-2 h-4 w-4" />
-                  Tambah Stok
-                </Button>
-              </DialogTrigger>
-            </Dialog>
-          </div>
-        </div>
+        <InventoryHeader
+          loading={loading}
+          isAddDialogOpen={isAddDialogOpen}
+          setIsAddDialogOpen={setIsAddDialogOpen}
+          onRefresh={fetchInventory}
+        />
+        
+        <InventoryStats
+          inventory={inventory}
+          loading={loading}
+        />
         
         <Card>
           <CardContent className="pt-6">
