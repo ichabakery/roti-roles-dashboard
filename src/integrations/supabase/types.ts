@@ -35,6 +35,7 @@ export type Database = {
       }
       inventory: {
         Row: {
+          batch_id: string | null
           branch_id: string
           id: string
           last_updated: string
@@ -42,6 +43,7 @@ export type Database = {
           quantity: number
         }
         Insert: {
+          batch_id?: string | null
           branch_id: string
           id?: string
           last_updated?: string
@@ -49,6 +51,7 @@ export type Database = {
           quantity?: number
         }
         Update: {
+          batch_id?: string | null
           branch_id?: string
           id?: string
           last_updated?: string
@@ -71,6 +74,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "inventory_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "product_batches"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "inventory_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
@@ -80,6 +90,99 @@ export type Database = {
           {
             foreignKeyName: "inventory_product_id_fkey"
             columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_batches: {
+        Row: {
+          batch_number: string
+          branch_id: string
+          created_at: string | null
+          expiry_date: string
+          id: string
+          product_id: string
+          production_date: string
+          quantity: number
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          batch_number: string
+          branch_id: string
+          created_at?: string | null
+          expiry_date: string
+          id?: string
+          product_id: string
+          production_date?: string
+          quantity?: number
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          batch_number?: string
+          branch_id?: string
+          created_at?: string | null
+          expiry_date?: string
+          id?: string
+          product_id?: string
+          production_date?: string
+          quantity?: number
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_batches_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_batches_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_packages: {
+        Row: {
+          component_product_id: string
+          created_at: string | null
+          id: string
+          parent_product_id: string
+          quantity: number
+        }
+        Insert: {
+          component_product_id: string
+          created_at?: string | null
+          id?: string
+          parent_product_id: string
+          quantity?: number
+        }
+        Update: {
+          component_product_id?: string
+          created_at?: string | null
+          id?: string
+          parent_product_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_packages_component_product_id_fkey"
+            columns: ["component_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_packages_parent_product_id_fkey"
+            columns: ["parent_product_id"]
             isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
@@ -241,6 +344,7 @@ export type Database = {
           image_url: string | null
           name: string
           price: number
+          product_type: Database["public"]["Enums"]["product_type"] | null
         }
         Insert: {
           active?: boolean
@@ -250,6 +354,7 @@ export type Database = {
           image_url?: string | null
           name: string
           price: number
+          product_type?: Database["public"]["Enums"]["product_type"] | null
         }
         Update: {
           active?: boolean
@@ -259,6 +364,7 @@ export type Database = {
           image_url?: string | null
           name?: string
           price?: number
+          product_type?: Database["public"]["Enums"]["product_type"] | null
         }
         Relationships: []
       }
@@ -285,6 +391,193 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      return_items: {
+        Row: {
+          batch_id: string | null
+          condition: string | null
+          created_at: string | null
+          id: string
+          product_id: string
+          quantity: number
+          reason: string
+          return_id: string
+        }
+        Insert: {
+          batch_id?: string | null
+          condition?: string | null
+          created_at?: string | null
+          id?: string
+          product_id: string
+          quantity: number
+          reason: string
+          return_id: string
+        }
+        Update: {
+          batch_id?: string | null
+          condition?: string | null
+          created_at?: string | null
+          id?: string
+          product_id?: string
+          quantity?: number
+          reason?: string
+          return_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "return_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "product_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_items_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "returns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      returns: {
+        Row: {
+          branch_id: string
+          created_at: string | null
+          id: string
+          notes: string | null
+          processed_by: string
+          reason: string
+          return_date: string | null
+          status: string | null
+          transaction_id: string | null
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          processed_by: string
+          reason: string
+          return_date?: string | null
+          status?: string | null
+          transaction_id?: string | null
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          processed_by?: string
+          reason?: string
+          return_date?: string | null
+          status?: string | null
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "returns_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "returns_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "returns_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_movements: {
+        Row: {
+          batch_id: string | null
+          branch_id: string
+          created_at: string | null
+          id: string
+          movement_date: string | null
+          movement_type: string
+          performed_by: string | null
+          product_id: string
+          quantity_change: number
+          reason: string | null
+          reference_id: string | null
+          reference_type: string | null
+        }
+        Insert: {
+          batch_id?: string | null
+          branch_id: string
+          created_at?: string | null
+          id?: string
+          movement_date?: string | null
+          movement_type: string
+          performed_by?: string | null
+          product_id: string
+          quantity_change: number
+          reason?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+        }
+        Update: {
+          batch_id?: string | null
+          branch_id?: string
+          created_at?: string | null
+          id?: string
+          movement_date?: string | null
+          movement_type?: string
+          performed_by?: string | null
+          product_id?: string
+          quantity_change?: number
+          reason?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "product_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transaction_items: {
         Row: {
@@ -443,9 +736,20 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_expiring_products: {
+        Args: { days_ahead?: number }
+        Returns: {
+          product_name: string
+          branch_name: string
+          batch_number: string
+          quantity: number
+          expiry_date: string
+          days_until_expiry: number
+        }[]
+      }
     }
     Enums: {
-      [_ in never]: never
+      product_type: "regular" | "package" | "bundle"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -560,6 +864,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      product_type: ["regular", "package", "bundle"],
+    },
   },
 } as const
