@@ -41,7 +41,7 @@ export const fetchTransactionsFromDB = async (
     console.log('✅ Kasir cabang has valid branch assignment:', userBranchId);
   }
 
-  // Build enhanced query with proper joins
+  // Build query without complex joins to avoid relationship conflicts
   let transactionQuery = supabase
     .from('transactions')
     .select(`
@@ -50,16 +50,7 @@ export const fetchTransactionsFromDB = async (
       cashier_id,
       transaction_date,
       total_amount,
-      payment_method,
-      branches!fk_transactions_branch_id (id, name),
-      transaction_items (
-        id,
-        product_id,
-        quantity,
-        price_per_item,
-        subtotal,
-        products!fk_transaction_items_product_id (name)
-      )
+      payment_method
     `);
 
   // Apply role-based filtering with improved logic
@@ -129,15 +120,77 @@ export const fetchTransactionsFromDB = async (
   }
 
   console.log('✅ Transaction data received:', transactionData?.length || 0, 'records');
+
+  if (!transactionData || transactionData.length === 0) {
+    console.log('📋 No transaction data found');
+    return [];
+  }
+
+  // Now fetch branches and transaction items separately to avoid relationship conflicts
+  const branchIds = [...new Set(transactionData.map(t => t.branch_id))];
+  const transactionIds = transactionData.map(t => t.id);
+
+  // Fetch branch data
+  const { data: branchData, error: branchError } = await supabase
+    .from('branches')
+    .select('id, name')
+    .in('id', branchIds);
+
+  if (branchError) {
+    console.error('❌ Branch query error:', branchError);
+    throw new Error(`Gagal memuat data cabang: ${branchError.message}`);
+  }
+
+  // Fetch transaction items with products
+  const { data: transactionItemsData, error: itemsError } = await supabase
+    .from('transaction_items')
+    .select(`
+      id,
+      transaction_id,
+      product_id,
+      quantity,
+      price_per_item,
+      subtotal,
+      products!inner(name)
+    `)
+    .in('transaction_id', transactionIds);
+
+  if (itemsError) {
+    console.error('❌ Transaction items query error:', itemsError);
+    // Don't throw error for transaction items, just log it
+    console.warn('Transaction items could not be loaded, continuing without them');
+  }
+
+  // Create lookup maps
+  const branchMap = new Map(branchData?.map(b => [b.id, b]) || []);
+  const itemsMap = new Map<string, any[]>();
   
-  // Log sample data for debugging (only first record)
-  if (transactionData && transactionData.length > 0) {
-    console.log('📋 Sample transaction data:', {
-      id: transactionData[0].id,
-      branch: transactionData[0].branches?.name,
-      items: transactionData[0].transaction_items?.length || 0
+  if (transactionItemsData) {
+    transactionItemsData.forEach(item => {
+      if (!itemsMap.has(item.transaction_id)) {
+        itemsMap.set(item.transaction_id, []);
+      }
+      itemsMap.get(item.transaction_id)!.push(item);
     });
   }
 
-  return transactionData || [];
+  // Combine the data
+  const enrichedTransactions = transactionData.map(transaction => ({
+    ...transaction,
+    branches: branchMap.get(transaction.branch_id) || { id: transaction.branch_id, name: 'Unknown Branch' },
+    transaction_items: itemsMap.get(transaction.id) || []
+  }));
+
+  console.log('✅ Transaction data enriched successfully:', enrichedTransactions.length, 'records');
+  
+  // Log sample data for debugging (only first record)
+  if (enrichedTransactions.length > 0) {
+    console.log('📋 Sample transaction data:', {
+      id: enrichedTransactions[0].id,
+      branch: enrichedTransactions[0].branches?.name,
+      items: enrichedTransactions[0].transaction_items?.length || 0
+    });
+  }
+
+  return enrichedTransactions;
 };
