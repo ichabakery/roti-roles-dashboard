@@ -56,7 +56,13 @@ export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
 
     // Transform data to include branch information
     const typedProfiles = (data || []).map(profile => {
-      const branchData = profile.user_branches?.[0]?.branches;
+      // Handle the nested user_branches structure properly
+      const userBranch = profile.user_branches && Array.isArray(profile.user_branches) 
+        ? profile.user_branches[0] 
+        : profile.user_branches;
+      
+      const branchData = userBranch?.branches;
+      
       return {
         ...profile,
         role: profile.role as RoleType,
