@@ -79,7 +79,7 @@ export const useCashierAuth = () => {
           .from('user_branches')
           .select(`
             branch_id,
-            branches (
+            branches!fk_user_branches_branch_id (
               id,
               name,
               address,

@@ -10,8 +10,8 @@ export const fetchProductionRequestsFromDB = async (): Promise<ProductionRequest
     .from('production_requests')
     .select(`
       *,
-      products (name),
-      branches (name)
+      products!fk_production_requests_product_id (name),
+      branches!fk_production_requests_branch_id (name)
     `)
     .order('created_at', { ascending: false });
 
