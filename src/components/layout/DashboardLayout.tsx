@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, RoleType } from '@/contexts/AuthContext';
@@ -87,7 +86,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       {/* Mobile menu */}
       <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="sm" className="md:hidden absolute top-4 left-4 text-bakery-700">
+          <Button variant="ghost" size="sm" className="md:hidden fixed top-4 left-4 z-50 text-bakery-700">
             <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
@@ -127,13 +126,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
         </SheetContent>
       </Sheet>
 
-      {/* Desktop sidebar */}
-      <aside className="w-64 hidden md:flex flex-col border-r bg-bakery-700">
+      {/* Desktop sidebar - Fixed positioning */}
+      <aside className="w-64 hidden md:flex flex-col border-r bg-bakery-700 fixed left-0 top-0 h-screen z-40">
         <div className="px-4 py-6 text-center border-b border-bakery-600">
           <h2 className="text-lg font-semibold text-white">Toko Roti Enak</h2>
           <p className="text-sm text-bakery-200">Selamat datang, {user?.email}</p>
         </div>
-        <nav className="flex flex-col flex-1 px-2 py-4 space-y-1">
+        <nav className="flex flex-col flex-1 px-2 py-4 space-y-1 overflow-y-auto">
           {navigation.map((item) => (
             <Button
               key={item.name}
@@ -149,7 +148,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             </Button>
           ))}
         </nav>
-        <div className="p-4">
+        <div className="p-4 mt-auto">
           <Button 
             variant="outline" 
             className="w-full bg-transparent border-bakery-500 text-bakery-100 hover:bg-bakery-600 hover:text-white"
@@ -161,8 +160,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 p-4 bg-white">
+      {/* Main content - Add left margin to account for fixed sidebar */}
+      <main className="flex-1 p-4 bg-white md:ml-64 overflow-y-auto">
         {children}
       </main>
     </div>
