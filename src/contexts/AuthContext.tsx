@@ -32,7 +32,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Use ref to track which user we've fetched profile for to prevent infinite loops
   const lastFetchedUserId = useRef<string | null>(null);
   const mounted = useRef(true);
 
@@ -42,8 +41,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     console.log('Refreshing profile for user:', supabaseUser.email);
     
-    // Clear cache first
+    // Clear cache and reset
     removeCachedUser();
+    lastFetchedUserId.current = null;
     
     try {
       const userProfile = await fetchUserProfile(supabaseUser);
@@ -51,9 +51,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('Profile refreshed successfully:', userProfile);
         setUser(userProfile);
         setCachedUser(userProfile);
+        lastFetchedUserId.current = supabaseUser.id;
       }
     } catch (error) {
       console.error('Error refreshing profile:', error);
+      // On refresh error, clear everything to force re-authentication
+      setUser(null);
+      setSupabaseUser(null);
+      removeCachedUser();
     }
   };
 
@@ -70,36 +75,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user) {
           setSupabaseUser(session.user);
           
-          // Clear cache on new login to ensure fresh data
-          if (event === 'SIGNED_IN') {
-            console.log('New sign in detected, clearing cache');
-            removeCachedUser();
-          }
+          // Always clear cache and fetch fresh profile on any auth event
+          console.log('Auth event detected, clearing cache and fetching fresh profile');
+          removeCachedUser();
+          lastFetchedUserId.current = null;
           
-          // Only fetch profile if we haven't fetched it for this user yet or if it's a new login
-          if (lastFetchedUserId.current !== session.user.id || event === 'SIGNED_IN') {
-            console.log('Fetching user profile for:', session.user.email);
-            lastFetchedUserId.current = session.user.id;
-            
-            try {
-              const userProfile = await fetchUserProfile(session.user);
-              if (mounted.current && userProfile) {
-                setUser(userProfile);
-                setCachedUser(userProfile);
-              }
-            } catch (error) {
-              console.error('Error fetching user profile:', error);
-              // Create a basic user profile as fallback
-              const basicUser: User = {
-                id: session.user.id,
-                name: session.user.email?.split('@')[0] || 'User',
-                email: session.user.email || '',
-                role: 'kasir_cabang'
-              };
-              if (mounted.current) {
-                setUser(basicUser);
-                setCachedUser(basicUser);
-              }
+          try {
+            const userProfile = await fetchUserProfile(session.user);
+            if (mounted.current && userProfile) {
+              console.log('Fresh profile loaded:', userProfile);
+              setUser(userProfile);
+              setCachedUser(userProfile);
+              lastFetchedUserId.current = session.user.id;
+            }
+          } catch (error) {
+            console.error('Error fetching user profile:', error);
+            // On profile fetch error, clear everything
+            if (mounted.current) {
+              setUser(null);
+              setSupabaseUser(null);
+              removeCachedUser();
             }
           }
         } else {
@@ -116,7 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // Check for existing session once
+    // Check for existing session once on mount
     getSession().then(async ({ data: { session } }) => {
       console.log('Initial session check:', session?.user?.email);
       
@@ -125,27 +120,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.user) {
         setSupabaseUser(session.user);
         
-        // Always fetch fresh profile on app load - don't use cache
+        // Always fetch fresh profile on app initialization
         console.log('App initialization - fetching fresh profile');
-        lastFetchedUserId.current = session.user.id;
+        removeCachedUser();
+        
         try {
           const userProfile = await fetchUserProfile(session.user);
           if (mounted.current && userProfile) {
+            console.log('Initial profile loaded:', userProfile);
             setUser(userProfile);
             setCachedUser(userProfile);
+            lastFetchedUserId.current = session.user.id;
           }
         } catch (error) {
           console.error('Error fetching initial user profile:', error);
-          // Create basic user as fallback
-          const basicUser: User = {
-            id: session.user.id,
-            name: session.user.email?.split('@')[0] || 'User',
-            email: session.user.email || '',
-            role: 'kasir_cabang'
-          };
+          // On error, clear everything
           if (mounted.current) {
-            setUser(basicUser);
-            setCachedUser(basicUser);
+            setUser(null);
+            setSupabaseUser(null);
+            removeCachedUser();
           }
         }
       }
@@ -164,18 +157,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       mounted.current = false;
       subscription.unsubscribe();
     };
-  }, []); // No dependencies to prevent re-running
+  }, []);
 
   // Login function
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
       console.log('Attempting login for:', email);
+      // Clear any existing cache before login
+      removeCachedUser();
       await signInWithEmail(email, password);
       // The user will be set by the auth state change listener
     } catch (error) {
       console.error("Login error:", error);
-      setLoading(false); // Set loading to false on error
+      setLoading(false);
       throw error;
     }
   };
@@ -183,7 +178,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logout function
   const logout = async () => {
     try {
+      console.log('Logging out user');
       lastFetchedUserId.current = null;
+      removeCachedUser();
       await signOut();
       // The user will be cleared by the auth state change listener
     } catch (error) {

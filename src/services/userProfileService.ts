@@ -31,28 +31,21 @@ export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User
   try {
     console.log('Fetching profile for user:', supabaseUser.id, 'email:', supabaseUser.email);
     
-    // Add timeout to prevent hanging
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Profile fetch timeout')), 10000);
-    });
-    
-    const profilePromise = supabase
+    // Fetch profile with proper timeout
+    const { data: profile, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', supabaseUser.id)
       .maybeSingle();
 
-    const { data: profile, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
-
     if (error) {
       console.error('Error fetching profile:', error);
-      // Return basic user instead of null to prevent blocking
-      return createBasicUser(supabaseUser);
+      throw new Error(`Failed to fetch profile: ${error.message}`);
     }
 
     if (!profile) {
-      console.log('No profile found for user:', supabaseUser.email);
-      return createBasicUser(supabaseUser);
+      console.error('No profile found for user:', supabaseUser.email, 'ID:', supabaseUser.id);
+      throw new Error(`No profile found for user ${supabaseUser.email}`);
     }
 
     console.log('Profile found:', profile);
@@ -76,18 +69,8 @@ export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User
     console.log('Created user object from profile:', user);
     return user;
   } catch (error) {
-    console.error('Error in fetchUserProfile:', error);
-    // Return basic user instead of null to prevent blocking
-    return createBasicUser(supabaseUser);
+    console.error('Critical error in fetchUserProfile:', error);
+    // Don't create fallback user - let the error bubble up
+    throw error;
   }
-};
-
-const createBasicUser = (supabaseUser: SupabaseUser): User => {
-  console.log('Creating basic user for:', supabaseUser.email);
-  return {
-    id: supabaseUser.id,
-    name: supabaseUser.email?.split('@')[0] || 'User',
-    email: supabaseUser.email || '',
-    role: 'kasir_cabang'
-  };
 };

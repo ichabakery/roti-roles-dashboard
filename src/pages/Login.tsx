@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -154,20 +153,11 @@ const Login = () => {
     }
   };
 
-  // Daftar user demo untuk memudahkan testing
-  const demoUsers = [{
+  // Hanya satu akun demo yang valid (owner yang sudah dikonfirmasi di database)
+  const validDemoUser = {
     role: 'Pemilik (Owner)',
     email: 'owner@icha.com'
-  }, {
-    role: 'Kepala Produksi',
-    email: 'produksi@bakeryguru.com'
-  }, {
-    role: 'Kasir Cabang',
-    email: 'kasir@bakeryguru.com'
-  }, {
-    role: 'Admin Pusat',
-    email: 'admin@bakeryguru.com'
-  }];
+  };
   
   return (
     <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
@@ -289,25 +279,22 @@ const Login = () => {
             <div className="w-full text-center">
               <p className="text-sm font-medium mb-2">Akun Demo untuk Testing:</p>
               <div className="grid grid-cols-1 gap-2">
-                {demoUsers.map((user, index) => (
-                  <Button 
-                    key={index} 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => {
-                      setEmail(user.email);
-                      setActiveTab('login');
-                    }} 
-                    className="text-xs justify-between"
-                  >
-                    <span>{user.role}</span>
-                    <span className="text-muted-foreground">{user.email}</span>
-                  </Button>
-                ))}
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    setEmail(validDemoUser.email);
+                    setActiveTab('login');
+                  }} 
+                  className="text-xs justify-between"
+                >
+                  <span>{validDemoUser.role}</span>
+                  <span className="text-muted-foreground">{validDemoUser.email}</span>
+                </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                Klik salah satu untuk mengisi email secara otomatis
+                Klik untuk mengisi email secara otomatis
               </p>
             </div>
           </CardFooter>
