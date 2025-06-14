@@ -11,28 +11,33 @@ export interface ProfileData {
 }
 
 export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
-  console.log('Starting to fetch profiles...');
+  console.log('profilesService: Starting to fetch profiles...');
   
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .order('created_at', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  console.log('Profiles query result:', { data, error });
+    console.log('profilesService: Profiles query result:', { data, error });
 
-  if (error) {
-    console.error('Error fetching profiles:', error);
+    if (error) {
+      console.error('profilesService: Error fetching profiles:', error);
+      throw new Error(`Failed to fetch profiles: ${error.message}`);
+    }
+
+    // Type casting untuk memastikan role sebagai RoleType
+    const typedProfiles = (data || []).map(profile => ({
+      ...profile,
+      role: profile.role as RoleType
+    }));
+
+    console.log('profilesService: Successfully fetched profiles:', typedProfiles);
+    return typedProfiles;
+  } catch (error) {
+    console.error('profilesService: Error in fetchProfilesFromDB:', error);
     throw error;
   }
-
-  // Type casting untuk memastikan role sebagai RoleType
-  const typedProfiles = (data || []).map(profile => ({
-    ...profile,
-    role: profile.role as RoleType
-  }));
-
-  console.log('Fetched profiles:', typedProfiles);
-  return typedProfiles;
 };
 
 export const filterProfilesByName = (profiles: ProfileData[], searchQuery: string): ProfileData[] => {

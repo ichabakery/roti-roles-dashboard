@@ -15,13 +15,15 @@ export const useProfiles = () => {
 
   const fetchProfiles = async () => {
     try {
+      console.log('useProfiles: Starting fetchProfiles...');
       setLoading(true);
       setError(null);
       
       const profilesData = await fetchProfilesFromDB();
+      console.log('useProfiles: Fetched profiles:', profilesData);
       setProfiles(profilesData);
     } catch (error: any) {
-      console.error('Error in fetchProfiles:', error);
+      console.error('useProfiles: Error in fetchProfiles:', error);
       setError(error.message);
       
       // Don't show toast for permission errors (user might not be owner)
@@ -33,6 +35,7 @@ export const useProfiles = () => {
         });
       }
     } finally {
+      console.log('useProfiles: Setting loading to false');
       setLoading(false);
     }
   };
@@ -101,7 +104,7 @@ export const useProfiles = () => {
   };
 
   useEffect(() => {
-    console.log('useProfiles useEffect triggered');
+    console.log('useProfiles: useEffect triggered');
     fetchProfiles();
   }, []);
 

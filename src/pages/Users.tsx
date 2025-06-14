@@ -21,11 +21,12 @@ const UserManagement = () => {
 
   // Show loading if auth is still loading
   if (authLoading) {
+    console.log('UserManagement: Showing auth loading...');
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Memuat...</span>
+          <span className="ml-2">Memuat autentikasi...</span>
         </div>
       </DashboardLayout>
     );
@@ -33,6 +34,7 @@ const UserManagement = () => {
 
   // Check if user has permission
   if (!user || user.role !== 'owner') {
+    console.log('UserManagement: User not authorized:', user?.role);
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-[400px]">
