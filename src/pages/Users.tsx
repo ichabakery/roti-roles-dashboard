@@ -7,7 +7,8 @@ import UserSearch from '@/components/users/UserSearch';
 import { useBranches } from '@/hooks/useBranches';
 import { useUsers } from '@/hooks/useUsers';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const UserManagement = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,10 +40,15 @@ const UserManagement = () => {
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
             <h3 className="text-lg font-medium">Akses Ditolak</h3>
-            <p className="text-muted-foreground">
-              Anda tidak memiliki izin untuk mengakses halaman ini
+            <p className="text-muted-foreground mb-4">
+              Anda tidak memiliki izin untuk mengakses halaman ini.
+              {user?.role && ` Role Anda: ${user.role}`}
             </p>
+            <Button onClick={() => window.location.href = '/dashboard'}>
+              Kembali ke Dashboard
+            </Button>
           </div>
         </div>
       </DashboardLayout>

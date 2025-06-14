@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { fetchProfilesFromDB, filterProfilesByName, ProfileData } from '@/services/profilesService';
@@ -26,14 +25,12 @@ export const useProfiles = () => {
       console.error('useProfiles: Error in fetchProfiles:', error);
       setError(error.message);
       
-      // Don't show toast for permission errors (user might not be owner)
-      if (!error.message?.includes('permission') && !error.message?.includes('policy')) {
-        toast({
-          title: "Error",
-          description: "Gagal memuat data pengguna",
-          variant: "destructive",
-        });
-      }
+      // Always show toast for errors to help with debugging
+      toast({
+        title: "Error",
+        description: error.message || "Gagal memuat data pengguna",
+        variant: "destructive",
+      });
     } finally {
       console.log('useProfiles: Setting loading to false');
       setLoading(false);
