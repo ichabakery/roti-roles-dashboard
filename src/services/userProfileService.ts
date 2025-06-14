@@ -1,111 +1,67 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { User as SupabaseUser } from "@supabase/supabase-js";
-import { RoleType, User } from '@/contexts/AuthContext';
-
-export const fetchUserBranch = async (userId: string): Promise<string | null> => {
-  try {
-    console.log('Fetching user branch for user:', userId);
-    
-    // Create timeout promise
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Timeout')), 5000);
-    });
-
-    // Create the query promise
-    const queryPromise = supabase
-      .from('user_branches')
-      .select('branch_id')
-      .eq('user_id', userId)
-      .limit(1)
-      .maybeSingle();
-    
-    const { data: userBranch, error } = await Promise.race([queryPromise, timeoutPromise]);
-    
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error fetching user branch:', error);
-      return null;
-    }
-
-    console.log('User branch found:', userBranch?.branch_id);
-    return userBranch?.branch_id || null;
-  } catch (error: any) {
-    if (error.message === 'Timeout') {
-      console.error('User branch fetch timeout');
-    } else {
-      console.error('Error in fetchUserBranch:', error);
-    }
-    return null;
-  }
-};
+import { supabase } from '@/integrations/supabase/client';
+import { User } from '@/contexts/AuthContext';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
 export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User | null> => {
   try {
-    console.log('=== Starting fetchUserProfile ===');
-    console.log('User ID:', supabaseUser.id, 'Email:', supabaseUser.email);
+    console.log('Fetching profile for user:', supabaseUser.email);
     
-    // Create timeout promise
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        console.log('Profile fetch timeout - rejecting request');
-        reject(new Error('Timeout'));
-      }, 8000);
-    });
-
-    console.log('Querying profiles table...');
-    
-    // Create the query promise
-    const queryPromise = supabase
+    // Get user profile with role
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, name, role')
       .eq('id', supabaseUser.id)
-      .maybeSingle();
+      .single();
 
-    const { data: profile, error } = await Promise.race([queryPromise, timeoutPromise]);
-
-    console.log('Profile query completed. Data:', profile, 'Error:', error);
-
-    if (error) {
-      console.error('Database error fetching profile:', error);
-      throw new Error(`Database error: ${error.message} (Code: ${error.code})`);
+    if (profileError) {
+      console.error('Profile fetch error:', profileError);
+      throw new Error(`Profile not found: ${profileError.message}`);
     }
 
     if (!profile) {
-      console.error('No profile found for user:', supabaseUser.email, 'ID:', supabaseUser.id);
-      throw new Error(`Profile tidak ditemukan untuk user ${supabaseUser.email}. Silakan hubungi administrator.`);
+      throw new Error('Profile data is null');
     }
 
-    console.log('Profile found successfully:', profile);
+    console.log('Profile fetched:', profile);
 
+    // Get branch assignment for kasir_cabang role
     let branchId: string | undefined;
     
-    // For kasir_cabang, fetch their branch assignment
     if (profile.role === 'kasir_cabang') {
-      console.log('Fetching branch for kasir...');
-      branchId = await fetchUserBranch(supabaseUser.id) || undefined;
-      console.log('Branch ID for kasir:', branchId);
+      console.log('Fetching branch assignment for kasir_cabang...');
+      
+      const { data: userBranch, error: branchError } = await supabase
+        .from('user_branches')
+        .select('branch_id')
+        .eq('user_id', supabaseUser.id)
+        .maybeSingle();
+
+      if (branchError) {
+        console.error('Branch assignment fetch error:', branchError);
+        // Don't throw error here, just log it
+        console.warn('Kasir cabang without branch assignment');
+      } else if (userBranch) {
+        branchId = userBranch.branch_id;
+        console.log('Branch assignment found:', branchId);
+      } else {
+        console.warn('No branch assignment found for kasir_cabang');
+      }
     }
 
-    const user: User = {
-      id: supabaseUser.id,
+    const userProfile: User = {
+      id: profile.id,
       name: profile.name,
       email: supabaseUser.email || '',
-      role: profile.role as RoleType,
+      role: profile.role as any,
       branchId
     };
 
-    console.log('=== fetchUserProfile completed successfully ===');
-    console.log('Final user object:', user);
-    return user;
+    console.log('Final user profile:', userProfile);
+    return userProfile;
+    
   } catch (error: any) {
-    console.error('=== fetchUserProfile failed ===');
-    console.error('Error details:', error);
-    
-    if (error.message === 'Timeout') {
-      throw new Error('Timeout: Gagal memuat profil pengguna. Silakan coba login ulang.');
-    }
-    
-    // Don't create fallback user - let the error bubble up for proper handling
-    throw error;
+    console.error('Error fetching user profile:', error);
+    throw new Error(`Failed to fetch user profile: ${error.message}`);
   }
 };
