@@ -5,7 +5,7 @@ import { fetchProfilesFromDB, filterProfilesByName, ProfileData } from '@/servic
 import { createUserInSystem, CreateUserData } from '@/services/userCreationService';
 import { deleteUserFromSystem } from '@/services/userDeletionService';
 
-export { ProfileData, CreateUserData };
+export type { ProfileData, CreateUserData };
 
 export const useProfiles = () => {
   const { toast } = useToast();
