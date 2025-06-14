@@ -10,7 +10,7 @@ export interface User {
   name: string;
   email: string;
   role: RoleType;
-  branchId?: string; // untuk kasir yang berkaitan dengan cabang tertentu
+  branchId?: string;
 }
 
 interface AuthContextValue {
@@ -23,84 +23,6 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
-// Map email to role for demo
-const emailToRoleMap: Record<string, { role: RoleType; branchId?: string }> = {
-  "owner@bakeryguru.com": { role: "owner" },
-  "owner@icha.com": { role: "owner" },
-  "produksi@bakeryguru.com": { role: "kepala_produksi" },
-  "kasir@bakeryguru.com": { role: "kasir_cabang" },
-  "admin@bakeryguru.com": { role: "admin_pusat" },
-  "kasir2@bakeryguru.com": { role: "kasir_cabang" },
-};
-
-const ensureUserBranchLink = async (userId: string, email: string) => {
-  try {
-    console.log('Ensuring user-branch link for user:', userId, 'email:', email);
-    
-    // Check if user-branch link exists
-    const { data: existingLinks, error: checkError } = await supabase
-      .from('user_branches')
-      .select('branch_id')
-      .eq('user_id', userId);
-
-    if (checkError) {
-      console.error('Error checking existing user-branch links:', checkError);
-      return null;
-    }
-
-    console.log('Existing user-branch links:', existingLinks);
-
-    if (!existingLinks || existingLinks.length === 0) {
-      // No existing links, create one
-      const { data: branches, error: branchError } = await supabase
-        .from('branches')
-        .select('id, name')
-        .order('name');
-
-      if (branchError) {
-        console.error('Error fetching branches:', branchError);
-        return null;
-      }
-
-      if (branches && branches.length > 0) {
-        let targetBranchId = branches[0].id;
-        
-        // Assign specific branches based on email for demo
-        if (email === 'kasir@bakeryguru.com') {
-          const utamaBranch = branches.find(b => b.name === 'Cabang Utama');
-          if (utamaBranch) targetBranchId = utamaBranch.id;
-        } else if (email === 'kasir2@bakeryguru.com') {
-          const selatanBranch = branches.find(b => b.name === 'Cabang Selatan');
-          if (selatanBranch) targetBranchId = selatanBranch.id;
-        }
-
-        // Create user-branch link
-        const { error: insertError } = await supabase
-          .from('user_branches')
-          .insert({
-            user_id: userId,
-            branch_id: targetBranchId
-          });
-
-        if (insertError) {
-          console.error('Error creating user-branch link:', insertError);
-          return null;
-        }
-
-        console.log('Created new user-branch link:', userId, '->', targetBranchId);
-        return targetBranchId;
-      }
-    } else {
-      // Use existing link (for kasir, use first one; for others, they might have multiple)
-      console.log('Using existing user-branch link:', existingLinks[0].branch_id);
-      return existingLinks[0].branch_id;
-    }
-  } catch (error) {
-    console.error('Error in ensureUserBranchLink:', error);
-  }
-  return null;
-};
 
 const fetchUserBranch = async (userId: string) => {
   try {
@@ -126,38 +48,54 @@ const fetchUserBranch = async (userId: string) => {
   }
 };
 
+const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User | null> => {
+  try {
+    console.log('Fetching profile for user:', supabaseUser.id);
+    
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', supabaseUser.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching profile:', error);
+      // If no profile found, return basic user with kasir_cabang role
+      return {
+        id: supabaseUser.id,
+        name: supabaseUser.email?.split('@')[0] || 'User',
+        email: supabaseUser.email || '',
+        role: 'kasir_cabang'
+      };
+    }
+
+    let branchId: string | undefined;
+    
+    // For kasir_cabang, fetch their branch assignment
+    if (profile.role === 'kasir_cabang') {
+      branchId = await fetchUserBranch(supabaseUser.id) || undefined;
+    }
+
+    const user: User = {
+      id: supabaseUser.id,
+      name: profile.name,
+      email: supabaseUser.email || '',
+      role: profile.role as RoleType,
+      branchId
+    };
+
+    console.log('Created user object:', user);
+    return user;
+  } catch (error) {
+    console.error('Error in fetchUserProfile:', error);
+    return null;
+  }
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const createUserObject = async (supabaseUser: SupabaseUser): Promise<User> => {
-    const email = supabaseUser.email?.toLowerCase() || '';
-    
-    // Get role from mapping or default to kasir_cabang
-    const userRole = emailToRoleMap[email]?.role || 'kasir_cabang';
-    
-    let branchId: string | undefined;
-    
-    // For kasir_cabang, ensure they have a branch assignment
-    if (userRole === 'kasir_cabang') {
-      branchId = await fetchUserBranch(supabaseUser.id);
-      if (!branchId) {
-        branchId = await ensureUserBranchLink(supabaseUser.id, email);
-      }
-    }
-
-    const userObj = {
-      id: supabaseUser.id,
-      name: email.split('@')[0],
-      email: email,
-      role: userRole,
-      branchId: branchId || undefined,
-    };
-
-    console.log('Created user object:', userObj);
-    return userObj;
-  };
 
   // Handle auth state changes and initialize session
   useEffect(() => {
@@ -170,10 +108,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user) {
           setSupabaseUser(session.user);
           
-          // Create user object with proper branch assignment
-          const userObj = await createUserObject(session.user);
-          setUser(userObj);
-          localStorage.setItem("bakeryUser", JSON.stringify(userObj));
+          // Fetch user profile from database
+          const userProfile = await fetchUserProfile(session.user);
+          setUser(userProfile);
+          
+          if (userProfile) {
+            localStorage.setItem("bakeryUser", JSON.stringify(userProfile));
+          }
         } else {
           // No session, clear user
           setSupabaseUser(null);
@@ -190,10 +131,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.user) {
         setSupabaseUser(session.user);
         
-        // Create user object with proper branch assignment
-        const userObj = await createUserObject(session.user);
-        setUser(userObj);
-        localStorage.setItem("bakeryUser", JSON.stringify(userObj));
+        // Fetch user profile from database
+        const userProfile = await fetchUserProfile(session.user);
+        setUser(userProfile);
+        
+        if (userProfile) {
+          localStorage.setItem("bakeryUser", JSON.stringify(userProfile));
+        }
       }
       setLoading(false);
     });

@@ -1,6 +1,5 @@
 
-import { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { useProfiles } from './useProfiles';
 import { RoleType } from '@/contexts/AuthContext';
 
 interface UserData {
@@ -21,57 +20,41 @@ interface NewUser {
 }
 
 export const useUsers = () => {
-  const { toast } = useToast();
-  const [users, setUsers] = useState<UserData[]>([]);
+  const { profiles, loading, createUser, deleteUser, filterProfiles } = useProfiles();
 
-  const addUser = (newUserData: NewUser) => {
-    const newId = (users.length + 1).toString();
-    const userData: UserData = {
-      id: newId,
-      name: newUserData.name,
-      email: newUserData.email,
-      role: newUserData.role,
-      createdAt: new Date(),
-      ...(newUserData.role === 'kasir_cabang' ? { branchId: newUserData.branchId } : {})
-    };
+  // Transform profiles to UserData format for compatibility
+  const users: UserData[] = profiles.map(profile => ({
+    id: profile.id,
+    name: profile.name,
+    email: `${profile.name.toLowerCase().replace(/\s+/g, '')}@example.com`, // Placeholder email
+    role: profile.role,
+    createdAt: new Date(profile.created_at)
+  }));
 
-    setUsers(prev => [...prev, userData]);
-    
-    toast({
-      title: "Berhasil",
-      description: "Pengguna baru berhasil ditambahkan",
-    });
+  const addUser = async (newUserData: NewUser) => {
+    return await createUser(newUserData);
   };
 
-  const deleteUser = (id: string) => {
-    const userToDelete = users.find(user => user.id === id);
-    if (userToDelete?.role === 'owner') {
-      toast({
-        title: "Tidak diizinkan",
-        description: "Owner tidak dapat dihapus dari sistem",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setUsers(prev => prev.filter(user => user.id !== id));
-    toast({
-      title: "Berhasil",
-      description: "Pengguna berhasil dihapus",
-    });
+  const deleteUserById = async (id: string) => {
+    return await deleteUser(id);
   };
 
   const filterUsers = (searchQuery: string) => {
-    return users.filter(user => 
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      user.email.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredProfiles = filterProfiles(searchQuery);
+    return filteredProfiles.map(profile => ({
+      id: profile.id,
+      name: profile.name,
+      email: `${profile.name.toLowerCase().replace(/\s+/g, '')}@example.com`,
+      role: profile.role,
+      createdAt: new Date(profile.created_at)
+    }));
   };
 
   return {
     users,
+    loading,
     addUser,
-    deleteUser,
+    deleteUser: deleteUserById,
     filterUsers
   };
 };

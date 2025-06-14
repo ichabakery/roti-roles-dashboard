@@ -41,7 +41,7 @@ interface NewUser {
 interface AddUserDialogProps {
   branches: Branch[];
   branchesLoading: boolean;
-  onAddUser: (userData: NewUser) => void;
+  onAddUser: (userData: NewUser) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AddUserDialog: React.FC<AddUserDialogProps> = ({ 
@@ -51,6 +51,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
 }) => {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [newUser, setNewUser] = useState<NewUser>({
     name: '',
     email: '',
@@ -94,23 +95,41 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
       return false;
     }
 
+    if (newUser.password.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password harus minimal 6 karakter",
+        variant: "destructive",
+      });
+      return false;
+    }
+
     return true;
   };
 
-  const handleAddUser = () => {
+  const handleAddUser = async () => {
     if (!validateForm()) return;
 
-    onAddUser(newUser);
-    setIsDialogOpen(false);
-    
-    // Reset form
-    setNewUser({
-      name: '',
-      email: '',
-      password: '',
-      role: 'kasir_cabang',
-      branchId: branches.length > 0 ? branches[0].id : '',
-    });
+    setIsLoading(true);
+    try {
+      const result = await onAddUser(newUser);
+      
+      if (result.success) {
+        setIsDialogOpen(false);
+        // Reset form
+        setNewUser({
+          name: '',
+          email: '',
+          password: '',
+          role: 'kasir_cabang',
+          branchId: branches.length > 0 ? branches[0].id : '',
+        });
+      }
+    } catch (error) {
+      console.error('Error adding user:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleRoleChange = (value: string) => {
@@ -146,6 +165,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
               value={newUser.name}
               onChange={(e) => setNewUser({...newUser, name: e.target.value})}
               placeholder="Nama Lengkap" 
+              disabled={isLoading}
             />
           </div>
           
@@ -157,6 +177,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
               value={newUser.email}
               onChange={(e) => setNewUser({...newUser, email: e.target.value})}
               placeholder="email@example.com" 
+              disabled={isLoading}
             />
           </div>
           
@@ -168,12 +189,20 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
               value={newUser.password}
               onChange={(e) => setNewUser({...newUser, password: e.target.value})}
               placeholder="******" 
+              disabled={isLoading}
             />
+            <p className="text-xs text-muted-foreground">
+              Password minimal 6 karakter
+            </p>
           </div>
           
           <div className="space-y-2">
             <Label htmlFor="role">Peran</Label>
-            <Select value={newUser.role} onValueChange={handleRoleChange}>
+            <Select 
+              value={newUser.role} 
+              onValueChange={handleRoleChange}
+              disabled={isLoading}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Pilih Peran" />
               </SelectTrigger>
@@ -197,6 +226,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
                 <Select 
                   value={newUser.branchId} 
                   onValueChange={(value) => setNewUser({...newUser, branchId: value})}
+                  disabled={isLoading}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih Cabang" />
@@ -229,15 +259,31 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+          <Button 
+            variant="outline" 
+            onClick={() => setIsDialogOpen(false)}
+            disabled={isLoading}
+          >
             Batal
           </Button>
           <Button 
             onClick={handleAddUser}
-            disabled={newUser.role === 'kasir_cabang' && (branches.length === 0 || !newUser.branchId)}
+            disabled={
+              isLoading || 
+              (newUser.role === 'kasir_cabang' && (branches.length === 0 || !newUser.branchId))
+            }
           >
-            <Check className="mr-2 h-4 w-4" />
-            Tambah
+            {isLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Memproses...
+              </>
+            ) : (
+              <>
+                <Check className="mr-2 h-4 w-4" />
+                Tambah
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

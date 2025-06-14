@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Users } from 'lucide-react';
+import { MoreHorizontal, Users, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RoleType } from '@/contexts/AuthContext';
 
@@ -40,11 +40,12 @@ interface Branch {
 interface UserTableProps {
   users: UserData[];
   branches: Branch[];
-  onDeleteUser: (id: string) => void;
+  onDeleteUser: (id: string) => Promise<{ success: boolean }>;
 }
 
 const UserTable: React.FC<UserTableProps> = ({ users, branches, onDeleteUser }) => {
   const { toast } = useToast();
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   const getRoleName = (role: RoleType) => {
     switch(role) {
@@ -67,6 +68,26 @@ const UserTable: React.FC<UserTableProps> = ({ users, branches, onDeleteUser }) 
       title: "Edit",
       description: `Edit ${user.name} (fitur akan datang)`,
     });
+  };
+
+  const handleDelete = async (user: UserData) => {
+    if (user.role === 'owner') {
+      toast({
+        title: "Tidak diizinkan",
+        description: "Owner tidak dapat dihapus dari sistem",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setDeletingUserId(user.id);
+    try {
+      await onDeleteUser(user.id);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+    } finally {
+      setDeletingUserId(null);
+    }
   };
 
   if (users.length === 0) {
@@ -121,9 +142,20 @@ const UserTable: React.FC<UserTableProps> = ({ users, branches, onDeleteUser }) 
                   </DropdownMenuItem>
                   <DropdownMenuItem 
                     className="text-destructive focus:text-destructive"
-                    onClick={() => onDeleteUser(user.id)}
+                    onClick={() => handleDelete(user)}
+                    disabled={deletingUserId === user.id}
                   >
-                    Hapus
+                    {deletingUserId === user.id ? (
+                      <>
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-destructive mr-2"></div>
+                        Menghapus...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-3 w-3 mr-2" />
+                        Hapus
+                      </>
+                    )}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
