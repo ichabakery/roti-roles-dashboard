@@ -61,7 +61,7 @@ export const useInventory = () => {
 
         setBranches(data || []);
         if (data && data.length > 0 && !selectedBranch) {
-          setSelectedBranch(data[0].id);
+          setSelectedBranch('all');
         }
       }
     } catch (error: any) {
