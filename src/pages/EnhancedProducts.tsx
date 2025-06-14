@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Package, Archive, AlertTriangle } from 'lucide-react';
+import { Plus, Package, Archive, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { ProductType } from '@/types/products';
 import { fetchProductsWithType } from '@/services/enhancedProductService';
 import { useProductBatches } from '@/hooks/useProductBatches';
@@ -14,8 +14,10 @@ import { ProductTypeSelector } from '@/components/products/ProductTypeSelector';
 import { ProductPackageManager } from '@/components/products/ProductPackageManager';
 import { BatchManagement } from '@/components/products/BatchManagement';
 import { ExpiryMonitoring } from '@/components/products/ExpiryMonitoring';
+import { useNavigate } from 'react-router-dom';
 
 const EnhancedProducts = () => {
+  const navigate = useNavigate();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProductType, setSelectedProductType] = useState<ProductType>('regular');
@@ -24,7 +26,7 @@ const EnhancedProducts = () => {
 
   useEffect(() => {
     fetchProducts();
-    fetchExpiring(7); // Check expiring products for next 7 days
+    fetchExpiring(7);
   }, [selectedProductType]);
 
   const fetchProducts = async () => {
@@ -71,11 +73,21 @@ const EnhancedProducts = () => {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">Manajemen Produk Lengkap</h2>
-            <p className="text-muted-foreground">
-              Kelola produk reguler, paket, bundling, dan tracking expired
-            </p>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/products')}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Kembali ke Produk Sederhana
+            </Button>
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight">Manajemen Produk Lengkap</h2>
+              <p className="text-muted-foreground">
+                Kelola produk reguler, paket, bundling, dan tracking expired
+              </p>
+            </div>
           </div>
           
           {expiringProducts.length > 0 && (
