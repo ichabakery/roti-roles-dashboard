@@ -8,10 +8,12 @@ export interface ProfileData {
   role: RoleType;
   created_at: string;
   updated_at: string;
+  branchId?: string;
+  branchName?: string;
 }
 
 export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
-  console.log('profilesService: Starting to fetch profiles...');
+  console.log('profilesService: Starting to fetch profiles with branch data...');
   
   try {
     // Add timeout to prevent infinite loading
@@ -20,13 +22,22 @@ export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select(`
+        *,
+        user_branches!left (
+          branch_id,
+          branches!inner (
+            id,
+            name
+          )
+        )
+      `)
       .order('created_at', { ascending: false })
       .abortSignal(controller.signal);
 
     clearTimeout(timeoutId);
 
-    console.log('profilesService: Profiles query result:', { data, error });
+    console.log('profilesService: Profiles with branches query result:', { data, error });
 
     if (error) {
       console.error('profilesService: Error fetching profiles:', error);
@@ -43,13 +54,18 @@ export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
       throw new Error(`Gagal memuat data pengguna: ${error.message}`);
     }
 
-    // Type casting untuk memastikan role sebagai RoleType
-    const typedProfiles = (data || []).map(profile => ({
-      ...profile,
-      role: profile.role as RoleType
-    }));
+    // Transform data to include branch information
+    const typedProfiles = (data || []).map(profile => {
+      const branchData = profile.user_branches?.[0]?.branches;
+      return {
+        ...profile,
+        role: profile.role as RoleType,
+        branchId: branchData?.id || undefined,
+        branchName: branchData?.name || undefined
+      };
+    });
 
-    console.log('profilesService: Successfully fetched profiles:', typedProfiles);
+    console.log('profilesService: Successfully fetched profiles with branch data:', typedProfiles);
     return typedProfiles;
   } catch (error: any) {
     console.error('profilesService: Error in fetchProfilesFromDB:', error);

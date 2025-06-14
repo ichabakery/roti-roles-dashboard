@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, RoleType } from '@/contexts/AuthContext';
+import { useUserBranch } from '@/hooks/useUserBranch';
 import { Button } from '@/components/ui/button';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Settings, Users, ShoppingBag, Landmark, CreditCard, ChefHat, BarChart, Database, LogOut, User } from 'lucide-react';
@@ -23,10 +23,8 @@ const roleMenuMap: Record<RoleType, string[]> = {
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children
 }) => {
-  const {
-    user,
-    logout
-  } = useAuth();
+  const { user, logout } = useAuth();
+  const { userBranch } = useUserBranch();
   const navigate = useNavigate();
   
   if (!user) {
@@ -35,57 +33,59 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
   // Menu items berdasarkan role
   const allowedMenus = roleMenuMap[user.role] || [];
-  const menuItems = [{
-    title: "Dashboard",
-    url: "/dashboard",
-    icon: Landmark,
-    access: allowedMenus.includes('dashboard')
-  }, {
-    title: "Pengguna",
-    url: "/users",
-    icon: Users,
-    access: allowedMenus.includes('users')
-  }, {
-    title: "Cabang",
-    url: "/branches",
-    icon: Landmark,
-    access: allowedMenus.includes('branches')
-  }, {
-    title: "Produk",
-    url: "/products",
-    icon: ShoppingBag,
-    access: allowedMenus.includes('products')
-  }, {
-    title: "Bundling Produk",
-    url: "/bundles",
-    icon: Database,
-    access: allowedMenus.includes('bundles')
-  }, {
-    title: "Kasir",
-    url: "/cashier",
-    icon: CreditCard,
-    access: allowedMenus.includes('cashier')
-  }, {
-    title: "Produksi",
-    url: "/production",
-    icon: ChefHat,
-    access: allowedMenus.includes('production')
-  }, {
-    title: "Stok",
-    url: "/inventory",
-    icon: Database,
-    access: allowedMenus.includes('inventory')
-  }, {
-    title: "Laporan",
-    url: "/reports",
-    icon: BarChart,
-    access: allowedMenus.includes('reports')
-  }, {
-    title: "Pengaturan",
-    url: "/settings",
-    icon: Settings,
-    access: allowedMenus.includes('settings')
-  }];
+  const menuItems = [
+    {
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: Landmark,
+      access: allowedMenus.includes('dashboard')
+    }, {
+      title: "Pengguna",
+      url: "/users",
+      icon: Users,
+      access: allowedMenus.includes('users')
+    }, {
+      title: "Cabang",
+      url: "/branches",
+      icon: Landmark,
+      access: allowedMenus.includes('branches')
+    }, {
+      title: "Produk",
+      url: "/products",
+      icon: ShoppingBag,
+      access: allowedMenus.includes('products')
+    }, {
+      title: "Bundling Produk",
+      url: "/bundles",
+      icon: Database,
+      access: allowedMenus.includes('bundles')
+    }, {
+      title: "Kasir",
+      url: "/cashier",
+      icon: CreditCard,
+      access: allowedMenus.includes('cashier')
+    }, {
+      title: "Produksi",
+      url: "/production",
+      icon: ChefHat,
+      access: allowedMenus.includes('production')
+    }, {
+      title: "Stok",
+      url: "/inventory",
+      icon: Database,
+      access: allowedMenus.includes('inventory')
+    }, {
+      title: "Laporan",
+      url: "/reports",
+      icon: BarChart,
+      access: allowedMenus.includes('reports')
+    }, {
+      title: "Pengaturan",
+      url: "/settings",
+      icon: Settings,
+      access: allowedMenus.includes('settings')
+    }
+  ];
 
   // Filter hanya menu yang diperbolehkan
   const filteredMenu = menuItems.filter(item => item.access);
@@ -97,6 +97,25 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       title: "Navigasi",
       description: `Halaman ${url.replace('/', '')} dibuka`,
     });
+  };
+
+  // Get role display name
+  const getRoleDisplayName = () => {
+    switch(user.role) {
+      case 'owner': return 'Pemilik';
+      case 'kepala_produksi': return 'Kepala Produksi';
+      case 'kasir_cabang': return userBranch.branchName ? `Kasir Cabang - ${userBranch.branchName}` : 'Kasir Cabang';
+      case 'admin_pusat': return 'Admin Pusat';
+      default: return user.role;
+    }
+  };
+
+  // Get branch display name
+  const getBranchDisplayName = () => {
+    if (user.role === 'kasir_cabang' && userBranch.branchName) {
+      return userBranch.branchName;
+    }
+    return user.role === 'owner' ? 'Semua Cabang' : 'Pusat';
   };
   
   return <SidebarProvider>
@@ -137,14 +156,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     {user.name}
                   </span>
                   <span className="text-xs text-sidebar-foreground/70">
-                    {user.role === 'owner' ? 'Pemilik' : 
-                     user.role === 'kepala_produksi' ? 'Kepala Produksi' : 
-                     user.role === 'kasir_cabang' ? 'Kasir Cabang' : 'Admin Pusat'}
-                    {user.branchId && user.role === 'kasir_cabang' && (
-                      user.branchId === '00000000-0000-0000-0000-000000000001' ? ' - Pusat' : 
-                      user.branchId === '00000000-0000-0000-0000-000000000002' ? ' - Selatan' : 
-                      user.branchId === '00000000-0000-0000-0000-000000000003' ? ' - Timur' : ''
-                    )}
+                    {getRoleDisplayName()}
                   </span>
                 </div>
               </div>

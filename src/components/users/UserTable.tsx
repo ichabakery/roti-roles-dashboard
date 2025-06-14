@@ -22,6 +22,7 @@ interface UserData {
   email: string;
   role: RoleType;
   branchId?: string;
+  branchName?: string;
   createdAt: Date;
 }
 

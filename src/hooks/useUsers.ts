@@ -9,6 +9,7 @@ interface UserData {
   email: string;
   role: RoleType;
   branchId?: string;
+  branchName?: string;
   createdAt: Date;
 }
 
@@ -30,12 +31,14 @@ export const useUsers = () => {
   const { profiles, loading, createUser, deleteUser, updateUser, filterProfiles } = useProfiles();
   const { getUserBranches } = useBranchManagement();
 
-  // Transform profiles to UserData format for compatibility
+  // Transform profiles to UserData format with branch information
   const users: UserData[] = profiles.map(profile => ({
     id: profile.id,
     name: profile.name,
     email: `${profile.name.toLowerCase().replace(/\s+/g, '')}@example.com`, // Placeholder email
     role: profile.role,
+    branchId: profile.branchId,
+    branchName: profile.branchName,
     createdAt: new Date(profile.created_at)
   }));
 
@@ -79,6 +82,8 @@ export const useUsers = () => {
       name: profile.name,
       email: `${profile.name.toLowerCase().replace(/\s+/g, '')}@example.com`,
       role: profile.role,
+      branchId: profile.branchId,
+      branchName: profile.branchName,
       createdAt: new Date(profile.created_at)
     }));
   };

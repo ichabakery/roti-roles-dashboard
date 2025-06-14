@@ -10,6 +10,7 @@ interface UserData {
   email: string;
   role: RoleType;
   branchId?: string;
+  branchName?: string;
   createdAt: Date;
 }
 
@@ -57,10 +58,19 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
     }
   };
 
-  const getBranchName = (branchId?: string) => {
-    if (!branchId) return '-';
-    const branch = branches.find(b => b.id === branchId);
-    return branch ? branch.name : 'Cabang tidak ditemukan';
+  const getBranchName = () => {
+    // Prioritas menggunakan branchName dari data user (hasil join database)
+    if (user.branchName) {
+      return user.branchName;
+    }
+    
+    // Fallback ke pencarian manual di array branches jika branchId ada
+    if (user.branchId) {
+      const branch = branches.find(b => b.id === user.branchId);
+      return branch ? branch.name : 'Cabang tidak ditemukan';
+    }
+    
+    return '-';
   };
 
   return (
@@ -72,7 +82,7 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
           {getRoleName(user.role)}
         </span>
       </TableCell>
-      <TableCell>{getBranchName(user.branchId)}</TableCell>
+      <TableCell>{getBranchName()}</TableCell>
       <TableCell>{user.createdAt.toLocaleDateString('id-ID')}</TableCell>
       <TableCell className="text-right">
         <UserActionsMenu

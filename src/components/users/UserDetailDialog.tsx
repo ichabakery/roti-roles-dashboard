@@ -17,6 +17,7 @@ interface UserData {
   email: string;
   role: RoleType;
   branchId?: string;
+  branchName?: string;
   createdAt: Date;
 }
 
@@ -62,10 +63,19 @@ const UserDetailDialog: React.FC<UserDetailDialogProps> = ({
     }
   };
 
-  const getBranchName = (branchId?: string) => {
-    if (!branchId) return 'Tidak ada cabang';
-    const branch = branches.find(b => b.id === branchId);
-    return branch ? branch.name : 'Cabang tidak ditemukan';
+  const getBranchName = () => {
+    // Prioritas menggunakan branchName dari data user (hasil join database)
+    if (user.branchName) {
+      return user.branchName;
+    }
+    
+    // Fallback ke pencarian manual di array branches jika branchId ada
+    if (user.branchId) {
+      const branch = branches.find(b => b.id === user.branchId);
+      return branch ? branch.name : 'Cabang tidak ditemukan';
+    }
+    
+    return 'Tidak ada cabang';
   };
 
   return (
@@ -112,7 +122,7 @@ const UserDetailDialog: React.FC<UserDetailDialogProps> = ({
               <MapPin className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">Cabang</p>
-                <p className="text-sm text-muted-foreground">{getBranchName(user.branchId)}</p>
+                <p className="text-sm text-muted-foreground">{getBranchName()}</p>
               </div>
             </div>
             
