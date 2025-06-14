@@ -24,50 +24,84 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-// Mock users untuk demo
-const MOCK_USERS: User[] = [
-  {
-    id: "1",
-    name: "Owner",
-    email: "owner@bakeryguru.com",
-    role: "owner",
-  },
-  {
-    id: "2",
-    name: "Kepala Produksi",
-    email: "produksi@bakeryguru.com",
-    role: "kepala_produksi",
-  },
-  {
-    id: "3",
-    name: "Kasir Cabang Utama",
-    email: "kasir@bakeryguru.com",
-    role: "kasir_cabang",
-    branchId: "00000000-0000-0000-0000-000000000001",
-  },
-  {
-    id: "4",
-    name: "Admin Pusat",
-    email: "admin@bakeryguru.com",
-    role: "admin_pusat",
-  },
-  {
-    id: "5",
-    name: "Kasir Cabang Selatan",
-    email: "kasir2@bakeryguru.com",
-    role: "kasir_cabang",
-    branchId: "00000000-0000-0000-0000-000000000002",
-  },
-];
-
 // Map email to role for demo
 const emailToRoleMap: Record<string, { role: RoleType; branchId?: string }> = {
   "owner@bakeryguru.com": { role: "owner" },
   "owner@icha.com": { role: "owner" },
   "produksi@bakeryguru.com": { role: "kepala_produksi" },
-  "kasir@bakeryguru.com": { role: "kasir_cabang", branchId: "00000000-0000-0000-0000-000000000001" },
+  "kasir@bakeryguru.com": { role: "kasir_cabang" },
   "admin@bakeryguru.com": { role: "admin_pusat" },
-  "kasir2@bakeryguru.com": { role: "kasir_cabang", branchId: "00000000-0000-0000-0000-000000000002" },
+  "kasir2@bakeryguru.com": { role: "kasir_cabang" },
+};
+
+const ensureUserBranchLink = async (userId: string, email: string) => {
+  try {
+    // Check if user-branch link exists
+    const { data: existingLink } = await supabase
+      .from('user_branches')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (!existingLink) {
+      // Get the first available branch for demo purposes
+      const { data: branches } = await supabase
+        .from('branches')
+        .select('id')
+        .limit(1);
+
+      if (branches && branches.length > 0) {
+        let branchId = branches[0].id;
+        
+        // Assign specific branches based on email for demo
+        if (email === 'kasir@bakeryguru.com') {
+          const { data: branch1 } = await supabase
+            .from('branches')
+            .select('id')
+            .eq('name', 'Cabang Utama')
+            .single();
+          if (branch1) branchId = branch1.id;
+        } else if (email === 'kasir2@bakeryguru.com') {
+          const { data: branch2 } = await supabase
+            .from('branches')
+            .select('id')
+            .eq('name', 'Cabang Selatan')
+            .single();
+          if (branch2) branchId = branch2.id;
+        }
+
+        // Create user-branch link
+        await supabase
+          .from('user_branches')
+          .insert({
+            user_id: userId,
+            branch_id: branchId
+          });
+
+        return branchId;
+      }
+    } else {
+      return existingLink.branch_id;
+    }
+  } catch (error) {
+    console.error('Error ensuring user-branch link:', error);
+  }
+  return null;
+};
+
+const fetchUserBranch = async (userId: string) => {
+  try {
+    const { data: userBranch } = await supabase
+      .from('user_branches')
+      .select('branch_id')
+      .eq('user_id', userId)
+      .single();
+    
+    return userBranch?.branch_id || null;
+  } catch (error) {
+    console.error('Error fetching user branch:', error);
+    return null;
+  }
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -75,41 +109,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const createUserObject = async (supabaseUser: SupabaseUser): Promise<User> => {
+    const email = supabaseUser.email?.toLowerCase() || '';
+    
+    // Get role from mapping or default to kasir_cabang
+    const userRole = emailToRoleMap[email]?.role || 'kasir_cabang';
+    
+    let branchId: string | undefined;
+    
+    // For kasir_cabang, ensure they have a branch assignment
+    if (userRole === 'kasir_cabang') {
+      branchId = await ensureUserBranchLink(supabaseUser.id, email);
+      if (!branchId) {
+        branchId = await fetchUserBranch(supabaseUser.id);
+      }
+    }
+
+    return {
+      id: supabaseUser.id,
+      name: email.split('@')[0],
+      email: email,
+      role: userRole,
+      branchId: branchId || undefined,
+    };
+  };
+
   // Handle auth state changes and initialize session
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setLoading(true);
         
         if (session?.user) {
-          const email = session.user.email?.toLowerCase();
           setSupabaseUser(session.user);
           
-          // For demo, map email to role
-          if (email && emailToRoleMap[email]) {
-            // Create user object
-            const newUser: User = {
-              id: session.user.id,
-              name: email.split('@')[0],
-              email: email,
-              role: emailToRoleMap[email].role,
-              branchId: emailToRoleMap[email].branchId,
-            };
-            setUser(newUser);
-            localStorage.setItem("bakeryUser", JSON.stringify(newUser));
-          } else {
-            // Default to kasir_cabang if we don't have this email mapped
-            const newUser: User = {
-              id: session.user.id,
-              name: email ? email.split('@')[0] : 'User',
-              email: email || 'unknown@example.com',
-              role: "kasir_cabang",
-              branchId: "00000000-0000-0000-0000-000000000001", // Default branch
-            };
-            setUser(newUser);
-            localStorage.setItem("bakeryUser", JSON.stringify(newUser));
-          }
+          // Create user object with proper branch assignment
+          const userObj = await createUserObject(session.user);
+          setUser(userObj);
+          localStorage.setItem("bakeryUser", JSON.stringify(userObj));
         } else {
           // No session, clear user
           setSupabaseUser(null);
@@ -121,35 +159,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        const email = session.user.email?.toLowerCase();
         setSupabaseUser(session.user);
         
-        // For demo, map email to role
-        if (email && emailToRoleMap[email]) {
-          // Create user object
-          const newUser: User = {
-            id: session.user.id,
-            name: email.split('@')[0],
-            email: email,
-            role: emailToRoleMap[email].role,
-            branchId: emailToRoleMap[email].branchId,
-          };
-          setUser(newUser);
-          localStorage.setItem("bakeryUser", JSON.stringify(newUser));
-        } else {
-          // Default to kasir_cabang if we don't have this email mapped
-          const newUser: User = {
-            id: session.user.id,
-            name: email ? email.split('@')[0] : 'User',
-            email: email || 'unknown@example.com',
-            role: "kasir_cabang",
-            branchId: "00000000-0000-0000-0000-000000000001", // Default branch
-          };
-          setUser(newUser);
-          localStorage.setItem("bakeryUser", JSON.stringify(newUser));
-        }
+        // Create user object with proper branch assignment
+        const userObj = await createUserObject(session.user);
+        setUser(userObj);
+        localStorage.setItem("bakeryUser", JSON.stringify(userObj));
       }
       setLoading(false);
     });

@@ -4,12 +4,14 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { CreditCard, Delete, Printer, Search, ShoppingCart, Check } from 'lucide-react';
+import { CreditCard, Delete, Printer, Search, ShoppingCart, Check, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
+import { useBranchManagement } from '@/hooks/useBranchManagement';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface Product {
   id: string;
@@ -26,6 +28,7 @@ interface Branch {
 
 const Cashier = () => {
   const { user } = useAuth();
+  const { ensureBranchesExist } = useBranchManagement();
   
   const [products, setProducts] = useState<Product[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -34,18 +37,22 @@ const Cashier = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [lastTransactionId, setLastTransactionId] = useState<string | null>(null);
+  const [branchError, setBranchError] = useState<string | null>(null);
   
   // State for items dalam keranjang
   const [cart, setCart] = useState<Array<{ product: Product, quantity: number }>>([]);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   
   useEffect(() => {
-    fetchBranches();
+    initializeData();
   }, []);
   
   useEffect(() => {
     if (user?.role === 'kasir_cabang' && user.branchId) {
       setSelectedBranch(user.branchId);
+      setBranchError(null);
+    } else if (user?.role === 'kasir_cabang' && !user.branchId) {
+      setBranchError('Akun kasir Anda belum dikaitkan dengan cabang. Silakan hubungi administrator.');
     }
   }, [user]);
 
@@ -54,6 +61,20 @@ const Cashier = () => {
       fetchProducts();
     }
   }, [selectedBranch]);
+
+  const initializeData = async () => {
+    try {
+      await ensureBranchesExist();
+      await fetchBranches();
+    } catch (error) {
+      console.error('Error initializing data:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Gagal menginisialisasi data aplikasi",
+      });
+    }
+  };
 
   const fetchBranches = async () => {
     try {
@@ -70,7 +91,7 @@ const Cashier = () => {
       
       if (user?.role === 'kasir_cabang' && user.branchId) {
         setSelectedBranch(user.branchId);
-      } else if (data && data.length > 0) {
+      } else if (data && data.length > 0 && (user?.role === 'owner' || user?.role === 'admin_pusat')) {
         setSelectedBranch(data[0].id);
       }
     } catch (error: any) {
@@ -86,8 +107,6 @@ const Cashier = () => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      // In a real implementation, we would fetch from inventory to ensure we only show products with stock
-      // For now, fetch all products
       const { data, error } = await supabase
         .from('products')
         .select('*')
@@ -117,18 +136,15 @@ const Cashier = () => {
   );
   
   const addToCart = (product: Product) => {
-    // Cek apakah produk sudah ada di keranjang
     const existingItem = cart.find(item => item.product.id === product.id);
     
     if (existingItem) {
-      // Update quantity jika sudah ada
       setCart(cart.map(item => 
         item.product.id === product.id 
           ? { ...item, quantity: item.quantity + 1 } 
           : item
       ));
     } else {
-      // Tambah item baru ke keranjang
       setCart([...cart, { product, quantity: 1 }]);
     }
 
@@ -169,20 +185,36 @@ const Cashier = () => {
       return;
     }
 
+    if (!user?.id) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "User tidak terautentikasi",
+      });
+      return;
+    }
+
     try {
+      console.log('Processing payment with user ID:', user.id, 'branch ID:', selectedBranch);
+      
       // Create transaction
       const { data: transactionData, error: transactionError } = await supabase
         .from('transactions')
         .insert({
           branch_id: selectedBranch,
-          cashier_id: user?.id || '1', // For demo, use mock ID if needed
+          cashier_id: user.id,
           total_amount: calculateTotal(),
           payment_method: paymentMethod
         })
         .select()
         .single();
 
-      if (transactionError) throw transactionError;
+      if (transactionError) {
+        console.error('Transaction error:', transactionError);
+        throw new Error(`Gagal membuat transaksi: ${transactionError.message}`);
+      }
+
+      console.log('Transaction created:', transactionData);
 
       // Create transaction items
       const transactionItems = cart.map(item => ({
@@ -197,10 +229,10 @@ const Cashier = () => {
         .from('transaction_items')
         .insert(transactionItems);
 
-      if (itemsError) throw itemsError;
-
-      // Update inventory (decrease stock) - in a real app
-      // For each item in cart, we would reduce the inventory quantity
+      if (itemsError) {
+        console.error('Transaction items error:', itemsError);
+        throw new Error(`Gagal menyimpan item transaksi: ${itemsError.message}`);
+      }
 
       // Success
       setLastTransactionId(transactionData.id);
@@ -218,7 +250,7 @@ const Cashier = () => {
       toast({
         variant: "destructive",
         title: "Error Pembayaran",
-        description: `Gagal memproses pembayaran: ${error.message}`,
+        description: error.message || "Gagal memproses pembayaran",
       });
     }
   };
@@ -246,6 +278,14 @@ const Cashier = () => {
               />
             </div>
           </div>
+
+          {/* Branch Error Alert */}
+          {branchError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{branchError}</AlertDescription>
+            </Alert>
+          )}
           
           {loading ? (
             <div className="flex justify-center py-12">
@@ -415,7 +455,7 @@ const Cashier = () => {
                 <div className="space-y-2">
                   <Button 
                     className="w-full"
-                    disabled={cart.length === 0 || !selectedBranch}
+                    disabled={cart.length === 0 || !selectedBranch || !!branchError}
                     onClick={handleProcessPayment}
                   >
                     <CreditCard className="mr-2 h-4 w-4" />
@@ -470,7 +510,6 @@ const Cashier = () => {
             <Button 
               onClick={() => {
                 setShowSuccessDialog(false);
-                // Here you would trigger the actual printing
                 toast({
                   title: "Cetak Nota",
                   description: "Nota sedang dicetak...",
