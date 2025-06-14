@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Archive, Plus } from 'lucide-react';
-import { useProducts } from '@/hooks/useProducts';
+import { useEnhancedProducts } from '@/hooks/useEnhancedProducts';
 import { useProductBatches } from '@/hooks/useProductBatches';
 import { useBranches } from '@/hooks/useBranches';
 
@@ -21,7 +20,7 @@ export const BatchManagement = () => {
     expiryDate: ''
   });
 
-  const { products } = useProducts();
+  const { products } = useEnhancedProducts();
   const { branches } = useBranches();
   const { batches, loading, addBatch, updateStatus } = useProductBatches(selectedBranch);
 

@@ -6,13 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, Package } from 'lucide-react';
-import { useProducts } from '@/hooks/useProducts';
+import { useEnhancedProducts } from '@/hooks/useEnhancedProducts';
 import { useProductPackages } from '@/hooks/useProductPackages';
 
 export const ProductPackageManager = () => {
   const [selectedParentProduct, setSelectedParentProduct] = useState<string>('');
   const [newComponent, setNewComponent] = useState({ productId: '', quantity: 1 });
-  const { products } = useProducts();
+  const { products } = useEnhancedProducts();
   const { packages, addPackageComponent, removeComponent, fetchPackages } = useProductPackages(selectedParentProduct);
 
   const packageProducts = products.filter(p => p.active && (p.product_type === 'package' || p.product_type === 'bundle'));
