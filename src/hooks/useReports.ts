@@ -107,6 +107,8 @@ export const useReports = () => {
     
     setLoading(true);
     try {
+      console.log('Fetching reports data for user:', user.role, 'selectedBranch:', selectedBranch);
+
       // Build query based on user role and selected branch
       let transactionQuery = supabase
         .from('transactions')
@@ -131,8 +133,10 @@ export const useReports = () => {
       // Apply role-based filtering
       if (user.role === 'kasir_cabang' && user.branchId) {
         transactionQuery = transactionQuery.eq('branch_id', user.branchId);
+        console.log('Filtering for kasir branch:', user.branchId);
       } else if (selectedBranch !== 'all') {
         transactionQuery = transactionQuery.eq('branch_id', selectedBranch);
+        console.log('Filtering for selected branch:', selectedBranch);
       }
 
       // Apply date range filter
@@ -141,21 +145,39 @@ export const useReports = () => {
         .lte('transaction_date', dateRange.end + 'T23:59:59')
         .order('transaction_date', { ascending: false });
 
+      console.log('Executing transaction query...');
       const { data: transactionData, error } = await transactionQuery;
 
-      if (error) throw error;
+      if (error) {
+        console.error('Transaction query error:', error);
+        throw error;
+      }
+
+      console.log('Transaction data received:', transactionData?.length, 'records');
 
       // Transform the data to match Transaction interface
-      const transformedTransactions = (transactionData || []).map(item => ({
-        id: item.id,
-        branch_id: item.branch_id,
-        cashier_id: item.cashier_id,
-        transaction_date: item.transaction_date,
-        total_amount: item.total_amount,
-        payment_method: item.payment_method,
-        branches: item.branches || { id: '', name: '' },
-        transaction_items: item.transaction_items || []
-      }));
+      const transformedTransactions = (transactionData || []).map(item => {
+        const transformed = {
+          id: item.id,
+          branch_id: item.branch_id,
+          cashier_id: item.cashier_id,
+          transaction_date: item.transaction_date,
+          total_amount: item.total_amount,
+          payment_method: item.payment_method,
+          branches: item.branches || { id: '', name: 'Unknown Branch' },
+          transaction_items: (item.transaction_items || []).map(ti => ({
+            id: ti.id,
+            product_id: ti.product_id,
+            quantity: ti.quantity,
+            price_per_item: ti.price_per_item,
+            subtotal: ti.subtotal,
+            products: ti.products || { name: 'Unknown Product' }
+          }))
+        };
+        
+        console.log('Transformed transaction:', transformed.id, 'branch:', transformed.branches.name);
+        return transformed;
+      });
 
       setTransactions(transformedTransactions);
       
@@ -175,6 +197,8 @@ export const useReports = () => {
   };
 
   const generateSummaries = (data: Transaction[]) => {
+    console.log('Generating summaries from', data.length, 'transactions');
+    
     // Branch summary
     const branchSummaryMap = new Map<string, TransactionSummary>();
     const productSummaryMap = new Map<string, ProductSummary>();
@@ -238,6 +262,12 @@ export const useReports = () => {
       ...summary,
       avg_transaction: summary.total_transactions > 0 ? summary.total_revenue / summary.total_transactions : 0
     }));
+
+    console.log('Generated summaries:', {
+      branches: branchSummaryArray.length,
+      products: productSummaryMap.size,
+      payments: paymentSummaryMap.size
+    });
 
     setSummary(branchSummaryArray);
     setProductSummary(Array.from(productSummaryMap.values()).sort((a, b) => b.total_revenue - a.total_revenue));
