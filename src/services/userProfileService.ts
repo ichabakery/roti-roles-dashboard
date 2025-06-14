@@ -29,7 +29,7 @@ export const fetchUserBranch = async (userId: string): Promise<string | null> =>
 
 export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User | null> => {
   try {
-    console.log('Fetching profile for user:', supabaseUser.id);
+    console.log('Fetching profile for user:', supabaseUser.id, 'email:', supabaseUser.email);
     
     // Add timeout to prevent hanging
     const timeoutPromise = new Promise((_, reject) => {
@@ -51,15 +51,18 @@ export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User
     }
 
     if (!profile) {
-      console.log('No profile found, creating basic user');
+      console.log('No profile found for user:', supabaseUser.email);
       return createBasicUser(supabaseUser);
     }
+
+    console.log('Profile found:', profile);
 
     let branchId: string | undefined;
     
     // For kasir_cabang, fetch their branch assignment
     if (profile.role === 'kasir_cabang') {
       branchId = await fetchUserBranch(supabaseUser.id) || undefined;
+      console.log('Branch ID for kasir:', branchId);
     }
 
     const user: User = {
@@ -80,6 +83,7 @@ export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User
 };
 
 const createBasicUser = (supabaseUser: SupabaseUser): User => {
+  console.log('Creating basic user for:', supabaseUser.email);
   return {
     id: supabaseUser.id,
     name: supabaseUser.email?.split('@')[0] || 'User',

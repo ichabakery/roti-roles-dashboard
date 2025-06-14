@@ -22,6 +22,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthorized: (allowedRoles: RoleType[]) => boolean;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -34,6 +35,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Use ref to track which user we've fetched profile for to prevent infinite loops
   const lastFetchedUserId = useRef<string | null>(null);
   const mounted = useRef(true);
+
+  // Function to refresh user profile
+  const refreshProfile = async () => {
+    if (!supabaseUser) return;
+    
+    console.log('Refreshing profile for user:', supabaseUser.email);
+    
+    // Clear cache first
+    removeCachedUser();
+    
+    try {
+      const userProfile = await fetchUserProfile(supabaseUser);
+      if (mounted.current && userProfile) {
+        console.log('Profile refreshed successfully:', userProfile);
+        setUser(userProfile);
+        setCachedUser(userProfile);
+      }
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    }
+  };
 
   // Handle auth state changes
   useEffect(() => {
@@ -48,9 +70,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user) {
           setSupabaseUser(session.user);
           
-          // Only fetch profile if we haven't fetched it for this user yet
-          if (lastFetchedUserId.current !== session.user.id) {
-            console.log('Fetching user profile for new user:', session.user.id);
+          // Clear cache on new login to ensure fresh data
+          if (event === 'SIGNED_IN') {
+            console.log('New sign in detected, clearing cache');
+            removeCachedUser();
+          }
+          
+          // Only fetch profile if we haven't fetched it for this user yet or if it's a new login
+          if (lastFetchedUserId.current !== session.user.id || event === 'SIGNED_IN') {
+            console.log('Fetching user profile for:', session.user.email);
             lastFetchedUserId.current = session.user.id;
             
             try {
@@ -97,17 +125,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.user) {
         setSupabaseUser(session.user);
         
-        // Check cached user first
-        const cachedUser = getCachedUser();
-        if (cachedUser && cachedUser.id === session.user.id) {
-          console.log('Using cached user data');
-          setUser(cachedUser);
-          lastFetchedUserId.current = session.user.id;
-          setLoading(false);
-          return;
-        }
-        
-        // Fetch fresh profile
+        // Always fetch fresh profile on app load - don't use cache
+        console.log('App initialization - fetching fresh profile');
         lastFetchedUserId.current = session.user.id;
         try {
           const userProfile = await fetchUserProfile(session.user);
@@ -151,6 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
+      console.log('Attempting login for:', email);
       await signInWithEmail(email, password);
       // The user will be set by the auth state change listener
     } catch (error) {
@@ -184,6 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     logout,
     isAuthorized,
+    refreshProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
