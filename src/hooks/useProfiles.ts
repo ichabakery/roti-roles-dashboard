@@ -1,24 +1,11 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { RoleType } from '@/contexts/AuthContext';
+import { fetchProfilesFromDB, filterProfilesByName, ProfileData } from '@/services/profilesService';
+import { createUserInSystem, CreateUserData } from '@/services/userCreationService';
+import { deleteUserFromSystem } from '@/services/userDeletionService';
 
-interface ProfileData {
-  id: string;
-  name: string;
-  role: RoleType;
-  created_at: string;
-  updated_at: string;
-}
-
-interface CreateUserData {
-  name: string;
-  email: string;
-  password: string;
-  role: RoleType;
-  branchId?: string;
-}
+export { ProfileData, CreateUserData };
 
 export const useProfiles = () => {
   const { toast } = useToast();
@@ -30,47 +17,18 @@ export const useProfiles = () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Starting to fetch profiles...');
       
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      console.log('Profiles query result:', { data, error });
-
-      if (error) {
-        console.error('Error fetching profiles:', error);
-        setError(error.message);
-        
-        // Don't show toast for permission errors (user might not be owner)
-        if (!error.message.includes('permission') && !error.message.includes('policy')) {
-          toast({
-            title: "Error",
-            description: "Gagal memuat data pengguna",
-            variant: "destructive",
-          });
-        }
-        return;
-      }
-
-      // Type casting untuk memastikan role sebagai RoleType
-      const typedProfiles = (data || []).map(profile => ({
-        ...profile,
-        role: profile.role as RoleType
-      }));
-
-      console.log('Setting profiles:', typedProfiles);
-      setProfiles(typedProfiles);
+      const profilesData = await fetchProfilesFromDB();
+      setProfiles(profilesData);
     } catch (error: any) {
       console.error('Error in fetchProfiles:', error);
       setError(error.message);
       
-      // Only show toast for unexpected errors
+      // Don't show toast for permission errors (user might not be owner)
       if (!error.message?.includes('permission') && !error.message?.includes('policy')) {
         toast({
           title: "Error",
-          description: "Terjadi kesalahan saat memuat data",
+          description: "Gagal memuat data pengguna",
           variant: "destructive",
         });
       }
@@ -81,61 +39,8 @@ export const useProfiles = () => {
 
   const createUser = async (userData: CreateUserData) => {
     try {
-      console.log('Creating user with data:', userData);
-
-      // 1. Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: userData.email,
-        password: userData.password,
-        options: {
-          data: {
-            name: userData.name,
-            role: userData.role,
-          },
-          emailRedirectTo: `${window.location.origin}/dashboard`
-        }
-      });
-
-      if (authError) {
-        console.error('Auth error:', authError);
-        throw authError;
-      }
-
-      if (!authData.user) {
-        throw new Error('User creation failed - no user returned');
-      }
-
-      console.log('User created in auth:', authData.user.id);
-
-      // 2. Update profile with correct role (trigger should have created basic profile)
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ 
-          name: userData.name,
-          role: userData.role 
-        })
-        .eq('id', authData.user.id);
-
-      if (profileError) {
-        console.error('Profile update error:', profileError);
-        // Don't throw here as user is already created
-      }
-
-      // 3. If kasir_cabang, assign to branch
-      if (userData.role === 'kasir_cabang' && userData.branchId) {
-        const { error: branchError } = await supabase
-          .from('user_branches')
-          .insert({
-            user_id: authData.user.id,
-            branch_id: userData.branchId
-          });
-
-        if (branchError) {
-          console.error('Branch assignment error:', branchError);
-          // Don't throw here as user is already created
-        }
-      }
-
+      await createUserInSystem(userData);
+      
       toast({
         title: "Berhasil",
         description: "Pengguna baru berhasil ditambahkan",
@@ -169,24 +74,7 @@ export const useProfiles = () => {
 
   const deleteUser = async (userId: string) => {
     try {
-      // Check if trying to delete owner
-      const profile = profiles.find(p => p.id === userId);
-      if (profile?.role === 'owner') {
-        toast({
-          title: "Tidak diizinkan",
-          description: "Owner tidak dapat dihapus dari sistem",
-          variant: "destructive",
-        });
-        return { success: false };
-      }
-
-      // Delete from auth (will cascade to profiles due to foreign key)
-      const { error } = await supabase.auth.admin.deleteUser(userId);
-
-      if (error) {
-        console.error('Error deleting user:', error);
-        throw error;
-      }
+      await deleteUserFromSystem(userId, profiles);
 
       toast({
         title: "Berhasil",
@@ -201,7 +89,7 @@ export const useProfiles = () => {
       console.error('Error deleting user:', error);
       toast({
         title: "Error",
-        description: "Gagal menghapus pengguna",
+        description: error.message || "Gagal menghapus pengguna",
         variant: "destructive",
       });
       return { success: false };
@@ -209,9 +97,7 @@ export const useProfiles = () => {
   };
 
   const filterProfiles = (searchQuery: string) => {
-    return profiles.filter(profile => 
-      profile.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    return filterProfilesByName(profiles, searchQuery);
   };
 
   useEffect(() => {
