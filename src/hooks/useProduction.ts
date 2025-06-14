@@ -59,11 +59,12 @@ export const useProduction = () => {
       }
 
       // Transform data for UI
-      const transformedRequests = data.map(request => ({
+      const transformedRequests: ProductionRequest[] = data.map(request => ({
         ...request,
         productName: request.products?.name,
         branchName: request.branches?.name,
-        production_date: format(parseISO(request.production_date), 'yyyy-MM-dd')
+        production_date: format(parseISO(request.production_date), 'yyyy-MM-dd'),
+        status: request.status as 'pending' | 'in_progress' | 'completed' | 'cancelled'
       }));
 
       console.log('Production requests fetched:', transformedRequests);
