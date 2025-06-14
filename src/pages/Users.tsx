@@ -7,7 +7,7 @@ import UserSearch from '@/components/users/UserSearch';
 import { useBranches } from '@/hooks/useBranches';
 import { useUsers } from '@/hooks/useUsers';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const UserManagement = () => {
@@ -66,11 +66,19 @@ const UserManagement = () => {
             </p>
           </div>
           
-          <AddUserDialog 
-            branches={branches}
-            branchesLoading={branchesLoading}
-            onAddUser={addUser}
-          />
+          <div className="flex items-center gap-2">
+            {usersLoading && (
+              <Button variant="outline" size="sm" disabled>
+                <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                Memuat...
+              </Button>
+            )}
+            <AddUserDialog 
+              branches={branches}
+              branchesLoading={branchesLoading}
+              onAddUser={addUser}
+            />
+          </div>
         </div>
 
         <UserSearch 
@@ -84,6 +92,14 @@ const UserManagement = () => {
           <div className="flex items-center justify-center py-10">
             <Loader2 className="h-8 w-8 animate-spin" />
             <span className="ml-2">Memuat data pengguna...</span>
+          </div>
+        ) : users.length === 0 ? (
+          <div className="text-center py-10">
+            <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium mb-2">Belum ada data pengguna</h3>
+            <p className="text-muted-foreground mb-4">
+              Mulai dengan menambahkan pengguna pertama ke sistem
+            </p>
           </div>
         ) : (
           <UserTable 

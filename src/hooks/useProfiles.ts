@@ -12,7 +12,7 @@ export type { UpdateUserData };
 export const useProfiles = () => {
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<ProfileData[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start with loading true
   const [error, setError] = useState<string | null>(null);
 
   const fetchProfiles = async () => {
@@ -22,18 +22,20 @@ export const useProfiles = () => {
       setError(null);
       
       const profilesData = await fetchProfilesFromDB();
-      console.log('useProfiles: Fetched profiles:', profilesData);
+      console.log('useProfiles: Fetched profiles successfully:', profilesData.length, 'profiles');
       setProfiles(profilesData);
     } catch (error: any) {
       console.error('useProfiles: Error in fetchProfiles:', error);
       setError(error.message);
       
-      // Always show toast for errors to help with debugging
-      toast({
-        title: "Error",
-        description: error.message || "Gagal memuat data pengguna",
-        variant: "destructive",
-      });
+      // Only show toast for non-permission errors to avoid spamming
+      if (!error.message?.includes('tidak ada izin') && !error.message?.includes('akses ditolak')) {
+        toast({
+          title: "Error",
+          description: error.message || "Gagal memuat data pengguna",
+          variant: "destructive",
+        });
+      }
     } finally {
       console.log('useProfiles: Setting loading to false');
       setLoading(false);
@@ -128,7 +130,7 @@ export const useProfiles = () => {
   };
 
   useEffect(() => {
-    console.log('useProfiles: useEffect triggered');
+    console.log('useProfiles: useEffect triggered, starting to fetch profiles');
     fetchProfiles();
   }, []);
 

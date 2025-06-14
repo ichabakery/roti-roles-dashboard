@@ -18,15 +18,15 @@ export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
   try {
     // Add timeout to prevent infinite loading
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
     const { data, error } = await supabase
       .from('profiles')
       .select(`
         *,
-        user_branches!left (
+        user_branches (
           branch_id,
-          branches!inner (
+          branches (
             id,
             name
           )
@@ -37,7 +37,7 @@ export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
 
     clearTimeout(timeoutId);
 
-    console.log('profilesService: Profiles with branches query result:', { data, error });
+    console.log('profilesService: Raw query result:', { data, error });
 
     if (error) {
       console.error('profilesService: Error fetching profiles:', error);
@@ -56,22 +56,36 @@ export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
 
     // Transform data to include branch information
     const typedProfiles = (data || []).map(profile => {
+      console.log('Processing profile:', profile.name, 'user_branches:', profile.user_branches);
+      
       // Handle the nested user_branches structure properly
-      const userBranch = profile.user_branches && Array.isArray(profile.user_branches) 
-        ? profile.user_branches[0] 
-        : profile.user_branches;
+      let branchId: string | undefined;
+      let branchName: string | undefined;
       
-      const branchData = userBranch?.branches;
+      if (profile.user_branches) {
+        // user_branches could be an array or a single object
+        const userBranch = Array.isArray(profile.user_branches) 
+          ? profile.user_branches[0] 
+          : profile.user_branches;
+        
+        if (userBranch && userBranch.branches) {
+          branchId = userBranch.branches.id;
+          branchName = userBranch.branches.name;
+        }
+      }
       
-      return {
+      const transformedProfile = {
         ...profile,
         role: profile.role as RoleType,
-        branchId: branchData?.id || undefined,
-        branchName: branchData?.name || undefined
+        branchId,
+        branchName
       };
+      
+      console.log('Transformed profile:', transformedProfile.name, 'branch:', branchName);
+      return transformedProfile;
     });
 
-    console.log('profilesService: Successfully fetched profiles with branch data:', typedProfiles);
+    console.log('profilesService: Successfully fetched and transformed profiles:', typedProfiles.length, 'profiles');
     return typedProfiles;
   } catch (error: any) {
     console.error('profilesService: Error in fetchProfilesFromDB:', error);

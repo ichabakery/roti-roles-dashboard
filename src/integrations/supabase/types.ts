@@ -57,6 +57,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_inventory_branch_id"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_inventory_product_id"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "inventory_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
@@ -107,6 +121,20 @@ export type Database = {
           quantity_produced?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_production_batches_produced_by"
+            columns: ["produced_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_production_batches_production_request_id"
+            columns: ["production_request_id"]
+            isOneToOne: false
+            referencedRelation: "production_requests"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "production_batches_production_request_id_fkey"
             columns: ["production_request_id"]
@@ -160,6 +188,34 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_production_requests_branch_id"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_production_requests_produced_by"
+            columns: ["produced_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_production_requests_product_id"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_production_requests_requested_by"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "production_requests_branch_id_fkey"
             columns: ["branch_id"]
@@ -257,6 +313,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_transaction_items_product_id"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_transaction_items_transaction_id"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "transaction_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -305,6 +375,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_transactions_branch_id"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_transactions_cashier_id"
+            columns: ["cashier_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "transactions_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
@@ -327,6 +411,20 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_user_branches_branch_id"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_user_branches_user_id"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_branches_branch_id_fkey"
             columns: ["branch_id"]
