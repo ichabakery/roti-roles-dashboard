@@ -1,6 +1,7 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, RoleType } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
@@ -25,7 +26,7 @@ interface NavItem {
   icon: React.FC<any>;
 }
 
-const navigation: NavItem[] = [
+const allNavigation: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Produk Sederhana', href: '/products', icon: Package },
   { name: 'Produk Lengkap', href: '/enhanced-products', icon: Archive },
@@ -38,6 +39,26 @@ const navigation: NavItem[] = [
   { name: 'Pengaturan', href: '/settings', icon: Settings },
 ];
 
+const getNavigationForRole = (role: RoleType): NavItem[] => {
+  switch (role) {
+    case 'kasir_cabang':
+      return allNavigation.filter(item => 
+        ['Dashboard', 'Kasir', 'Inventory', 'Laporan', 'Pengaturan'].includes(item.name)
+      );
+    case 'kepala_produksi':
+      return allNavigation.filter(item =>
+        ['Dashboard', 'Produksi', 'Inventory', 'Pengaturan'].includes(item.name)
+      );
+    case 'admin_pusat':
+      return allNavigation.filter(item =>
+        ['Dashboard', 'Produk Sederhana', 'Produk Lengkap', 'Inventory', 'Laporan', 'Pengguna', 'Cabang', 'Pengaturan'].includes(item.name)
+      );
+    case 'owner':
+    default:
+      return allNavigation;
+  }
+};
+
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
@@ -48,6 +69,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  const navigation = user ? getNavigationForRole(user.role) : allNavigation;
+
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location]);
@@ -57,22 +80,22 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     navigate('/login');
   };
 
-  const activeNavItemStyles = "bg-muted text-primary";
+  const activeNavItemStyles = "bg-bakery-600 text-white font-semibold";
 
   return (
-    <div className="flex h-screen bg-gray-100 text-gray-700">
+    <div className="flex h-screen bg-gray-50 text-gray-700">
       {/* Mobile menu */}
       <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="sm" className="md:hidden absolute top-4 left-4">
+          <Button variant="ghost" size="sm" className="md:hidden absolute top-4 left-4 text-bakery-700">
             <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-64 p-0">
+        <SheetContent side="left" className="w-64 p-0 bg-bakery-700">
           <div className="flex flex-col h-full">
-            <div className="px-4 py-6 text-center border-b">
-              <h2 className="text-lg font-semibold">Toko Roti Enak</h2>
-              <p className="text-sm text-gray-500">Selamat datang, {user?.email}</p>
+            <div className="px-4 py-6 text-center border-b border-bakery-600">
+              <h2 className="text-lg font-semibold text-white">Toko Roti Enak</h2>
+              <p className="text-sm text-bakery-200">Selamat datang, {user?.email}</p>
             </div>
             <nav className="flex flex-col flex-1 px-2 py-4 space-y-1">
               {navigation.map((item) => (
@@ -80,7 +103,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                   key={item.name}
                   variant="ghost"
                   className={cn(
-                    "justify-start px-4",
+                    "justify-start px-4 text-bakery-100 hover:bg-bakery-600 hover:text-white",
                     location.pathname === item.href ? activeNavItemStyles : ""
                   )}
                   onClick={() => navigate(item.href)}
@@ -91,7 +114,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
               ))}
             </nav>
             <div className="p-4">
-              <Button variant="outline" className="w-full" onClick={handleLogout}>
+              <Button 
+                variant="outline" 
+                className="w-full bg-transparent border-bakery-500 text-bakery-100 hover:bg-bakery-600 hover:text-white"
+                onClick={handleLogout}
+              >
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
               </Button>
@@ -101,10 +128,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       </Sheet>
 
       {/* Desktop sidebar */}
-      <aside className="w-64 hidden md:flex flex-col border-r">
-        <div className="px-4 py-6 text-center border-b">
-          <h2 className="text-lg font-semibold">Toko Roti Enak</h2>
-          <p className="text-sm text-gray-500">Selamat datang, {user?.email}</p>
+      <aside className="w-64 hidden md:flex flex-col border-r bg-bakery-700">
+        <div className="px-4 py-6 text-center border-b border-bakery-600">
+          <h2 className="text-lg font-semibold text-white">Toko Roti Enak</h2>
+          <p className="text-sm text-bakery-200">Selamat datang, {user?.email}</p>
         </div>
         <nav className="flex flex-col flex-1 px-2 py-4 space-y-1">
           {navigation.map((item) => (
@@ -112,7 +139,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
               key={item.name}
               variant="ghost"
               className={cn(
-                "justify-start px-4",
+                "justify-start px-4 text-bakery-100 hover:bg-bakery-600 hover:text-white",
                 location.pathname === item.href ? activeNavItemStyles : ""
               )}
               onClick={() => navigate(item.href)}
@@ -123,7 +150,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           ))}
         </nav>
         <div className="p-4">
-          <Button variant="outline" className="w-full" onClick={handleLogout}>
+          <Button 
+            variant="outline" 
+            className="w-full bg-transparent border-bakery-500 text-bakery-100 hover:bg-bakery-600 hover:text-white"
+            onClick={handleLogout}
+          >
             <LogOut className="w-4 h-4 mr-2" />
             Logout
           </Button>
@@ -131,7 +162,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 p-4">
+      <main className="flex-1 p-4 bg-white">
         {children}
       </main>
     </div>
