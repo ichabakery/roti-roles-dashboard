@@ -28,10 +28,14 @@ export const useProfiles = () => {
   const fetchProfiles = async () => {
     try {
       setLoading(true);
+      console.log('Starting to fetch profiles...');
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
+
+      console.log('Profiles query result:', { data, error });
 
       if (error) {
         console.error('Error fetching profiles:', error);
@@ -49,6 +53,7 @@ export const useProfiles = () => {
         role: profile.role as RoleType
       }));
 
+      console.log('Setting profiles:', typedProfiles);
       setProfiles(typedProfiles);
     } catch (error) {
       console.error('Error in fetchProfiles:', error);
@@ -198,6 +203,7 @@ export const useProfiles = () => {
   };
 
   useEffect(() => {
+    console.log('useProfiles useEffect triggered');
     fetchProfiles();
   }, []);
 
