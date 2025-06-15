@@ -41,7 +41,7 @@ export const fetchTransactionsFromDB = async (
     console.log('✅ Kasir cabang has valid branch assignment:', userBranchId);
   }
 
-  // Build optimized query with proper joins
+  // Build optimized query with proper foreign key hints
   let transactionQuery = supabase
     .from('transactions')
     .select(`
@@ -51,15 +51,17 @@ export const fetchTransactionsFromDB = async (
       transaction_date,
       total_amount,
       payment_method,
+      received,
+      change,
       profiles:cashier_id(id, name),
-      branches!inner(id, name),
-      transaction_items!inner(
+      branches:branch_id(id, name),
+      transaction_items(
         id,
         product_id,
         quantity,
         price_per_item,
         subtotal,
-        products!inner(
+        products:product_id(
           id,
           name,
           description
@@ -137,7 +139,7 @@ export const fetchTransactionsFromDB = async (
     return [];
   }
 
-  // Validate and log data quality
+  // Validate and log data quality with proper type checking
   const validTransactions = transactionData.filter(transaction => {
     const hasValidItems = transaction.transaction_items && 
                          Array.isArray(transaction.transaction_items) && 
@@ -148,19 +150,23 @@ export const fetchTransactionsFromDB = async (
       return false;
     }
 
-    // Validate each transaction item
+    // Validate each transaction item with proper type checking
     const validItems = transaction.transaction_items.every(item => {
-      const isValid = item.products && 
-                     item.products.name && 
-                     typeof item.quantity === 'number' && 
-                     typeof item.price_per_item === 'number' && 
-                     typeof item.subtotal === 'number';
+      // Check if products exists and is not an error object
+      const hasValidProduct = item.products && 
+                             typeof item.products === 'object' && 
+                             !('error' in item.products) &&
+                             'name' in item.products;
       
-      if (!isValid) {
+      const hasValidNumbers = typeof item.quantity === 'number' && 
+                             typeof item.price_per_item === 'number' && 
+                             typeof item.subtotal === 'number';
+      
+      if (!hasValidProduct || !hasValidNumbers) {
         console.warn('⚠️ Invalid transaction item:', item);
       }
       
-      return isValid;
+      return hasValidProduct && hasValidNumbers;
     });
 
     return validItems;
@@ -168,26 +174,39 @@ export const fetchTransactionsFromDB = async (
 
   console.log(`✅ ${validTransactions.length} valid transactions out of ${transactionData.length} total`);
 
-  // Transform and enrich the data
+  // Transform and enrich the data with proper type safety
   const enrichedTransactions = validTransactions.map(transaction => {
-    const cashier_name = transaction.profiles?.name || 'Kasir';
+    const cashier_name = (transaction.profiles && typeof transaction.profiles === 'object' && 'name' in transaction.profiles) 
+      ? transaction.profiles.name 
+      : 'Kasir';
+    
+    const branch_name = (transaction.branches && typeof transaction.branches === 'object' && 'name' in transaction.branches)
+      ? transaction.branches.name
+      : 'Unknown Branch';
     
     return {
       ...transaction,
       cashier_name,
+      branches: {
+        id: transaction.branch_id,
+        name: branch_name
+      },
       // Ensure transaction_items is always an array with valid data
-      transaction_items: transaction.transaction_items.map(item => ({
-        id: item.id,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        price_per_item: item.price_per_item,
-        subtotal: item.subtotal,
-        products: {
-          id: item.products.id,
-          name: item.products.name,
-          description: item.products.description
-        }
-      }))
+      transaction_items: transaction.transaction_items.map(item => {
+        // Type guard to ensure products is valid
+        const products = (item.products && typeof item.products === 'object' && 'name' in item.products)
+          ? item.products as { id: string; name: string; description?: string }
+          : { id: '', name: 'Produk Tidak Dikenal', description: '' };
+
+        return {
+          id: item.id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          price_per_item: item.price_per_item,
+          subtotal: item.subtotal,
+          products
+        };
+      })
     };
   });
 
