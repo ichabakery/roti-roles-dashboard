@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Trash2 } from 'lucide-react';
 import { useEnhancedProducts } from '@/hooks/useEnhancedProducts';
 import { useBranches } from '@/hooks/useBranches';
+import { useUserBranch } from '@/hooks/useUserBranch';
 import { createReturn } from '@/services/returnService';
 
 interface ReturnItem {
@@ -47,6 +48,17 @@ export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
   const { toast } = useToast();
   const { products } = useEnhancedProducts();
   const { branches } = useBranches();
+  const { userBranch } = useUserBranch();
+
+  // Auto-select branch for kasir_cabang
+  useEffect(() => {
+    if (userRole === 'kasir_cabang' && userBranch.branchId) {
+      setFormData(prev => ({ 
+        ...prev, 
+        branchId: userBranch.branchId || ''
+      }));
+    }
+  }, [userRole, userBranch.branchId]);
 
   const reasonOptions = [
     'Produk rusak/cacat',
@@ -97,7 +109,12 @@ export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
       });
 
       // Reset form
-      setFormData({ branchId: '', reason: '', notes: '', transactionId: '' });
+      setFormData({ 
+        branchId: userRole === 'kasir_cabang' ? (userBranch.branchId || '') : '', 
+        reason: '', 
+        notes: '', 
+        transactionId: '' 
+      });
       setReturnItems([{ productId: '', quantity: 1, reason: '', condition: 'resaleable' }]);
       onOpenChange(false);
     } catch (error: any) {
@@ -143,20 +160,27 @@ export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="branch">Cabang *</Label>
-              <Select value={formData.branchId} onValueChange={(value) => 
-                setFormData(prev => ({ ...prev, branchId: value }))
-              }>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih cabang" />
-                </SelectTrigger>
-                <SelectContent>
-                  {branches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {userRole === 'kasir_cabang' ? (
+                <div className="p-3 bg-gray-50 border rounded-md">
+                  <span className="font-medium">{userBranch.branchName || 'Loading...'}</span>
+                  <p className="text-sm text-muted-foreground">Cabang Anda</p>
+                </div>
+              ) : (
+                <Select value={formData.branchId} onValueChange={(value) => 
+                  setFormData(prev => ({ ...prev, branchId: value }))
+                }>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih cabang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches.map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <div>

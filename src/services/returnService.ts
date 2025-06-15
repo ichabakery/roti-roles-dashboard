@@ -64,7 +64,11 @@ export const fetchReturns = async (branchId?: string): Promise<Return[]> => {
       reason,
       status,
       notes,
-      created_at
+      created_at,
+      branches!fk_returns_branch_id (
+        id,
+        name
+      )
     `)
     .order('created_at', { ascending: false });
 
@@ -75,10 +79,11 @@ export const fetchReturns = async (branchId?: string): Promise<Return[]> => {
   const { data, error } = await query;
   if (error) throw error;
   
-  // Type assertion to ensure correct typing
+  // Type assertion to ensure correct typing with branch data
   return (data || []).map(returnItem => ({
     ...returnItem,
-    status: returnItem.status as 'pending' | 'approved' | 'rejected'
+    status: returnItem.status as 'pending' | 'approved' | 'rejected',
+    branch: returnItem.branches
   })) as Return[];
 };
 

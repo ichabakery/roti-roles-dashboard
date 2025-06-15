@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, Search, Filter } from 'lucide-react';
+import { Eye, Search, Filter, MapPin } from 'lucide-react';
 import { fetchReturns } from '@/services/returnService';
 import { Return } from '@/types/products';
 import { ReturnDetailDialog } from './ReturnDetailDialog';
+import { useUserBranch } from '@/hooks/useUserBranch';
 import { format } from 'date-fns';
 
 interface ReturnsListProps {
@@ -23,15 +24,18 @@ export const ReturnsList: React.FC<ReturnsListProps> = ({ canApprove, userRole }
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedReturn, setSelectedReturn] = useState<Return | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const { userBranch } = useUserBranch();
 
   useEffect(() => {
     loadReturns();
-  }, []);
+  }, [userRole, userBranch.branchId]);
 
   const loadReturns = async () => {
     try {
       setLoading(true);
-      const data = await fetchReturns();
+      // For kasir_cabang, only load returns from their branch
+      const branchFilter = userRole === 'kasir_cabang' ? userBranch.branchId : undefined;
+      const data = await fetchReturns(branchFilter);
       setReturns(data);
     } catch (error) {
       console.error('Error loading returns:', error);
@@ -55,7 +59,8 @@ export const ReturnsList: React.FC<ReturnsListProps> = ({ canApprove, userRole }
 
   const filteredReturns = returns.filter(returnItem => {
     const matchesSearch = returnItem.reason.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         returnItem.id.toLowerCase().includes(searchQuery.toLowerCase());
+                         returnItem.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         ((returnItem as any).branch?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || returnItem.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -80,7 +85,7 @@ export const ReturnsList: React.FC<ReturnsListProps> = ({ canApprove, userRole }
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Cari berdasarkan ID atau alasan retur..."
+            placeholder="Cari berdasarkan ID, alasan retur, atau cabang..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -107,6 +112,7 @@ export const ReturnsList: React.FC<ReturnsListProps> = ({ canApprove, userRole }
             <TableRow>
               <TableHead>ID Retur</TableHead>
               <TableHead>Tanggal</TableHead>
+              <TableHead>Cabang</TableHead>
               <TableHead>Alasan</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Catatan</TableHead>
@@ -116,7 +122,7 @@ export const ReturnsList: React.FC<ReturnsListProps> = ({ canApprove, userRole }
           <TableBody>
             {filteredReturns.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   {searchQuery || statusFilter !== 'all' 
                     ? 'Tidak ada retur yang sesuai dengan filter'
                     : 'Belum ada retur yang dibuat'
@@ -131,6 +137,14 @@ export const ReturnsList: React.FC<ReturnsListProps> = ({ canApprove, userRole }
                   </TableCell>
                   <TableCell>
                     {format(new Date(returnItem.return_date), 'dd/MM/yyyy HH:mm')}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-sm">
+                        {(returnItem as any).branch?.name || 'Unknown'}
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell>{returnItem.reason}</TableCell>
                   <TableCell>{getStatusBadge(returnItem.status)}</TableCell>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import NotificationIcon from '@/components/notifications/NotificationIcon';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserBranch } from '@/hooks/useUserBranch';
 import { 
   LayoutDashboard, 
   Users, 
@@ -27,12 +28,20 @@ interface DashboardLayoutProps {
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { userBranch } = useUserBranch();
   const location = useLocation();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+  };
+
+  const getBranchDisplayName = () => {
+    if (user?.role === 'kasir_cabang') {
+      return userBranch.branchName || 'Loading...';
+    }
+    return 'Manajemen Pusat';
   };
 
   const menuItems = [
@@ -184,6 +193,10 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               <h2 className="text-lg font-semibold text-gray-800 capitalize">
                 {menuItems.find(item => item.href === location.pathname)?.name || 'Dashboard'}
               </h2>
+              <div className="flex items-center text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                <MapPin className="h-4 w-4 mr-1" />
+                <span className="font-medium">📍 {getBranchDisplayName()}</span>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <NotificationIcon unreadCount={0} />

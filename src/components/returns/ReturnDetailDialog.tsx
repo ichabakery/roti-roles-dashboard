@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, XCircle, Package, Calendar, User, FileText } from 'lucide-react';
+import { CheckCircle, XCircle, Package, Calendar, User, FileText, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Return, ReturnItem } from '@/types/products';
 import { fetchReturnItems, processReturn } from '@/services/returnService';
@@ -138,6 +137,16 @@ export const ReturnDetailDialog: React.FC<ReturnDetailDialogProps> = ({
                 <div className="mt-1 flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   {format(new Date(returnItem.return_date), 'dd MMMM yyyy, HH:mm')}
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-muted-foreground">Cabang Asal</Label>
+                <div className="mt-1 flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">
+                    {(returnItem as any).branch?.name || 'Unknown Branch'}
+                  </span>
                 </div>
               </div>
 
