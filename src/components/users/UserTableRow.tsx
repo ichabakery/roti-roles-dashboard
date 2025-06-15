@@ -7,7 +7,7 @@ import UserActionsMenu from './UserActionsMenu';
 interface UserData {
   id: string;
   name: string;
-  email: string;
+  email: string; // Real email from database
   role: RoleType;
   branchId?: string;
   branchName?: string;
@@ -76,7 +76,14 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
   return (
     <TableRow>
       <TableCell className="font-medium">{user.name}</TableCell>
-      <TableCell>{user.email}</TableCell>
+      <TableCell className="font-mono text-sm">
+        {user.email}
+        {user.email.includes('@example.com') && (
+          <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">
+            Email Placeholder
+          </span>
+        )}
+      </TableCell>
       <TableCell>
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
           {getRoleName(user.role)}

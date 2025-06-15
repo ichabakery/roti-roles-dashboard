@@ -8,19 +8,21 @@ export interface ProfileData {
   role: RoleType;
   created_at: string;
   updated_at: string;
+  email: string; // Add real email field
   branchId?: string;
   branchName?: string;
 }
 
 export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
-  console.log('profilesService: Starting to fetch profiles with branch data...');
+  console.log('profilesService: Starting to fetch profiles with branch data and real emails...');
   
   try {
     // Add timeout to prevent infinite loading
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-    const { data, error } = await supabase
+    // First get all profiles with branch data
+    const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
       .select(`
         *,
@@ -37,25 +39,54 @@ export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
 
     clearTimeout(timeoutId);
 
-    console.log('profilesService: Raw query result:', { data, error });
+    console.log('profilesService: Profiles query result:', { profilesData, profilesError });
 
-    if (error) {
-      console.error('profilesService: Error fetching profiles:', error);
+    if (profilesError) {
+      console.error('profilesService: Error fetching profiles:', profilesError);
       
       // Handle specific error cases
-      if (error.code === 'PGRST301') {
+      if (profilesError.code === 'PGRST301') {
         throw new Error('Tidak ada izin untuk mengakses data pengguna. Pastikan Anda login sebagai owner.');
       }
       
-      if (error.message?.includes('permission denied')) {
+      if (profilesError.message?.includes('permission denied')) {
         throw new Error('Akses ditolak. Hanya owner yang dapat melihat daftar pengguna.');
       }
       
-      throw new Error(`Gagal memuat data pengguna: ${error.message}`);
+      throw new Error(`Gagal memuat data pengguna: ${profilesError.message}`);
     }
 
-    // Transform data to include branch information
-    const typedProfiles = (data || []).map(profile => {
+    if (!profilesData || profilesData.length === 0) {
+      console.log('profilesService: No profiles found');
+      return [];
+    }
+
+    // Get emails from auth.users using admin endpoint
+    console.log('profilesService: Fetching real emails from auth system...');
+    const userIds = profilesData.map(profile => profile.id);
+    
+    // Use admin API to get user emails (requires owner role)
+    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+    
+    console.log('profilesService: Auth users result:', { 
+      authUsersCount: authUsers?.users?.length, 
+      authError 
+    });
+
+    // Create email mapping from auth users
+    const emailMap = new Map<string, string>();
+    if (authUsers?.users && !authError) {
+      authUsers.users.forEach(user => {
+        if (user.id && user.email) {
+          emailMap.set(user.id, user.email);
+        }
+      });
+    } else {
+      console.warn('profilesService: Could not fetch emails from auth system:', authError);
+    }
+
+    // Transform data to include branch information and real emails
+    const typedProfiles = profilesData.map(profile => {
       console.log('Processing profile:', profile.name, 'user_branches:', profile.user_branches);
       
       // Handle the nested user_branches structure properly
@@ -78,15 +109,19 @@ export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
           branchName = userBranch.branches.name;
         }
       }
+
+      // Get real email from auth system or fallback to placeholder
+      const realEmail = emailMap.get(profile.id) || `${profile.name.toLowerCase().replace(/\s+/g, '')}@example.com`;
       
       const transformedProfile = {
         ...profile,
         role: profile.role as RoleType,
+        email: realEmail,
         branchId,
         branchName
       };
       
-      console.log('Transformed profile:', transformedProfile.name, 'branch:', branchName);
+      console.log('Transformed profile:', transformedProfile.name, 'email:', realEmail, 'branch:', branchName);
       return transformedProfile;
     });
 
@@ -105,6 +140,7 @@ export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
 
 export const filterProfilesByName = (profiles: ProfileData[], searchQuery: string): ProfileData[] => {
   return profiles.filter(profile => 
-    profile.name.toLowerCase().includes(searchQuery.toLowerCase())
+    profile.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    profile.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 };

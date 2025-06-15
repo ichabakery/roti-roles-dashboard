@@ -31,11 +31,11 @@ export const useUsers = () => {
   const { profiles, loading, createUser, deleteUser, updateUser, filterProfiles } = useProfiles();
   const { getUserBranches } = useBranchManagement();
 
-  // Transform profiles to UserData format with branch information
+  // Transform profiles to UserData format with real email from database
   const users: UserData[] = profiles.map(profile => ({
     id: profile.id,
     name: profile.name,
-    email: `${profile.name.toLowerCase().replace(/\s+/g, '')}@example.com`, // Placeholder email
+    email: profile.email, // Use real email from profilesService
     role: profile.role,
     branchId: profile.branchId,
     branchName: profile.branchName,
@@ -80,7 +80,7 @@ export const useUsers = () => {
     return filteredProfiles.map(profile => ({
       id: profile.id,
       name: profile.name,
-      email: `${profile.name.toLowerCase().replace(/\s+/g, '')}@example.com`,
+      email: profile.email, // Use real email from profilesService
       role: profile.role,
       branchId: profile.branchId,
       branchName: profile.branchName,
