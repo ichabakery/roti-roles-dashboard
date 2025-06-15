@@ -18,6 +18,9 @@ import {
   Menu,
   LogOut
 } from 'lucide-react';
+import { useNotifications } from '@/hooks/useNotifications';
+import NotificationIcon from '@/components/notifications/NotificationIcon';
+import NotificationCenter from '@/components/notifications/NotificationCenter';
 
 interface NavItem {
   name: string;
@@ -67,6 +70,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const navigate = useNavigate();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const { unreadCount } = useNotifications();
 
   const navigation = user ? getNavigationForRole(user.role) : allNavigation;
 
@@ -129,7 +134,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       {/* Desktop sidebar - Fixed positioning */}
       <aside className="w-64 hidden md:flex flex-col border-r bg-bakery-700 fixed left-0 top-0 h-screen z-40">
         <div className="px-4 py-6 text-center border-b border-bakery-600">
-          <h2 className="text-lg font-semibold text-white">Toko Roti Enak</h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-lg font-semibold text-white">Toko Roti Enak</h2>
+            <NotificationIcon 
+              unreadCount={unreadCount} 
+              onClick={() => setNotificationOpen(true)}
+            />
+          </div>
           <p className="text-sm text-bakery-200">Selamat datang, {user?.email}</p>
         </div>
         <nav className="flex flex-col flex-1 px-2 py-4 space-y-1 overflow-y-auto">
@@ -164,6 +175,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       <main className="flex-1 p-4 bg-white md:ml-64 overflow-y-auto">
         {children}
       </main>
+
+      {/* Notification Center */}
+      <NotificationCenter 
+        open={notificationOpen} 
+        onOpenChange={setNotificationOpen} 
+      />
     </div>
   );
 };
