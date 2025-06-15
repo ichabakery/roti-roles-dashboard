@@ -10,56 +10,7 @@ import { TransactionItemsTab } from './TransactionItemsTab';
 import { ProductsTab } from './ProductsTab';
 import { ReportsFilters } from './ReportsFilters';
 import { ReportsExport } from './ReportsExport';
-
-interface Branch {
-  id: string;
-  name: string;
-}
-
-interface DateRange {
-  start: string;
-  end: string;
-}
-
-interface Transaction {
-  id: string;
-  branch_id: string;
-  transaction_date: string;
-  total_amount: number;
-  payment_method: string;
-  branch?: { name: string };
-  transaction_items?: Array<{
-    id: string;
-    product_id: string;
-    quantity: number;
-    price_per_item: number;
-    subtotal: number;
-    products?: {
-      name: string;
-    };
-  }>;
-}
-
-interface TransactionSummary {
-  branch_id: string;
-  branch_name: string;
-  total_transactions: number;
-  total_revenue: number;
-  avg_transaction: number;
-}
-
-interface ProductSummary {
-  product_id: string;
-  product_name: string;
-  total_quantity: number;
-  total_revenue: number;
-}
-
-interface PaymentMethodSummary {
-  payment_method: string;
-  count: number;
-  total_amount: number;
-}
+import type { Transaction, TransactionSummary, ProductSummary, PaymentMethodSummary, Branch, DateRange } from '@/types/reports';
 
 interface ReportsContentProps {
   transactions: Transaction[];

@@ -3,22 +3,12 @@ import React, { useState } from 'react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Search, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import type { ProductSummary, Transaction } from '@/types/reports';
 
-interface ProductSummary {
-  product_id: string;
-  product_name: string;
-  total_quantity: number;
-  total_revenue: number;
-}
-
-interface Transaction {
-  transaction_date: string;
-  transaction_items?: Array<{
-    product_id: string;
-    quantity: number;
-    subtotal: number;
-    products?: { name: string };
-  }>;
+interface ProductsTabProps {
+  productSummary: ProductSummary[];
+  transactions: Transaction[];
+  loading: boolean;
 }
 
 interface EnhancedProductSummary extends ProductSummary {
@@ -27,14 +17,13 @@ interface EnhancedProductSummary extends ProductSummary {
   revenue_percentage: number;
 }
 
-interface ProductsTabProps {
-  productSummary: ProductSummary[];
-  transactions: Transaction[];
-  loading: boolean;
-}
-
 export const ProductsTab: React.FC<ProductsTabProps> = ({ productSummary, transactions, loading }) => {
   const [searchQuery, setSearchQuery] = useState('');
+
+  console.log('ProductsTab received:', {
+    productSummaryCount: productSummary.length,
+    transactionsCount: transactions.length
+  });
 
   // Calculate enhanced metrics
   const enhancedSummary: EnhancedProductSummary[] = productSummary.map(product => {

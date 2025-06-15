@@ -3,38 +3,7 @@ import React, { useState } from 'react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
-
-interface TransactionItem {
-  id: string;
-  product_id: string;
-  quantity: number;
-  price_per_item: number;
-  subtotal: number;
-  products?: {
-    name: string;
-  };
-  transaction?: {
-    id: string;
-    transaction_date: string;
-    branch?: { name: string };
-  };
-}
-
-interface Transaction {
-  id: string;
-  transaction_date: string;
-  branch?: { name: string };
-  transaction_items?: Array<{
-    id: string;
-    product_id: string;
-    quantity: number;
-    price_per_item: number;
-    subtotal: number;
-    products?: {
-      name: string;
-    };
-  }>;
-}
+import type { Transaction } from '@/types/reports';
 
 interface TransactionItemsTabProps {
   transactions: Transaction[];
@@ -44,21 +13,27 @@ interface TransactionItemsTabProps {
 export const TransactionItemsTab: React.FC<TransactionItemsTabProps> = ({ transactions, loading }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
+  console.log('TransactionItemsTab received transactions:', transactions.length);
+  console.log('Sample transaction:', transactions[0]);
+
   // Flatten transaction items with transaction info
-  const allItems: TransactionItem[] = transactions.flatMap(transaction =>
-    (transaction.transaction_items || []).map(item => ({
+  const allItems = transactions.flatMap(transaction => {
+    console.log('Processing transaction:', transaction.id, 'items:', transaction.transaction_items?.length);
+    return (transaction.transaction_items || []).map(item => ({
       ...item,
       transaction: {
         id: transaction.id,
         transaction_date: transaction.transaction_date,
-        branch: transaction.branch
+        branch_name: transaction.branches?.name || 'Unknown Branch'
       }
-    }))
-  );
+    }));
+  });
+
+  console.log('Flattened items count:', allItems.length);
 
   const filteredItems = allItems.filter(item =>
     item.products?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.transaction?.branch?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.transaction?.branch_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.transaction?.id?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -113,7 +88,7 @@ export const TransactionItemsTab: React.FC<TransactionItemsTabProps> = ({ transa
                   {item.transaction?.id?.substring(0, 8)}...
                 </TableCell>
                 <TableCell>{formatDate(item.transaction?.transaction_date || '')}</TableCell>
-                <TableCell>{item.transaction?.branch?.name}</TableCell>
+                <TableCell>{item.transaction?.branch_name}</TableCell>
                 <TableCell className="font-medium">{item.products?.name || 'Unknown Product'}</TableCell>
                 <TableCell>{item.quantity}</TableCell>
                 <TableCell className="text-right">Rp {item.price_per_item.toLocaleString('id-ID')}</TableCell>
