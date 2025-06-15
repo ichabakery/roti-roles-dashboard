@@ -29,37 +29,52 @@ export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User
       role: profile.role
     });
 
-    // Get branch assignment for all roles (not just kasir_cabang)
+    // Get branch assignment - only required for certain roles
     let branchId: string | undefined;
     
-    console.log('🏪 Fetching branch assignment for user...');
+    // Define roles that require branch assignment
+    const rolesThatNeedBranch = ['kasir_cabang'];
+    const rolesThatCanHaveBranch = ['kasir_cabang', 'admin_pusat']; // admin_pusat might have branch assignment for specific operations
     
-    const { data: userBranch, error: branchError } = await supabase
-      .from('user_branches')
-      .select(`
-        branch_id,
-        branches!branch_id(id, name)
-      `)
-      .eq('user_id', supabaseUser.id)
-      .maybeSingle();
+    if (rolesThatCanHaveBranch.includes(profile.role)) {
+      console.log('🏪 Fetching branch assignment for role that can have branch:', profile.role);
+      
+      const { data: userBranch, error: branchError } = await supabase
+        .from('user_branches')
+        .select(`
+          branch_id,
+          branches!branch_id(id, name)
+        `)
+        .eq('user_id', supabaseUser.id)
+        .maybeSingle();
 
-    if (branchError) {
-      console.error('❌ Branch assignment fetch error:', branchError);
-      if (profile.role === 'kasir_cabang') {
-        console.warn('⚠️ Kasir cabang without branch assignment - this will cause issues');
+      if (branchError) {
+        console.error('❌ Branch assignment fetch error:', branchError);
+        
+        // Only throw error for roles that absolutely need branch assignment
+        if (rolesThatNeedBranch.includes(profile.role)) {
+          console.error('❌ Required branch assignment missing for:', profile.role);
+          throw new Error('Kasir cabang belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang.');
+        } else {
+          console.warn('⚠️ Branch assignment fetch failed, but not required for role:', profile.role);
+        }
+      } else if (userBranch) {
+        branchId = userBranch.branch_id;
+        console.log('✅ Branch assignment found:', {
+          branchId,
+          branchName: userBranch.branches?.name || 'Unknown'
+        });
+      } else {
+        // No branch assignment found
+        if (rolesThatNeedBranch.includes(profile.role)) {
+          console.error('❌ No branch assignment found for role that requires it:', profile.role);
+          throw new Error('Kasir cabang belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang.');
+        } else {
+          console.log('✅ No branch assignment found, but not required for role:', profile.role);
+        }
       }
-    } else if (userBranch) {
-      branchId = userBranch.branch_id;
-      console.log('✅ Branch assignment found:', {
-        branchId,
-        branchName: userBranch.branches?.name || 'Unknown'
-      });
     } else {
-      console.warn('⚠️ No branch assignment found for user:', {
-        userId: supabaseUser.id,
-        role: profile.role,
-        requiresBranch: profile.role === 'kasir_cabang'
-      });
+      console.log('✅ Role does not require branch assignment:', profile.role);
     }
 
     // Debug: List all available branches for comparison
@@ -69,17 +84,6 @@ export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User
       .order('name');
     
     console.log('🏪 Available branches in system:', allBranches);
-
-    // Debug: Check for any transactions in the system
-    const { data: sampleTransactions, count } = await supabase
-      .from('transactions')
-      .select('id, branch_id, transaction_date', { count: 'exact' })
-      .limit(5);
-    
-    console.log('💾 Sample transactions in system:', {
-      totalCount: count,
-      sampleData: sampleTransactions
-    });
 
     const userProfile: User = {
       id: profile.id,
@@ -94,7 +98,8 @@ export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User
       name: userProfile.name,
       email: userProfile.email,
       role: userProfile.role,
-      branchId: userProfile.branchId
+      branchId: userProfile.branchId,
+      branchRequired: rolesThatNeedBranch.includes(profile.role)
     });
     
     return userProfile;

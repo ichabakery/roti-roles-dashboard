@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export const buildTransactionQuery = () => {
@@ -42,6 +43,7 @@ export const applyRoleBasedFiltering = (
 
   switch (userRole) {
     case 'kasir_cabang':
+      // Only kasir_cabang requires strict branch assignment
       if (!userBranchId) {
         console.error('❌ Kasir cabang missing branch assignment');
         throw new Error('Kasir cabang belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang.');
@@ -53,13 +55,13 @@ export const applyRoleBasedFiltering = (
     case 'owner':
     case 'admin_pusat':
     case 'kepala_produksi':
-      // For these roles, if a specific branch is selected, filter by it
-      // Otherwise show all branches
+      // These roles can access all branches or filter by selected branch
+      // They don't require userBranchId assignment
       if (selectedBranch && selectedBranch !== 'all') {
         query = query.eq('branch_id', selectedBranch);
         console.log('📊 Admin/Owner/KepProd filtering by selected branch:', selectedBranch);
       } else {
-        console.log('📊 Admin/Owner/KepProd showing all branches - no filter applied');
+        console.log('📊 Admin/Owner/KepProd showing all branches - no userBranchId requirement');
       }
       break;
       

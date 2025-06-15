@@ -106,11 +106,12 @@ export const useReportsData = () => {
     } catch (error: any) {
       console.error('❌ Error fetching reports data:', error);
       
-      // Enhanced error handling with user-friendly messages
+      // Enhanced error handling with user-friendly messages for role-specific issues
       let errorMessage = error.message || 'Gagal memuat data laporan';
       
-      if (error.message?.includes('belum dikaitkan dengan cabang')) {
-        errorMessage = 'Akun Anda belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang.';
+      if (error.message?.includes('Kasir cabang belum dikaitkan dengan cabang')) {
+        // This error should only occur for kasir_cabang role
+        errorMessage = 'Akun kasir cabang Anda belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang.';
       } else if (error.message?.includes('Akses ditolak')) {
         errorMessage = `Akses ditolak untuk role ${user.role}. Silakan hubungi administrator.`;
       } else if (error.message?.includes('tidak memiliki akses')) {

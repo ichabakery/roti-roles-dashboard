@@ -19,13 +19,15 @@ export const fetchTransactionsFromDB = async (
     timestamp: new Date().toISOString()
   });
 
-  // Enhanced validation for kasir_cabang
-  if (userRole === 'kasir_cabang') {
-    if (!userBranchId) {
-      console.error('❌ Kasir cabang missing branch assignment');
-      throw new Error('Kasir cabang belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang.');
-    }
-    console.log('✅ Kasir cabang has valid branch assignment:', userBranchId);
+  // Enhanced validation - only for roles that actually need branch assignment
+  if (userRole === 'kasir_cabang' && !userBranchId) {
+    console.error('❌ Kasir cabang missing required branch assignment');
+    throw new Error('Kasir cabang belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang.');
+  }
+
+  // For other roles, log but don't throw error
+  if (['owner', 'admin_pusat', 'kepala_produksi'].includes(userRole)) {
+    console.log('✅ Role with multi-branch access:', userRole, 'userBranchId:', userBranchId || 'not required');
   }
 
   // Debug: Check what branches exist in system
