@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export const buildTransactionQuery = () => {
@@ -34,31 +33,33 @@ export const applyRoleBasedFiltering = (
   userBranchId?: string,
   selectedBranch?: string
 ) => {
+  console.log('🔍 Role-based filtering input:', {
+    userRole,
+    userBranchId,
+    selectedBranch,
+    filteringDecision: 'determining...'
+  });
+
   switch (userRole) {
     case 'kasir_cabang':
       if (!userBranchId) {
+        console.error('❌ Kasir cabang missing branch assignment');
         throw new Error('Kasir cabang belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang.');
       }
       query = query.eq('branch_id', userBranchId);
-      console.log('📊 Filtering for kasir branch only:', userBranchId);
+      console.log('📊 Kasir filtering applied - branch_id:', userBranchId);
       break;
       
     case 'owner':
     case 'admin_pusat':
-      if (selectedBranch && selectedBranch !== 'all') {
-        query = query.eq('branch_id', selectedBranch);
-        console.log('📊 Filtering for selected branch:', selectedBranch);
-      } else {
-        console.log('📊 Showing all branches for:', userRole);
-      }
-      break;
-      
     case 'kepala_produksi':
+      // For these roles, if a specific branch is selected, filter by it
+      // Otherwise show all branches
       if (selectedBranch && selectedBranch !== 'all') {
         query = query.eq('branch_id', selectedBranch);
-        console.log('📊 Filtering for selected branch (kepala_produksi):', selectedBranch);
+        console.log('📊 Admin/Owner/KepProd filtering by selected branch:', selectedBranch);
       } else {
-        console.log('📊 Showing all branches for kepala_produksi');
+        console.log('📊 Admin/Owner/KepProd showing all branches - no filter applied');
       }
       break;
       
@@ -75,11 +76,20 @@ export const applyDateRangeFilter = (
   dateRange?: { start: string; end: string }
 ) => {
   if (dateRange) {
-    query = query
-      .gte('transaction_date', dateRange.start + 'T00:00:00')
-      .lte('transaction_date', dateRange.end + 'T23:59:59');
+    const startDateTime = dateRange.start + 'T00:00:00';
+    const endDateTime = dateRange.end + 'T23:59:59';
     
-    console.log('📅 Date range filter applied:', dateRange);
+    query = query
+      .gte('transaction_date', startDateTime)
+      .lte('transaction_date', endDateTime);
+    
+    console.log('📅 Date range filter applied:', {
+      start: startDateTime,
+      end: endDateTime,
+      originalRange: dateRange
+    });
+  } else {
+    console.log('📅 No date range filter applied');
   }
 
   return query.order('transaction_date', { ascending: false });

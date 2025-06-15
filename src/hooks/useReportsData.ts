@@ -40,12 +40,14 @@ export const useReportsData = () => {
     }
     
     setLoading(true);
-    console.log('📊 Starting reports data fetch for:', {
-      user: user.email,
-      role: user.role,
-      branchId: user.branchId,
+    console.log('📊 ===== REPORTS DATA FETCH START =====');
+    console.log('📊 Fetch parameters:', {
+      userEmail: user.email,
+      userRole: user.role,
+      userBranchId: user.branchId,
       selectedBranch,
-      dateRange
+      dateRange,
+      timestamp: new Date().toISOString()
     });
     
     try {
@@ -56,7 +58,10 @@ export const useReportsData = () => {
         dateRange
       );
 
-      console.log('📈 Raw transaction data received:', rawData.length, 'records');
+      console.log('📈 Raw transaction data received:', {
+        recordCount: rawData.length,
+        firstRecord: rawData[0] || null
+      });
 
       const transformedTransactions = transformTransactionData(rawData);
       setTransactions(transformedTransactions);
@@ -73,16 +78,28 @@ export const useReportsData = () => {
         paymentSummary: summaries.paymentSummary.length
       });
       
-      // Show success message if data is found
+      // Enhanced user feedback
       if (transformedTransactions.length > 0) {
         toast({
           title: "Data Laporan Dimuat",
           description: `${transformedTransactions.length} transaksi berhasil dimuat untuk periode yang dipilih.`,
         });
       } else {
+        // More informative message for empty results
+        const periodText = `${dateRange.start} - ${dateRange.end}`;
+        const branchText = selectedBranch === 'all' ? 'semua cabang' : 'cabang yang dipilih';
+        
         toast({
-          title: "Tidak Ada Data",
-          description: "Tidak ada transaksi ditemukan untuk periode dan filter yang dipilih.",
+          title: "Tidak Ada Data Transaksi",
+          description: `Tidak ada transaksi ditemukan untuk ${branchText} pada periode ${periodText}. Pastikan data transaksi tersedia untuk periode ini.`,
+          variant: "default", // Use default instead of destructive for less alarming appearance
+        });
+        
+        console.log('📋 No data found - debugging info:', {
+          selectedBranch,
+          dateRange,
+          userRole: user.role,
+          userBranchId: user.branchId
         });
       }
       
@@ -113,6 +130,7 @@ export const useReportsData = () => {
       setPaymentSummary([]);
     } finally {
       setLoading(false);
+      console.log('📊 ===== REPORTS DATA FETCH END =====');
     }
   };
 
