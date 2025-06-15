@@ -43,10 +43,13 @@ export const applyRoleBasedFiltering = (
 
   switch (userRole) {
     case 'kasir_cabang':
-      // Only kasir_cabang requires strict branch assignment
+      // Kasir cabang harus memiliki branch assignment untuk akses data
       if (!userBranchId) {
-        console.error('❌ Kasir cabang missing branch assignment');
-        throw new Error('Kasir cabang belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang.');
+        console.error('❌ Kasir cabang tidak memiliki branch assignment');
+        // Return empty query instead of throwing error to allow graceful handling
+        query = query.eq('id', 'never-match-any-id');
+        console.log('📊 Kasir filtering applied - no access due to missing branch assignment');
+        return query;
       }
       query = query.eq('branch_id', userBranchId);
       console.log('📊 Kasir filtering applied - branch_id:', userBranchId);
@@ -55,19 +58,20 @@ export const applyRoleBasedFiltering = (
     case 'owner':
     case 'admin_pusat':
     case 'kepala_produksi':
-      // These roles can access all branches or filter by selected branch
-      // They don't require userBranchId assignment
+      // Role ini bisa akses semua cabang atau filter berdasarkan pilihan
       if (selectedBranch && selectedBranch !== 'all') {
         query = query.eq('branch_id', selectedBranch);
         console.log('📊 Admin/Owner/KepProd filtering by selected branch:', selectedBranch);
       } else {
-        console.log('📊 Admin/Owner/KepProd showing all branches - no userBranchId requirement');
+        console.log('📊 Admin/Owner/KepProd showing all branches');
       }
       break;
       
     default:
       console.error('❌ Unauthorized role for reports:', userRole);
-      throw new Error(`Role '${userRole}' tidak memiliki akses untuk melihat laporan.`);
+      // Return empty query instead of throwing error
+      query = query.eq('id', 'never-match-any-id');
+      break;
   }
 
   return query;

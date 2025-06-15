@@ -30,7 +30,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
     return <Navigate to={redirectTo} replace />;
   }
 
-  // Jika role tidak sesuai, redirect ke dashboard atau halaman yang sesuai role
+  // Jika role tidak sesuai, redirect ke halaman khusus untuk role tertentu
   if (!isAuthorized(allowedRoles)) {
     // Redirect ke halaman khusus untuk role tertentu
     switch (user.role) {
@@ -39,6 +39,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
       case 'kepala_produksi':
         return <Navigate to="/production" replace />;
       case 'kasir_cabang':
+        // Kasir cabang tetap bisa akses kasir meskipun belum ada branch assignment
         return <Navigate to="/cashier" replace />;
       case 'admin_pusat':
         return <Navigate to="/products" replace />;

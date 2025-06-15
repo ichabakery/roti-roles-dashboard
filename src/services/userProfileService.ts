@@ -29,15 +29,11 @@ export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User
       role: profile.role
     });
 
-    // Get branch assignment - only required for certain roles
+    // Get branch assignment - only for kasir_cabang
     let branchId: string | undefined;
     
-    // Define roles that require branch assignment
-    const rolesThatNeedBranch = ['kasir_cabang'];
-    const rolesThatCanHaveBranch = ['kasir_cabang', 'admin_pusat']; // admin_pusat might have branch assignment for specific operations
-    
-    if (rolesThatCanHaveBranch.includes(profile.role)) {
-      console.log('🏪 Fetching branch assignment for role that can have branch:', profile.role);
+    if (profile.role === 'kasir_cabang') {
+      console.log('🏪 Fetching branch assignment for kasir_cabang...');
       
       const { data: userBranch, error: branchError } = await supabase
         .from('user_branches')
@@ -50,14 +46,8 @@ export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User
 
       if (branchError) {
         console.error('❌ Branch assignment fetch error:', branchError);
-        
-        // Only throw error for roles that absolutely need branch assignment
-        if (rolesThatNeedBranch.includes(profile.role)) {
-          console.error('❌ Required branch assignment missing for:', profile.role);
-          throw new Error('Kasir cabang belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang.');
-        } else {
-          console.warn('⚠️ Branch assignment fetch failed, but not required for role:', profile.role);
-        }
+        // Don't throw error during login, just log it
+        console.warn('⚠️ Kasir cabang belum dikaitkan dengan cabang manapun');
       } else if (userBranch) {
         branchId = userBranch.branch_id;
         console.log('✅ Branch assignment found:', {
@@ -65,25 +55,12 @@ export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User
           branchName: userBranch.branches?.name || 'Unknown'
         });
       } else {
-        // No branch assignment found
-        if (rolesThatNeedBranch.includes(profile.role)) {
-          console.error('❌ No branch assignment found for role that requires it:', profile.role);
-          throw new Error('Kasir cabang belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang.');
-        } else {
-          console.log('✅ No branch assignment found, but not required for role:', profile.role);
-        }
+        console.warn('⚠️ No branch assignment found for kasir_cabang');
+        // Don't throw error, allow login but user will be restricted
       }
     } else {
       console.log('✅ Role does not require branch assignment:', profile.role);
     }
-
-    // Debug: List all available branches for comparison
-    const { data: allBranches } = await supabase
-      .from('branches')
-      .select('id, name')
-      .order('name');
-    
-    console.log('🏪 Available branches in system:', allBranches);
 
     const userProfile: User = {
       id: profile.id,
@@ -99,7 +76,7 @@ export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User
       email: userProfile.email,
       role: userProfile.role,
       branchId: userProfile.branchId,
-      branchRequired: rolesThatNeedBranch.includes(profile.role)
+      hasBranchAssignment: !!branchId
     });
     
     return userProfile;

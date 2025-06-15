@@ -78,44 +78,48 @@ export const useReportsData = () => {
         paymentSummary: summaries.paymentSummary.length
       });
       
-      // Enhanced user feedback
+      // Enhanced user feedback based on role and data availability
       if (transformedTransactions.length > 0) {
         toast({
           title: "Data Laporan Dimuat",
           description: `${transformedTransactions.length} transaksi berhasil dimuat untuk periode yang dipilih.`,
         });
       } else {
-        // More informative message for empty results
-        const periodText = `${dateRange.start} - ${dateRange.end}`;
-        const branchText = selectedBranch === 'all' ? 'semua cabang' : 'cabang yang dipilih';
-        
-        toast({
-          title: "Tidak Ada Data Transaksi",
-          description: `Tidak ada transaksi ditemukan untuk ${branchText} pada periode ${periodText}. Pastikan data transaksi tersedia untuk periode ini.`,
-          variant: "default", // Use default instead of destructive for less alarming appearance
-        });
+        // Special handling for kasir_cabang without branch assignment
+        if (user.role === 'kasir_cabang' && !user.branchId) {
+          toast({
+            title: "Perlu Assignment Cabang",
+            description: "Akun kasir cabang Anda belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang agar dapat mengakses data transaksi.",
+            variant: "destructive",
+          });
+        } else {
+          const periodText = `${dateRange.start} - ${dateRange.end}`;
+          const branchText = selectedBranch === 'all' ? 'semua cabang' : 'cabang yang dipilih';
+          
+          toast({
+            title: "Tidak Ada Data Transaksi",
+            description: `Tidak ada transaksi ditemukan untuk ${branchText} pada periode ${periodText}. Pastikan data transaksi tersedia untuk periode ini.`,
+            variant: "default",
+          });
+        }
         
         console.log('📋 No data found - debugging info:', {
           selectedBranch,
           dateRange,
           userRole: user.role,
-          userBranchId: user.branchId
+          userBranchId: user.branchId,
+          hasRequiredBranchAssignment: user.role !== 'kasir_cabang' || !!user.branchId
         });
       }
       
     } catch (error: any) {
       console.error('❌ Error fetching reports data:', error);
       
-      // Enhanced error handling with user-friendly messages for role-specific issues
       let errorMessage = error.message || 'Gagal memuat data laporan';
       
-      if (error.message?.includes('Kasir cabang belum dikaitkan dengan cabang')) {
-        // This error should only occur for kasir_cabang role
+      // Don't show harsh error messages for missing branch assignments
+      if (user.role === 'kasir_cabang' && !user.branchId) {
         errorMessage = 'Akun kasir cabang Anda belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang.';
-      } else if (error.message?.includes('Akses ditolak')) {
-        errorMessage = `Akses ditolak untuk role ${user.role}. Silakan hubungi administrator.`;
-      } else if (error.message?.includes('tidak memiliki akses')) {
-        errorMessage = 'Anda tidak memiliki akses untuk melihat laporan ini.';
       }
       
       toast({
