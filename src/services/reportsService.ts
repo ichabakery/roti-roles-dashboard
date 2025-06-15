@@ -141,7 +141,7 @@ export const fetchTransactionsFromDB = async (
     throw new Error(`Gagal memuat data cabang: ${branchError.message}`);
   }
 
-  // Fetch transaction items with products
+  // Fetch transaction items with LEFT JOIN to products
   const { data: transactionItemsData, error: itemsError } = await supabase
     .from('transaction_items')
     .select(`
@@ -151,7 +151,9 @@ export const fetchTransactionsFromDB = async (
       quantity,
       price_per_item,
       subtotal,
-      products!inner(name)
+      products(
+        name
+      )
     `)
     .in('transaction_id', transactionIds);
 
@@ -161,10 +163,25 @@ export const fetchTransactionsFromDB = async (
     console.warn('Transaction items could not be loaded, continuing without them');
   }
 
+  // DEBUGGING: Add log for empty/missing transaction_items
+  if (transactionItemsData) {
+    const emptyItems = transactionIds.filter(
+      tid => !transactionItemsData.some(item => item.transaction_id === tid)
+    );
+    if (emptyItems.length > 0) {
+      console.warn('‼️ Ada transaksi tanpa item di transaction_items:', emptyItems);
+    }
+    // Log how many items per transaction
+    for (const tid of transactionIds) {
+      const count = transactionItemsData.filter(x => x.transaction_id === tid).length;
+      console.log(`Transaksi ${tid} memiliki ${count} item`);
+    }
+  }
+
   // Create lookup maps
   const branchMap = new Map(branchData?.map(b => [b.id, b]) || []);
   const itemsMap = new Map<string, any[]>();
-  
+
   if (transactionItemsData) {
     transactionItemsData.forEach(item => {
       if (!itemsMap.has(item.transaction_id)) {
@@ -181,6 +198,13 @@ export const fetchTransactionsFromDB = async (
     transaction_items: itemsMap.get(transaction.id) || [],
     cashier_name: transaction.profiles?.name || 'Kasir'
   }));
+
+  // Final sanity logging
+  enrichedTransactions.forEach(t => {
+    if (!t.transaction_items || t.transaction_items.length === 0) {
+      console.warn('‼️ Transaksi kosong di laporan:', t.id, t);
+    }
+  });
 
   console.log('✅ Transaction data enriched successfully:', enrichedTransactions.length, 'records');
   
