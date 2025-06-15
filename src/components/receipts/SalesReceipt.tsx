@@ -16,6 +16,10 @@ interface SalesReceiptProps {
   received?: number;
   change?: number;
   transactionId?: string;
+  logoUrl?: string;
+  storeName?: string;
+  address?: string;
+  phone?: string;
 }
 
 export const SalesReceipt: React.FC<SalesReceiptProps> = ({
@@ -26,11 +30,27 @@ export const SalesReceipt: React.FC<SalesReceiptProps> = ({
   total,
   received,
   change,
-  transactionId
+  transactionId,
+  logoUrl,
+  storeName,
+  address,
+  phone
 }) => {
   return (
     <div className="w-[320px] p-4 bg-white rounded shadow text-xs text-gray-900 font-mono mx-auto">
-      <div className="text-center font-bold text-base mb-2">Toko Roti Makmur</div>
+      {/* Branding/logo */}
+      {logoUrl && (
+        <div className="flex justify-center mb-1">
+          <img src={logoUrl} alt="Logo Toko" className="h-6 object-contain" />
+        </div>
+      )}
+      <div className="text-center font-bold text-base mb-1">{storeName || "Toko Roti Makmur"}</div>
+      {address && (
+        <div className="text-center text-xs">{address}</div>
+      )}
+      {phone && (
+        <div className="text-center text-xs">Telp: {phone}</div>
+      )}
       <div className="text-center text-xs mb-1">{branchName}</div>
       <div className="flex justify-between text-xs">
         <span>Kasir: {cashierName}</span>

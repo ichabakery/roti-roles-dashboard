@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { Check, Printer, Download, Copy } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { SalesReceipt } from '../receipts/SalesReceipt';
 import { salesReceiptToWhatsapp } from '@/utils/receiptWhatsapp';
+import { generateSalesReceiptPDF } from '@/utils/pdfService';
 
 interface Transaction {
   id: string;
@@ -76,12 +76,31 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
     }
   };
 
-  // Download PDF - placeholder using print (next: jsPDF/@react-pdf)
-  const handleDownloadPDF = () => {
-    handlePrint();
+  // Ganti PDF dengan jsPDF
+  const handleDownloadPDF = async () => {
+    // Branding, ideally ambil dari pengaturan bisnis
+    const branding = {
+      logoUrl: "", // kosong/isi URL logo
+      storeName: "Toko Roti Makmur",
+      address: "Jl. Raya Bakery No. 123, Jakarta",
+      phone: "021-12345678"
+    };
+    if (!transaction) return;
+    const doc = await generateSalesReceiptPDF({
+      branchName,
+      cashierName,
+      transactionDate,
+      products,
+      total,
+      received,
+      change,
+      transactionId,
+      branding
+    });
+    doc.save(`Nota_${transactionId || "transaksi"}.pdf`);
     toast({
-      title: "Download PDF",
-      description: "Download PDF nota transaksi (format profesional) dalam pengembangan.",
+      title: "Download PDF berhasil",
+      description: "Nota transaksi berhasil diunduh.",
     });
   };
 
@@ -125,6 +144,11 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
             received={received}
             change={change}
             transactionId={transactionId}
+            // Branding info for preview
+            logoUrl={""}
+            storeName="Toko Roti Makmur"
+            address="Jl. Raya Bakery No. 123, Jakarta"
+            phone="021-12345678"
           />
         </div>
         

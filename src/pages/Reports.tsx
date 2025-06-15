@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,7 @@ import { useReports } from '@/hooks/useReports';
 import { useExportReports } from '@/hooks/useExportReports';
 import { ReportsStats } from '@/components/reports/ReportsStats';
 import { ReportsContent } from '@/components/reports/ReportsContent';
+import { ReceiptHistory } from '@/components/receipts/ReceiptHistory';
 
 const Reports = () => {
   const { user } = useAuth();
@@ -59,6 +59,11 @@ const Reports = () => {
           totalRevenue={getTotalRevenue()}
           averageTransaction={getAverageTransaction()}
         />
+
+        {/* History Nota */}
+        <div className="mt-8">
+          <ReceiptHistory />
+        </div>
 
         {/* Main Content */}
         <ReportsContent
