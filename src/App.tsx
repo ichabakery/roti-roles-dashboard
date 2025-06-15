@@ -35,7 +35,7 @@ function App() {
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route path="/dashboard" element={
-                <AuthGuard>
+                <AuthGuard allowedRoles={['owner', 'admin_pusat', 'kepala_produksi', 'kasir_cabang']}>
                   <Dashboard />
                 </AuthGuard>
               } />
@@ -55,12 +55,12 @@ function App() {
                 </AuthGuard>
               } />
               <Route path="/inventory" element={
-                <AuthGuard>
+                <AuthGuard allowedRoles={['owner', 'admin_pusat', 'kepala_produksi', 'kasir_cabang']}>
                   <Inventory />
                 </AuthGuard>
               } />
               <Route path="/production" element={
-                <AuthGuard>
+                <AuthGuard allowedRoles={['owner', 'admin_pusat', 'kepala_produksi']}>
                   <Production />
                 </AuthGuard>
               } />
@@ -80,12 +80,12 @@ function App() {
                 </AuthGuard>
               } />
               <Route path="/returns" element={
-                <AuthGuard>
+                <AuthGuard allowedRoles={['owner', 'admin_pusat', 'kasir_cabang']}>
                   <Returns />
                 </AuthGuard>
               } />
               <Route path="/settings" element={
-                <AuthGuard>
+                <AuthGuard allowedRoles={['owner', 'admin_pusat', 'kepala_produksi', 'kasir_cabang']}>
                   <Settings />
                 </AuthGuard>
               } />
