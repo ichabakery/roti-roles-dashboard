@@ -66,17 +66,17 @@ export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
     const userIds = profilesData.map(profile => profile.id);
     
     // Use admin API to get user emails (requires owner role)
-    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+    const { data: authResponse, error: authError } = await supabase.auth.admin.listUsers();
     
     console.log('profilesService: Auth users result:', { 
-      authUsersCount: authUsers?.users?.length, 
+      authUsersCount: authResponse?.users?.length, 
       authError 
     });
 
     // Create email mapping from auth users
     const emailMap = new Map<string, string>();
-    if (authUsers?.users && !authError) {
-      authUsers.users.forEach(user => {
+    if (authResponse?.users && !authError) {
+      authResponse.users.forEach((user: any) => {
         if (user.id && user.email) {
           emailMap.set(user.id, user.email);
         }
