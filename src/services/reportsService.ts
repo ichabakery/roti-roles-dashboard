@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import type { Transaction } from '@/types/reports';
 
@@ -40,7 +41,7 @@ export const fetchTransactionsFromDB = async (
     console.log('✅ Kasir cabang has valid branch assignment:', userBranchId);
   }
 
-  // Build query without complex joins to avoid relationship conflicts
+  // Build optimized query with proper joins
   let transactionQuery = supabase
     .from('transactions')
     .select(`
@@ -50,20 +51,31 @@ export const fetchTransactionsFromDB = async (
       transaction_date,
       total_amount,
       payment_method,
-      profiles:cashier_id(id, name)
+      profiles:cashier_id(id, name),
+      branches!inner(id, name),
+      transaction_items!inner(
+        id,
+        product_id,
+        quantity,
+        price_per_item,
+        subtotal,
+        products!inner(
+          id,
+          name,
+          description
+        )
+      )
     `);
 
   // Apply role-based filtering with improved logic
   switch (userRole) {
     case 'kasir_cabang':
-      // Kasir cabang hanya bisa melihat data cabang mereka sendiri
       transactionQuery = transactionQuery.eq('branch_id', userBranchId!);
       console.log('📊 Filtering for kasir branch only:', userBranchId);
       break;
       
     case 'owner':
     case 'admin_pusat':
-      // Owner dan admin pusat bisa melihat semua cabang atau cabang tertentu
       if (selectedBranch && selectedBranch !== 'all') {
         transactionQuery = transactionQuery.eq('branch_id', selectedBranch);
         console.log('📊 Filtering for selected branch:', selectedBranch);
@@ -73,7 +85,6 @@ export const fetchTransactionsFromDB = async (
       break;
       
     case 'kepala_produksi':
-      // Kepala produksi bisa melihat semua untuk planning purposes
       if (selectedBranch && selectedBranch !== 'all') {
         transactionQuery = transactionQuery.eq('branch_id', selectedBranch);
         console.log('📊 Filtering for selected branch (kepala_produksi):', selectedBranch);
@@ -99,7 +110,7 @@ export const fetchTransactionsFromDB = async (
   // Order by transaction date (newest first)
   transactionQuery = transactionQuery.order('transaction_date', { ascending: false });
 
-  console.log('🚀 Executing transaction query...');
+  console.log('🚀 Executing optimized transaction query...');
   const { data: transactionData, error } = await transactionQuery;
 
   if (error) {
@@ -126,94 +137,75 @@ export const fetchTransactionsFromDB = async (
     return [];
   }
 
-  // Now fetch branches and transaction items separately to avoid relationship conflicts
-  const branchIds = [...new Set(transactionData.map(t => t.branch_id))];
-  const transactionIds = transactionData.map(t => t.id);
-
-  // Fetch branch data
-  const { data: branchData, error: branchError } = await supabase
-    .from('branches')
-    .select('id, name')
-    .in('id', branchIds);
-
-  if (branchError) {
-    console.error('❌ Branch query error:', branchError);
-    throw new Error(`Gagal memuat data cabang: ${branchError.message}`);
-  }
-
-  // Fetch transaction items with LEFT JOIN to products
-  const { data: transactionItemsData, error: itemsError } = await supabase
-    .from('transaction_items')
-    .select(`
-      id,
-      transaction_id,
-      product_id,
-      quantity,
-      price_per_item,
-      subtotal,
-      products(
-        name
-      )
-    `)
-    .in('transaction_id', transactionIds);
-
-  if (itemsError) {
-    console.error('❌ Transaction items query error:', itemsError);
-    // Don't throw error for transaction items, just log it
-    console.warn('Transaction items could not be loaded, continuing without them');
-  }
-
-  // DEBUGGING: Add log for empty/missing transaction_items
-  if (transactionItemsData) {
-    const emptyItems = transactionIds.filter(
-      tid => !transactionItemsData.some(item => item.transaction_id === tid)
-    );
-    if (emptyItems.length > 0) {
-      console.warn('‼️ Ada transaksi tanpa item di transaction_items:', emptyItems);
+  // Validate and log data quality
+  const validTransactions = transactionData.filter(transaction => {
+    const hasValidItems = transaction.transaction_items && 
+                         Array.isArray(transaction.transaction_items) && 
+                         transaction.transaction_items.length > 0;
+    
+    if (!hasValidItems) {
+      console.warn('⚠️ Transaction without valid items:', transaction.id);
+      return false;
     }
-    // Log how many items per transaction
-    for (const tid of transactionIds) {
-      const count = transactionItemsData.filter(x => x.transaction_id === tid).length;
-      console.log(`Transaksi ${tid} memiliki ${count} item`);
-    }
-  }
 
-  // Create lookup maps
-  const branchMap = new Map(branchData?.map(b => [b.id, b]) || []);
-  const itemsMap = new Map<string, any[]>();
-
-  if (transactionItemsData) {
-    transactionItemsData.forEach(item => {
-      if (!itemsMap.has(item.transaction_id)) {
-        itemsMap.set(item.transaction_id, []);
+    // Validate each transaction item
+    const validItems = transaction.transaction_items.every(item => {
+      const isValid = item.products && 
+                     item.products.name && 
+                     typeof item.quantity === 'number' && 
+                     typeof item.price_per_item === 'number' && 
+                     typeof item.subtotal === 'number';
+      
+      if (!isValid) {
+        console.warn('⚠️ Invalid transaction item:', item);
       }
-      itemsMap.get(item.transaction_id)!.push(item);
+      
+      return isValid;
     });
-  }
 
-  // Combine the data
-  const enrichedTransactions = transactionData.map(transaction => ({
-    ...transaction,
-    branches: branchMap.get(transaction.branch_id) || { id: transaction.branch_id, name: 'Unknown Branch' },
-    transaction_items: itemsMap.get(transaction.id) || [],
-    cashier_name: transaction.profiles?.name || 'Kasir'
-  }));
+    return validItems;
+  });
 
-  // Final sanity logging
-  enrichedTransactions.forEach(t => {
-    if (!t.transaction_items || t.transaction_items.length === 0) {
-      console.warn('‼️ Transaksi kosong di laporan:', t.id, t);
-    }
+  console.log(`✅ ${validTransactions.length} valid transactions out of ${transactionData.length} total`);
+
+  // Transform and enrich the data
+  const enrichedTransactions = validTransactions.map(transaction => {
+    const cashier_name = transaction.profiles?.name || 'Kasir';
+    
+    return {
+      ...transaction,
+      cashier_name,
+      // Ensure transaction_items is always an array with valid data
+      transaction_items: transaction.transaction_items.map(item => ({
+        id: item.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price_per_item: item.price_per_item,
+        subtotal: item.subtotal,
+        products: {
+          id: item.products.id,
+          name: item.products.name,
+          description: item.products.description
+        }
+      }))
+    };
   });
 
   console.log('✅ Transaction data enriched successfully:', enrichedTransactions.length, 'records');
   
   // Log sample data for debugging (only first record)
   if (enrichedTransactions.length > 0) {
+    const sample = enrichedTransactions[0];
     console.log('📋 Sample transaction data:', {
-      id: enrichedTransactions[0].id,
-      branch: enrichedTransactions[0].branches?.name,
-      items: enrichedTransactions[0].transaction_items?.length || 0
+      id: sample.id,
+      branch: sample.branches?.name,
+      items: sample.transaction_items?.length || 0,
+      firstItem: sample.transaction_items?.[0] ? {
+        product: sample.transaction_items[0].products?.name,
+        quantity: sample.transaction_items[0].quantity,
+        price: sample.transaction_items[0].price_per_item,
+        subtotal: sample.transaction_items[0].subtotal
+      } : null
     });
   }
 

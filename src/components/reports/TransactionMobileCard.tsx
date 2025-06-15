@@ -23,6 +23,31 @@ export const TransactionMobileCard: React.FC<TransactionMobileCardProps> = ({
   handlePrint,
   formatDate,
 }) => {
+  const getProductsList = () => {
+    if (!transaction.transaction_items || transaction.transaction_items.length === 0) {
+      return <span className="text-red-500 text-xs">Tidak ada produk</span>;
+    }
+
+    return (
+      <div className="space-y-1">
+        {transaction.transaction_items.map((item, i) => (
+          <div key={item.id} className="text-sm">
+            <div className="flex justify-between items-center">
+              <span className="font-medium">
+                {item.products?.name || "Produk Tidak Dikenal"}
+              </span>
+              <span className="text-gray-500">x{item.quantity}</span>
+            </div>
+            <div className="flex justify-between text-xs text-gray-600">
+              <span>Rp {item.price_per_item.toLocaleString("id-ID")}</span>
+              <span>Rp {item.subtotal.toLocaleString("id-ID")}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="border rounded-lg p-4 bg-white animate-fade-in">
       <div className="flex justify-between items-start mb-2">
@@ -40,21 +65,12 @@ export const TransactionMobileCard: React.FC<TransactionMobileCardProps> = ({
         </div>
       </div>
 
-      <div className="text-lg font-bold mb-2">
+      <div className="text-lg font-bold mb-3">
         Rp {transaction.total_amount.toLocaleString("id-ID")}
       </div>
 
-      <div className="text-sm text-gray-600 mb-3">
-        {transaction.transaction_items && transaction.transaction_items.length > 0 ? (
-          transaction.transaction_items.map((item, i) => (
-            <span key={item.id}>
-              {item.products?.name || "Produk Tidak Dikenal"} x{item.quantity}
-              {i !== transaction.transaction_items.length - 1 ? ", " : ""}
-            </span>
-          ))
-        ) : (
-          <span className="text-red-500 text-xs">Tidak ada produk</span>
-        )}
+      <div className="mb-3">
+        {getProductsList()}
       </div>
 
       <div className="flex justify-between items-center">
