@@ -24,6 +24,9 @@ export interface Transaction {
   payment_method: string;
   branches: Branch;
   transaction_items?: TransactionItem[];
+  cashier_name?: string; // <--- Tambahkan baris ini agar sesuai dengan requirement props di ReceiptHistory
+  received?: number; // support opsional, seperti ReceiptHistory
+  change?: number;   // support opsional, seperti ReceiptHistory
 }
 
 export interface TransactionSummary {
