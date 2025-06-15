@@ -38,7 +38,7 @@ export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User
       .from('user_branches')
       .select(`
         branch_id,
-        branches:branch_id(id, name)
+        branches!branch_id(id, name)
       `)
       .eq('user_id', supabaseUser.id)
       .maybeSingle();
