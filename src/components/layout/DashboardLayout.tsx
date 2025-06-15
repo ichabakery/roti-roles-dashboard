@@ -42,7 +42,7 @@ const getNavigationForRole = (role: RoleType): NavItem[] => {
   switch (role) {
     case 'kasir_cabang':
       return allNavigation.filter(item => 
-        ['Dashboard', 'Kasir', 'Inventory', 'Laporan', 'Pengaturan'].includes(item.name)
+        ['Dashboard', 'Kasir', 'Produksi', 'Inventory', 'Laporan', 'Pengaturan'].includes(item.name)
       );
     case 'kepala_produksi':
       return allNavigation.filter(item =>
