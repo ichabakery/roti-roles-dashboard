@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -78,15 +77,18 @@ export const useReportsData = () => {
         paymentSummary: summaries.paymentSummary.length
       });
       
-      // Enhanced user feedback based on role and data availability
+      // Enhanced feedback ONLY IF valid kasir doesn't have assignment
       if (transformedTransactions.length > 0) {
         toast({
           title: "Data Laporan Dimuat",
           description: `${transformedTransactions.length} transaksi berhasil dimuat untuk periode yang dipilih.`,
         });
       } else {
-        // Special handling for kasir_cabang without branch assignment
-        if (user.role === 'kasir_cabang' && !user.branchId) {
+        // Special: cek kasir tanpa assignment, tapi only jika branchId undefined/null!
+        if (
+          user.role === 'kasir_cabang' &&
+          (!user.branchId || user.branchId === '' || user.branchId === null)
+        ) {
           toast({
             title: "Perlu Assignment Cabang",
             description: "Akun kasir cabang Anda belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang agar dapat mengakses data transaksi.",
@@ -117,8 +119,8 @@ export const useReportsData = () => {
       
       let errorMessage = error.message || 'Gagal memuat data laporan';
       
-      // Don't show harsh error messages for missing branch assignments
-      if (user.role === 'kasir_cabang' && !user.branchId) {
+      // Show only for kasir_cabang jika benar-benar tidak ada branchId
+      if (user.role === 'kasir_cabang' && (!user.branchId || user.branchId === '' || user.branchId === null)) {
         errorMessage = 'Akun kasir cabang Anda belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang.';
       }
       

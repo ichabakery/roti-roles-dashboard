@@ -29,34 +29,37 @@ export const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<User
       role: profile.role
     });
 
-    // Get branch assignment - only for kasir_cabang
+    // Ambil branch assignment dengan query yang lebih explicit
     let branchId: string | undefined;
-    
+
     if (profile.role === 'kasir_cabang') {
       console.log('🏪 Fetching branch assignment for kasir_cabang...');
-      
+      // Query explicit, ambil data cabang dari relasi user_branches.join cabang
       const { data: userBranch, error: branchError } = await supabase
         .from('user_branches')
         .select(`
           branch_id,
-          branches!branch_id(id, name)
+          branches (
+            id,
+            name
+          )
         `)
         .eq('user_id', supabaseUser.id)
-        .maybeSingle();
+        .single();
 
       if (branchError) {
         console.error('❌ Branch assignment fetch error:', branchError);
-        // Don't throw error during login, just log it
+        // Tetap allow login, hanya tampilkan warning
         console.warn('⚠️ Kasir cabang belum dikaitkan dengan cabang manapun');
-      } else if (userBranch) {
+      } else if (userBranch && userBranch.branch_id) {
         branchId = userBranch.branch_id;
-        console.log('✅ Branch assignment found:', {
+        console.log('✅ Branch assignment found (explicit):', {
           branchId,
           branchName: userBranch.branches?.name || 'Unknown'
         });
       } else {
+        branchId = undefined; // Pastikan fallback ke undefined
         console.warn('⚠️ No branch assignment found for kasir_cabang');
-        // Don't throw error, allow login but user will be restricted
       }
     } else {
       console.log('✅ Role does not require branch assignment:', profile.role);
