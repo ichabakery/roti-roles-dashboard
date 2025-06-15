@@ -72,7 +72,7 @@ export const menuItems: MenuItem[] = [
     name: 'Laporan', 
     href: '/reports', 
     icon: BarChart3,
-    roles: ['owner', 'admin_pusat']
+    roles: ['owner', 'admin_pusat', 'kasir_cabang']
   },
   { 
     name: 'Pengaturan', 

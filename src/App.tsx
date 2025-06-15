@@ -75,7 +75,7 @@ function App() {
                 </AuthGuard>
               } />
               <Route path="/reports" element={
-                <AuthGuard allowedRoles={['owner', 'admin_pusat']}>
+                <AuthGuard allowedRoles={['owner', 'admin_pusat', 'kasir_cabang']}>
                   <Reports />
                 </AuthGuard>
               } />
