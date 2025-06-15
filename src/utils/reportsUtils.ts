@@ -3,6 +3,21 @@ import type { Transaction, TransactionSummary, ProductSummary, PaymentMethodSumm
 
 export const transformTransactionData = (rawData: any[]): Transaction[] => {
   return rawData.map(item => {
+    // Defensive: ensure cashier_name always exists (from backend or fallback)
+    const cashier_name = item.cashier_name ??
+      (item.profiles?.name ?? "Kasir");
+
+    // Defensive: ensure transaction_items is always non-null, .products always exists
+    const transaction_items = (item.transaction_items || []).map((ti: any) => ({
+      id: ti.id,
+      product_id: ti.product_id,
+      quantity: ti.quantity,
+      price_per_item: ti.price_per_item,
+      subtotal: ti.subtotal,
+      // guarantee .products is never undefined - fallback to { name: "Unknown Product" }
+      products: ti.products ? ti.products : { name: "Unknown Product" }
+    }));
+
     const transformed = {
       id: item.id,
       branch_id: item.branch_id,
@@ -11,16 +26,13 @@ export const transformTransactionData = (rawData: any[]): Transaction[] => {
       total_amount: item.total_amount,
       payment_method: item.payment_method,
       branches: item.branches || { id: '', name: 'Unknown Branch' },
-      transaction_items: (item.transaction_items || []).map((ti: any) => ({
-        id: ti.id,
-        product_id: ti.product_id,
-        quantity: ti.quantity,
-        price_per_item: ti.price_per_item,
-        subtotal: ti.subtotal,
-        products: ti.products || { name: 'Unknown Product' }
-      }))
+      transaction_items,
+      cashier_name, // required for components
+      // Pass through possible extras
+      received: item.received,
+      change: item.change,
     };
-    
+
     console.log('Transformed transaction:', transformed.id, 'branch:', transformed.branches.name);
     return transformed;
   });
