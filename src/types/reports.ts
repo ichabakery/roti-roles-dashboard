@@ -24,7 +24,7 @@ export interface Transaction {
   total_amount: number;
   payment_method: string;
   branches: Branch;
-  transaction_items?: TransactionItem[];
+  transaction_items: TransactionItem[]; // Made required, not optional
   cashier_name: string; // Required, not optional!
   received?: number;
   change?: number;
