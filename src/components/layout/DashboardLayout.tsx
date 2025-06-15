@@ -1,7 +1,6 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { NotificationIcon } from '@/components/notifications/NotificationIcon';
+import NotificationIcon from '@/components/notifications/NotificationIcon';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   LayoutDashboard, 
@@ -187,7 +186,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               </h2>
             </div>
             <div className="flex items-center space-x-4">
-              <NotificationIcon />
+              <NotificationIcon unreadCount={0} />
             </div>
           </div>
         </header>
