@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -105,7 +104,7 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
               <TableHead>ID Transaksi</TableHead>
               <TableHead>Tanggal</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Pembeli</TableHead>
+              <TableHead>Kasir</TableHead>
               <TableHead>Metode Bayar</TableHead>
               <TableHead>Produk</TableHead>
               <TableHead className="text-right">Jumlah</TableHead>
@@ -120,7 +119,12 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
               const isExpanded = expandedRows.has(transaction.id);
               const hasMultipleProducts = transaction.transaction_items && transaction.transaction_items.length > 1;
               const firstItem = transaction.transaction_items?.[0];
-              
+
+              // Logging tambahan untuk debugging
+              if (!transaction.transaction_items || transaction.transaction_items.length === 0) {
+                console.log("🔎 Transaksi tanpa item produk!", transaction.id);
+              }
+
               return (
                 <React.Fragment key={transaction.id}>
                   {/* Main Row */}
@@ -148,16 +152,28 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
                     <TableCell>{transaction.cashier_name}</TableCell>
                     <TableCell>{getPaymentMethodBadge(transaction.payment_method)}</TableCell>
                     <TableCell>
-                      {hasMultipleProducts ? (
-                        <span className="text-sm text-gray-600">
-                          {transaction.transaction_items.length} produk
-                        </span>
+                      {transaction.transaction_items && transaction.transaction_items.length > 0 ? (
+                        hasMultipleProducts ? (
+                          <span className="text-sm text-gray-600">
+                            {/* Daftar produk & qty singkat untuk multi produk */}
+                            {transaction.transaction_items.map((item, i) => (
+                              <span key={item.id}>
+                                {item.products?.name || 'Produk Tidak Dikenal'} x{item.quantity}
+                                {i !== transaction.transaction_items.length - 1 ? ', ' : ''}
+                              </span>
+                            ))}
+                          </span>
+                        ) : (
+                          <>
+                            {firstItem?.products?.name || 'Tidak ada produk'} x{firstItem?.quantity || 0}
+                          </>
+                        )
                       ) : (
-                        firstItem?.products?.name || 'Tidak ada produk'
+                        <span className="text-red-500 text-xs">Tidak ada produk</span>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {hasMultipleProducts ? getTotalQuantity(transaction.transaction_items) : firstItem?.quantity || 0}
+                      {hasMultipleProducts ? getTotalQuantity(transaction.transaction_items) : (firstItem?.quantity || 0)}
                     </TableCell>
                     <TableCell className="text-right">
                       {hasMultipleProducts ? '-' : `Rp ${(firstItem?.price_per_item || 0).toLocaleString('id-ID')}`}
@@ -190,12 +206,16 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
                   {isExpanded && hasMultipleProducts && transaction.transaction_items?.map((item, itemIndex) => (
                     <TableRow key={`${transaction.id}-${item.id}`} className="bg-blue-50/50">
                       <TableCell></TableCell>
-                      <TableCell className="text-sm text-gray-500">└─ Item {itemIndex + 1}</TableCell>
+                      <TableCell className="text-sm text-gray-500">
+                        └─ Item {itemIndex + 1}
+                      </TableCell>
                       <TableCell></TableCell>
                       <TableCell></TableCell>
                       <TableCell></TableCell>
                       <TableCell></TableCell>
-                      <TableCell className="font-medium">{item.products?.name || 'Unknown Product'}</TableCell>
+                      <TableCell className="font-medium">
+                        {item.products?.name || 'Produk Tidak Dikenal'} x{item.quantity}
+                      </TableCell>
                       <TableCell className="text-right">{item.quantity}</TableCell>
                       <TableCell className="text-right">Rp {item.price_per_item.toLocaleString('id-ID')}</TableCell>
                       <TableCell className="text-right">Rp {item.subtotal.toLocaleString('id-ID')}</TableCell>
@@ -242,7 +262,16 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
             </div>
             
             <div className="text-sm text-gray-600 mb-3">
-              {formatProducts(transaction.transaction_items || [])}
+              {transaction.transaction_items && transaction.transaction_items.length > 0 ? (
+                transaction.transaction_items.map((item, i) => (
+                  <span key={item.id}>
+                    {item.products?.name || 'Produk Tidak Dikenal'} x{item.quantity}
+                    {i !== transaction.transaction_items.length - 1 ? ', ' : ''}
+                  </span>
+                ))
+              ) : (
+                <span className="text-red-500 text-xs">Tidak ada produk</span>
+              )}
             </div>
             
             <div className="flex justify-between items-center">
