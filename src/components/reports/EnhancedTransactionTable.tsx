@@ -42,18 +42,9 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'completed':
-      case 'selesai':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Selesai</Badge>;
-      case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>;
-      case 'cancelled':
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Dibatalkan</Badge>;
-      default:
-        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">{status}</Badge>;
-    }
+  const getStatusBadge = () => {
+    // Since transactions don't have status in the type, we'll assume all are completed
+    return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Selesai</Badge>;
   };
 
   const formatDate = (dateString: string) => {
@@ -153,7 +144,7 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
                       {transaction.id.substring(0, 8)}...
                     </TableCell>
                     <TableCell>{formatDate(transaction.transaction_date)}</TableCell>
-                    <TableCell>{getStatusBadge(transaction.status || 'completed')}</TableCell>
+                    <TableCell>{getStatusBadge()}</TableCell>
                     <TableCell>{transaction.cashier_name}</TableCell>
                     <TableCell>{getPaymentMethodBadge(transaction.payment_method)}</TableCell>
                     <TableCell>
@@ -241,7 +232,7 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
                 </div>
               </div>
               <div className="flex flex-col items-end gap-1">
-                {getStatusBadge(transaction.status || 'completed')}
+                {getStatusBadge()}
                 {getPaymentMethodBadge(transaction.payment_method)}
               </div>
             </div>
