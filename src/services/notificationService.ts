@@ -17,7 +17,7 @@ export const fetchNotificationsFromDB = async (userId: string): Promise<Notifica
     throw error;
   }
 
-  return data || [];
+  return (data || []) as Notification[];
 };
 
 export const markNotificationAsRead = async (notificationId: string): Promise<void> => {
@@ -69,5 +69,5 @@ export const createNotification = async (notification: NewNotification): Promise
     throw error;
   }
 
-  return data;
+  return data as Notification;
 };
