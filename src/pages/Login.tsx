@@ -1,164 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import LoginForm from "@/components/auth/LoginForm";
+import SignupForm from "@/components/auth/SignupForm";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('login');
-  
-  const {
-    user,
-    login
-  } = useAuth();
-  
+  const [email, setEmail] = useState("");
+  const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { user } = useAuth();
 
   // Redirect if user is already logged in
   useEffect(() => {
     if (user) {
-      navigate('/dashboard');
+      navigate("/dashboard");
     }
   }, [user, navigate]);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-    
-    if (!email || !password) {
-      toast({
-        title: "Error",
-        description: "Email dan password harus diisi",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsLoading(true);
-    try {
-      await login(email, password);
-      // Redirect dilakukan oleh useEffect ketika user state berubah
-    } catch (error: any) {
-      console.error("Login error:", error);
-      
-      let errorMsg = "Email atau password salah";
-      if (error?.message) {
-        if (error.message.includes("Invalid login")) {
-          errorMsg = "Email atau password salah";
-        } else if (error.message.includes("Email not confirmed")) {
-          errorMsg = "Email belum dikonfirmasi. Periksa kotak masuk email Anda.";
-        } else {
-          errorMsg = error.message;
-        }
-      }
-      
-      setErrorMessage(errorMsg);
-      toast({
-        title: "Login gagal",
-        description: errorMsg,
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-    
-    if (!email || !password || !confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Semua field harus diisi",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Password dan konfirmasi password tidak cocok",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      toast({
-        title: "Error",
-        description: "Password harus minimal 6 karakter",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`
-        }
-      });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Berhasil!",
-        description: "Akun berhasil dibuat. Periksa email Anda untuk verifikasi.",
-        variant: "default"
-      });
-      
-      // Switch to login tab after successful signup
-      setActiveTab('login');
-      setPassword('');
-      setConfirmPassword('');
-      
-    } catch (error: any) {
-      console.error("Signup error:", error);
-      
-      let errorMsg = "Gagal membuat akun";
-      if (error?.message) {
-        if (error.message.includes("User already registered")) {
-          errorMsg = "Email sudah terdaftar. Silakan login atau gunakan email lain.";
-        } else if (error.message.includes("Password should be")) {
-          errorMsg = "Password harus minimal 6 karakter";
-        } else {
-          errorMsg = error.message;
-        }
-      }
-      
-      setErrorMessage(errorMsg);
-      toast({
-        title: "Pendaftaran gagal",
-        description: errorMsg,
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Hanya satu akun demo yang valid (owner yang sudah dikonfirmasi di database)
+  // Demo user info
   const validDemoUser = {
-    role: 'Pemilik (Owner)',
-    email: 'owner@icha.com'
+    role: "Pemilik (Owner)",
+    email: "owner@icha.com",
   };
-  
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full">
@@ -166,7 +34,7 @@ const Login = () => {
           <h1 className="text-4xl font-bold text-primary mb-2">Icha Bakery</h1>
           <p className="text-muted-foreground">Sistem Manajemen Icha Bakery</p>
         </div>
-        
+
         <Card>
           <CardHeader>
             <CardTitle>Selamat Datang</CardTitle>
@@ -174,123 +42,56 @@ const Login = () => {
               Masuk atau daftar untuk mengakses sistem
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs
+              value={activeTab}
+              onValueChange={(v) => setActiveTab(v as "login" | "signup")}
+              className="w-full"
+            >
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="signup">Daftar</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
-                    <Input 
-                      id="login-email" 
-                      type="email" 
-                      placeholder="email@example.com" 
-                      value={email} 
-                      onChange={e => setEmail(e.target.value)} 
-                      required 
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
-                    <Input 
-                      id="login-password" 
-                      type="password" 
-                      placeholder="******" 
-                      value={password} 
-                      onChange={e => setPassword(e.target.value)} 
-                      required 
-                    />
-                  </div>
-                  
-                  {errorMessage && (
-                    <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm">
-                      {errorMessage}
-                    </div>
-                  )}
-                  
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Memproses...' : 'Masuk'}
-                  </Button>
-                </form>
+                <LoginForm
+                  email={email}
+                  setEmail={setEmail}
+                  onSuccess={() => {}}
+                />
               </TabsContent>
-              
+
               <TabsContent value="signup">
-                <form onSubmit={handleSignup} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input 
-                      id="signup-email" 
-                      type="email" 
-                      placeholder="email@example.com" 
-                      value={email} 
-                      onChange={e => setEmail(e.target.value)} 
-                      required 
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <Input 
-                      id="signup-password" 
-                      type="password" 
-                      placeholder="******" 
-                      value={password} 
-                      onChange={e => setPassword(e.target.value)} 
-                      required 
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Password minimal 6 karakter
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Konfirmasi Password</Label>
-                    <Input 
-                      id="confirm-password" 
-                      type="password" 
-                      placeholder="******" 
-                      value={confirmPassword} 
-                      onChange={e => setConfirmPassword(e.target.value)} 
-                      required 
-                    />
-                  </div>
-                  
-                  {errorMessage && (
-                    <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm">
-                      {errorMessage}
-                    </div>
-                  )}
-                  
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Memproses...' : 'Daftar'}
-                  </Button>
-                </form>
+                <SignupForm
+                  email={email}
+                  setEmail={setEmail}
+                  onRegistered={() => {
+                    setActiveTab("login");
+                  }}
+                />
               </TabsContent>
             </Tabs>
           </CardContent>
-          
+
           <CardFooter className="flex flex-col">
             <div className="w-full text-center">
               <p className="text-sm font-medium mb-2">Akun Demo untuk Testing:</p>
               <div className="grid grid-cols-1 gap-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => {
                     setEmail(validDemoUser.email);
-                    setActiveTab('login');
-                  }} 
+                    setActiveTab("login");
+                  }}
                   className="text-xs justify-between"
                 >
                   <span>{validDemoUser.role}</span>
-                  <span className="text-muted-foreground">{validDemoUser.email}</span>
+                  <span className="text-muted-foreground">
+                    {validDemoUser.email}
+                  </span>
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
