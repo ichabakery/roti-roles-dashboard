@@ -6,6 +6,7 @@ import { BarChart } from 'lucide-react';
 import { ReportsCharts } from './ReportsCharts';
 import { SummaryTab } from './SummaryTab';
 import { TransactionsTab } from './TransactionsTab';
+import { TransactionItemsTab } from './TransactionItemsTab';
 import { ProductsTab } from './ProductsTab';
 import { ReportsFilters } from './ReportsFilters';
 import { ReportsExport } from './ReportsExport';
@@ -27,6 +28,16 @@ interface Transaction {
   total_amount: number;
   payment_method: string;
   branch?: { name: string };
+  transaction_items?: Array<{
+    id: string;
+    product_id: string;
+    quantity: number;
+    price_per_item: number;
+    subtotal: number;
+    products?: {
+      name: string;
+    };
+  }>;
 }
 
 interface TransactionSummary {
@@ -125,6 +136,7 @@ export const ReportsContent: React.FC<ReportsContentProps> = ({
               <TabsList className="w-full justify-start">
                 <TabsTrigger value="summary">Ringkasan</TabsTrigger>
                 <TabsTrigger value="transactions">Detail Transaksi</TabsTrigger>
+                <TabsTrigger value="items">Detail Item</TabsTrigger>
                 <TabsTrigger value="products">Analisis Produk</TabsTrigger>
               </TabsList>
             </div>
@@ -161,8 +173,16 @@ export const ReportsContent: React.FC<ReportsContentProps> = ({
               <TransactionsTab transactions={transactions} loading={loading} />
             </TabsContent>
 
+            <TabsContent value="items" className="p-4">
+              <TransactionItemsTab transactions={transactions} loading={loading} />
+            </TabsContent>
+
             <TabsContent value="products" className="p-0">
-              <ProductsTab productSummary={productSummary} loading={loading} />
+              <ProductsTab 
+                productSummary={productSummary} 
+                transactions={transactions}
+                loading={loading} 
+              />
             </TabsContent>
           </Tabs>
         </CardContent>
