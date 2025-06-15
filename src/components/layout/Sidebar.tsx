@@ -25,22 +25,19 @@ export const Sidebar = ({ sidebarOpen, setSidebarOpen, user, onLogout }: Sidebar
   };
 
   return (
-    <div className={`bg-white shadow-sm border-r transition-all duration-300 ${
-      sidebarOpen ? 'w-64' : 'w-16'
-    } flex flex-col`}>
+    <div className="bg-white shadow-sm border-r w-64 flex flex-col">
       {/* Logo/Header */}
       <div className="p-4 border-b">
         <div className="flex items-center justify-between">
-          {sidebarOpen && (
-            <h1 className="text-xl font-bold text-gray-800">Toko Roti</h1>
-          )}
+          <h1 className="text-xl font-bold text-gray-800">Toko Roti</h1>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-2"
+            title="Toggle Sidebar"
           >
-            {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            <Menu className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -62,16 +59,14 @@ export const Sidebar = ({ sidebarOpen, setSidebarOpen, user, onLogout }: Sidebar
               }`}
             >
               <Icon className="h-5 w-5 flex-shrink-0" />
-              {sidebarOpen && (
-                <span className="ml-3 text-sm font-medium">{item.name}</span>
-              )}
+              <span className="ml-3 text-sm font-medium">{item.name}</span>
             </Link>
           );
         })}
       </nav>
 
       {/* User Profile & Logout */}
-      <UserProfile user={user} sidebarOpen={sidebarOpen} onLogout={onLogout} />
+      <UserProfile user={user} sidebarOpen={true} onLogout={onLogout} />
     </div>
   );
 };

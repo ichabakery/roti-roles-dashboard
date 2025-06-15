@@ -11,7 +11,8 @@ interface DashboardLayoutProps {
 }
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Set sidebar to always be open for better UX
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user, logout } = useAuth();
   const { userBranch } = useUserBranch();
   const navigate = useNavigate();
@@ -30,9 +31,9 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
+      {/* Sidebar - Always expanded for better UX */}
       <Sidebar 
-        sidebarOpen={sidebarOpen}
+        sidebarOpen={true}  // Always keep sidebar open
         setSidebarOpen={setSidebarOpen}
         user={user}
         onLogout={handleLogout}
