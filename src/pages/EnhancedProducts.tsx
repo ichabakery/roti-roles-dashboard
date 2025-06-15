@@ -6,21 +6,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Package, Archive, AlertTriangle, ArrowLeft } from 'lucide-react';
-import { ProductType } from '@/types/products';
+import { Plus, Package, Archive, AlertTriangle, ArrowLeft, Edit } from 'lucide-react';
+import { ProductType, Product } from '@/types/products';
 import { fetchProductsWithType } from '@/services/enhancedProductService';
 import { useProductBatches } from '@/hooks/useProductBatches';
 import { ProductTypeSelector } from '@/components/products/ProductTypeSelector';
 import { ProductPackageManager } from '@/components/products/ProductPackageManager';
 import { BatchManagement } from '@/components/products/BatchManagement';
 import { ExpiryMonitoring } from '@/components/products/ExpiryMonitoring';
+import { EnhancedAddProductDialog } from '@/components/products/EnhancedAddProductDialog';
+import { EditProductDialog } from '@/components/products/EditProductDialog';
 import { useNavigate } from 'react-router-dom';
 
 const EnhancedProducts = () => {
   const navigate = useNavigate();
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProductType, setSelectedProductType] = useState<ProductType>('regular');
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const { toast } = useToast();
   const { expiringProducts, fetchExpiring } = useProductBatches();
 
@@ -44,6 +48,15 @@ const EnhancedProducts = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setEditDialogOpen(true);
+  };
+
+  const handleProductUpdated = () => {
+    fetchProducts();
   };
 
   const getProductTypeIcon = (type: ProductType) => {
@@ -122,10 +135,7 @@ const EnhancedProducts = () => {
                       selectedType={selectedProductType}
                       onTypeChange={setSelectedProductType}
                     />
-                    <Button>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Tambah Produk
-                    </Button>
+                    <EnhancedAddProductDialog onProductAdded={fetchProducts} />
                   </div>
                 </div>
               </CardHeader>
@@ -136,28 +146,37 @@ const EnhancedProducts = () => {
                   </div>
                 ) : (
                   <div className="grid gap-4">
-                    {products.map((product) => (
-                      <div key={product.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold">{product.name}</h3>
-                            {getProductTypeBadge(product.product_type)}
-                          </div>
-                          <p className="text-sm text-muted-foreground">{product.description}</p>
-                          <p className="font-bold text-green-600">Rp {product.price.toLocaleString('id-ID')}</p>
+                    {products.length === 0 ? (
+                      <div className="text-center py-8 space-y-4">
+                        <div className="text-muted-foreground">
+                          Belum ada produk {selectedProductType === 'regular' ? 'reguler' : selectedProductType === 'package' ? 'paket' : 'bundling'}
                         </div>
-                        <div className="flex items-center gap-2">
-                          {(product.product_type === 'package' || product.product_type === 'bundle') && (
-                            <Button variant="outline" size="sm">
-                              Kelola Komponen
-                            </Button>
-                          )}
-                          <Button variant="outline" size="sm">
-                            Edit
-                          </Button>
-                        </div>
+                        <EnhancedAddProductDialog onProductAdded={fetchProducts} />
                       </div>
-                    ))}
+                    ) : (
+                      products.map((product) => (
+                        <div key={product.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold">{product.name}</h3>
+                              {getProductTypeBadge(product.product_type)}
+                            </div>
+                            <p className="text-sm text-muted-foreground">{product.description}</p>
+                            <p className="font-bold text-green-600">Rp {product.price.toLocaleString('id-ID')}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleEditProduct(product)}
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -176,6 +195,13 @@ const EnhancedProducts = () => {
             <ExpiryMonitoring />
           </TabsContent>
         </Tabs>
+
+        <EditProductDialog
+          product={editingProduct}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onProductUpdated={handleProductUpdated}
+        />
       </div>
     </DashboardLayout>
   );
