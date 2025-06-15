@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,9 +36,10 @@ export const useProducts = (options: UseProductsOptions = {}) => {
       console.log('Fetching products from Supabase...');
 
       if ((filterByStock || withStock) && branchId) {
+        // Hint the correct FK path to avoid ambiguous join error
         const { data: inventoryData, error: inventoryError } = await supabase
           .from('inventory')
-          .select('product_id, quantity, products(*)')
+          .select('product_id, quantity, products:products!fk_inventory_product_id(*)')
           .eq('branch_id', branchId)
           .gt('quantity', filterByStock ? 0 : -1);
 
@@ -51,10 +53,9 @@ export const useProducts = (options: UseProductsOptions = {}) => {
           return;
         }
 
-        // Extra type guard: ensure item.products is a plain object (not null or undefined)
+        // Only include when the join succeeded and has product info
         const productsWithStock: Product[] = inventoryData
-          .filter((item): item is { products: object; quantity: number } =>
-            !!item.products && typeof item.products === 'object')
+          .filter((item) => item.products)
           .map(item => ({
             ...(item.products as Product),
             stock: item.quantity ?? 0,
@@ -94,3 +95,4 @@ export const useProducts = (options: UseProductsOptions = {}) => {
 
   return { products, loading, error, refetchProducts: fetchProducts };
 };
+
