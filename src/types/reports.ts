@@ -1,4 +1,5 @@
 
+
 export interface Branch {
   id: string;
   name: string;
@@ -10,7 +11,7 @@ export interface TransactionItem {
   quantity: number;
   price_per_item: number;
   subtotal: number;
-  products?: {
+  products: {
     name: string;
   };
 }
@@ -54,3 +55,4 @@ export interface DateRange {
   start: string;
   end: string;
 }
+
