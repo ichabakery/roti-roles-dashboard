@@ -41,7 +41,7 @@ export const useProducts = (options: UseProductsOptions = {}) => {
           .from('inventory')
           .select('product_id, quantity, products(*)')
           .eq('branch_id', branchId)
-          .gt('quantity', filterByStock ? 0 : -1); // stock>0 only for filterByStock
+          .gt('quantity', filterByStock ? 0 : -1);
 
         if (inventoryError) {
           console.error('Error fetching inventory:', inventoryError);
@@ -53,11 +53,13 @@ export const useProducts = (options: UseProductsOptions = {}) => {
           return;
         }
 
-        // Merge products with stock field
-        const productsWithStock: Product[] = inventoryData.map(item => ({
-          ...item.products,
-          stock: item.quantity ?? 0,
-        }));
+        // Filter out rows where item.products is null (supabase can do this if FK broken, etc)
+        const productsWithStock: Product[] = inventoryData
+          .filter(item => item.products)
+          .map(item => ({
+            ...item.products,
+            stock: item.quantity ?? 0,
+          }));
         setProducts(productsWithStock);
         return;
       }
@@ -74,7 +76,6 @@ export const useProducts = (options: UseProductsOptions = {}) => {
         throw error;
       }
 
-      // If withStock is requested but no branchId, stock will be undefined
       setProducts(data || []);
     } catch (error: any) {
       setError(error.message);
