@@ -62,7 +62,7 @@ const Reports = () => {
 
         {/* History Nota */}
         <div className="mt-8">
-          <ReceiptHistory />
+          <ReceiptHistory transactions={transactions} />
         </div>
 
         {/* Main Content */}

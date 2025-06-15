@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import type { Transaction } from '@/types/reports';
 
@@ -50,7 +49,8 @@ export const fetchTransactionsFromDB = async (
       cashier_id,
       transaction_date,
       total_amount,
-      payment_method
+      payment_method,
+      profiles:cashier_id(id, name)
     `);
 
   // Apply role-based filtering with improved logic
@@ -178,7 +178,8 @@ export const fetchTransactionsFromDB = async (
   const enrichedTransactions = transactionData.map(transaction => ({
     ...transaction,
     branches: branchMap.get(transaction.branch_id) || { id: transaction.branch_id, name: 'Unknown Branch' },
-    transaction_items: itemsMap.get(transaction.id) || []
+    transaction_items: itemsMap.get(transaction.id) || [],
+    cashier_name: transaction.profiles?.name || 'Kasir'
   }));
 
   console.log('✅ Transaction data enriched successfully:', enrichedTransactions.length, 'records');
