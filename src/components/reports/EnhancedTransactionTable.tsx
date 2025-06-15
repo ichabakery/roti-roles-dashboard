@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Eye, Copy, Receipt, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { TransactionRow } from './TransactionRow';
+import { ExpandedProductRows } from './ExpandedProductRows';
+import { TransactionMobileCard } from './TransactionMobileCard';
 import type { Transaction } from '@/types/reports';
 
 interface EnhancedTransactionTableProps {
@@ -31,19 +32,19 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
     switch (methodUpper) {
       case 'CASH':
       case 'TUNAI':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">{methodUpper}</Badge>;
+        return <span className="bg-green-100 text-green-800 rounded px-2 py-0.5 text-xs">{methodUpper}</span>;
       case 'TRANSFER':
-        return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">{methodUpper}</Badge>;
+        return <span className="bg-orange-100 text-orange-800 rounded px-2 py-0.5 text-xs">{methodUpper}</span>;
       case 'QRIS':
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">{methodUpper}</Badge>;
+        return <span className="bg-blue-100 text-blue-800 rounded px-2 py-0.5 text-xs">{methodUpper}</span>;
       default:
-        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">{methodUpper}</Badge>;
+        return <span className="bg-gray-100 text-gray-800 rounded px-2 py-0.5 text-xs">{methodUpper}</span>;
     }
   };
 
   const getStatusBadge = () => {
-    // Since transactions don't have status in the type, we'll assume all are completed
-    return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Selesai</Badge>;
+    // Kolom status default always selesai (completed)
+    return <span className="bg-green-100 text-green-800 rounded px-2 py-0.5 text-xs">Selesai</span>;
   };
 
   const formatDate = (dateString: string) => {
@@ -54,14 +55,6 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
       hour: '2-digit',
       minute: '2-digit'
     });
-  };
-
-  const formatProducts = (items: any[]) => {
-    if (!items || items.length === 0) return 'Tidak ada produk';
-    
-    return items.map(item => 
-      `${item.products?.name || 'Unknown'} x${item.quantity}`
-    ).join(', ');
   };
 
   const getTotalQuantity = (items: any[]) => {
@@ -115,118 +108,29 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
             </TableRow>
           </TableHeader>
           <TableBody>
-            {transactions.map((transaction, index) => {
+            {transactions.map((transaction, idx) => {
               const isExpanded = expandedRows.has(transaction.id);
-              const hasMultipleProducts = transaction.transaction_items && transaction.transaction_items.length > 1;
-              const firstItem = transaction.transaction_items?.[0];
-
-              // Logging tambahan untuk debugging
-              if (!transaction.transaction_items || transaction.transaction_items.length === 0) {
-                console.log("🔎 Transaksi tanpa item produk!", transaction.id);
-              }
-
               return (
                 <React.Fragment key={transaction.id}>
-                  {/* Main Row */}
-                  <TableRow className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}`}>
-                    <TableCell>
-                      {hasMultipleProducts && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleRow(transaction.id)}
-                          className="p-1"
-                        >
-                          {isExpanded ? 
-                            <ChevronDown className="h-4 w-4" /> : 
-                            <ChevronRight className="h-4 w-4" />
-                          }
-                        </Button>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-mono text-sm">
-                      {transaction.id.substring(0, 8)}...
-                    </TableCell>
-                    <TableCell>{formatDate(transaction.transaction_date)}</TableCell>
-                    <TableCell>{getStatusBadge()}</TableCell>
-                    <TableCell>{transaction.cashier_name}</TableCell>
-                    <TableCell>{getPaymentMethodBadge(transaction.payment_method)}</TableCell>
-                    <TableCell>
-                      {transaction.transaction_items && transaction.transaction_items.length > 0 ? (
-                        hasMultipleProducts ? (
-                          <span className="text-sm text-gray-600">
-                            {/* Daftar produk & qty singkat untuk multi produk */}
-                            {transaction.transaction_items.map((item, i) => (
-                              <span key={item.id}>
-                                {item.products?.name || 'Produk Tidak Dikenal'} x{item.quantity}
-                                {i !== transaction.transaction_items.length - 1 ? ', ' : ''}
-                              </span>
-                            ))}
-                          </span>
-                        ) : (
-                          <>
-                            {firstItem?.products?.name || 'Tidak ada produk'} x{firstItem?.quantity || 0}
-                          </>
-                        )
-                      ) : (
-                        <span className="text-red-500 text-xs">Tidak ada produk</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {hasMultipleProducts ? getTotalQuantity(transaction.transaction_items) : (firstItem?.quantity || 0)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {hasMultipleProducts ? '-' : `Rp ${(firstItem?.price_per_item || 0).toLocaleString('id-ID')}`}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {hasMultipleProducts ? '-' : `Rp ${(firstItem?.subtotal || 0).toLocaleString('id-ID')}`}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      Rp {transaction.total_amount.toLocaleString('id-ID')}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" className="p-1" onClick={() => handleView(transaction)}>
-                          <Eye className="h-3 w-3" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="p-1" onClick={() => handleCopy(transaction.id)}>
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="p-1" onClick={() => handlePrint(transaction)}>
-                          <Receipt className="h-3 w-3" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="p-1 text-red-600" onClick={() => handleDelete(transaction)}>
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                  
-                  {/* Expanded Rows for Multiple Products */}
-                  {isExpanded && hasMultipleProducts && transaction.transaction_items?.map((item, itemIndex) => (
-                    <TableRow key={`${transaction.id}-${item.id}`} className="bg-blue-50/50">
-                      <TableCell></TableCell>
-                      <TableCell className="text-sm text-gray-500">
-                        └─ Item {itemIndex + 1}
-                      </TableCell>
-                      <TableCell></TableCell>
-                      <TableCell></TableCell>
-                      <TableCell></TableCell>
-                      <TableCell></TableCell>
-                      <TableCell className="font-medium">
-                        {item.products?.name || 'Produk Tidak Dikenal'} x{item.quantity}
-                      </TableCell>
-                      <TableCell className="text-right">{item.quantity}</TableCell>
-                      <TableCell className="text-right">Rp {item.price_per_item.toLocaleString('id-ID')}</TableCell>
-                      <TableCell className="text-right">Rp {item.subtotal.toLocaleString('id-ID')}</TableCell>
-                      <TableCell></TableCell>
-                      <TableCell></TableCell>
-                    </TableRow>
-                  ))}
+                  <TransactionRow
+                    transaction={transaction}
+                    index={idx}
+                    isExpanded={isExpanded}
+                    toggleRow={toggleRow}
+                    getPaymentMethodBadge={getPaymentMethodBadge}
+                    getStatusBadge={getStatusBadge}
+                    getTotalQuantity={getTotalQuantity}
+                    handleView={handleView}
+                    handleCopy={handleCopy}
+                    handlePrint={handlePrint}
+                    handleDelete={handleDelete}
+                  />
+                  {isExpanded && (
+                    <ExpandedProductRows transaction={transaction} />
+                  )}
                 </React.Fragment>
               );
             })}
-            
             {transactions.length === 0 && (
               <TableRow>
                 <TableCell colSpan={12} className="text-center py-8 text-gray-500">
@@ -241,56 +145,16 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
       {/* Mobile Cards */}
       <div className="lg:hidden space-y-4 p-4">
         {transactions.map((transaction) => (
-          <div key={transaction.id} className="border rounded-lg p-4 bg-white">
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <div className="font-mono text-sm text-gray-600">
-                  {transaction.id.substring(0, 8)}...
-                </div>
-                <div className="text-sm text-gray-500">
-                  {formatDate(transaction.transaction_date)}
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                {getStatusBadge()}
-                {getPaymentMethodBadge(transaction.payment_method)}
-              </div>
-            </div>
-            
-            <div className="text-lg font-bold mb-2">
-              Rp {transaction.total_amount.toLocaleString('id-ID')}
-            </div>
-            
-            <div className="text-sm text-gray-600 mb-3">
-              {transaction.transaction_items && transaction.transaction_items.length > 0 ? (
-                transaction.transaction_items.map((item, i) => (
-                  <span key={item.id}>
-                    {item.products?.name || 'Produk Tidak Dikenal'} x{item.quantity}
-                    {i !== transaction.transaction_items.length - 1 ? ', ' : ''}
-                  </span>
-                ))
-              ) : (
-                <span className="text-red-500 text-xs">Tidak ada produk</span>
-              )}
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">
-                Kasir: {transaction.cashier_name}
-              </span>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="sm" className="p-1" onClick={() => handleView(transaction)}>
-                  <Eye className="h-3 w-3" />
-                </Button>
-                <Button variant="ghost" size="sm" className="p-1" onClick={() => handleCopy(transaction.id)}>
-                  <Copy className="h-3 w-3" />
-                </Button>
-                <Button variant="ghost" size="sm" className="p-1" onClick={() => handlePrint(transaction)}>
-                  <Receipt className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
-          </div>
+          <TransactionMobileCard
+            key={transaction.id}
+            transaction={transaction}
+            getStatusBadge={getStatusBadge}
+            getPaymentMethodBadge={getPaymentMethodBadge}
+            handleView={handleView}
+            handleCopy={handleCopy}
+            handlePrint={handlePrint}
+            formatDate={formatDate}
+          />
         ))}
       </div>
     </div>
