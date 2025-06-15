@@ -60,7 +60,7 @@ function App() {
                 </AuthGuard>
               } />
               <Route path="/production" element={
-                <AuthGuard allowedRoles={['owner', 'admin_pusat', 'kepala_produksi']}>
+                <AuthGuard allowedRoles={['owner', 'admin_pusat', 'kepala_produksi', 'kasir_cabang']}>
                   <Production />
                 </AuthGuard>
               } />
