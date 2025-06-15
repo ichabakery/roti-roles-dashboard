@@ -41,7 +41,7 @@ export const fetchTransactionsFromDB = async (
     console.log('✅ Kasir cabang has valid branch assignment:', userBranchId);
   }
 
-  // Build optimized query with proper foreign key hints
+  // Build optimized query with proper foreign key hints (without unsupported columns)
   let transactionQuery = supabase
     .from('transactions')
     .select(`
@@ -51,8 +51,6 @@ export const fetchTransactionsFromDB = async (
       transaction_date,
       total_amount,
       payment_method,
-      received,
-      change,
       profiles:cashier_id(id, name),
       branches:branch_id(id, name),
       transaction_items(
