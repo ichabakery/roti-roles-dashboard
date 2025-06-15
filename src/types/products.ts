@@ -10,6 +10,8 @@ export interface Product {
   image_url: string | null;
   created_at: string;
   product_type: ProductType;
+  has_expiry: boolean;
+  default_expiry_days: number | null;
 }
 
 export interface ProductPackage {

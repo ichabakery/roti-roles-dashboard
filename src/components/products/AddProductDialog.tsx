@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,6 +21,8 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
     name: '',
     description: '',
     price: '',
+    hasExpiry: false,
+    defaultExpiryDays: '',
   });
   const { toast } = useToast();
 
@@ -28,14 +31,20 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
     setLoading(true);
 
     try {
+      const productData = {
+        name: formData.name,
+        description: formData.description,
+        price: parseFloat(formData.price),
+        active: true,
+        has_expiry: formData.hasExpiry,
+        default_expiry_days: formData.hasExpiry && formData.defaultExpiryDays 
+          ? parseInt(formData.defaultExpiryDays) 
+          : null,
+      };
+
       const { error } = await supabase
         .from('products')
-        .insert({
-          name: formData.name,
-          description: formData.description,
-          price: parseFloat(formData.price),
-          active: true,
-        });
+        .insert(productData);
 
       if (error) {
         throw error;
@@ -43,10 +52,16 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
 
       toast({
         title: "Berhasil",
-        description: "Produk berhasil ditambahkan",
+        description: `Produk berhasil ditambahkan${formData.hasExpiry ? ' dengan monitoring kadaluarsa' : ''}`,
       });
 
-      setFormData({ name: '', description: '', price: '' });
+      setFormData({ 
+        name: '', 
+        description: '', 
+        price: '', 
+        hasExpiry: false, 
+        defaultExpiryDays: '' 
+      });
       setOpen(false);
       onProductAdded();
     } catch (error: any) {
@@ -61,7 +76,7 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
     }
   };
 
-  const handleInputChange = (field: keyof typeof formData, value: string) => {
+  const handleInputChange = (field: keyof typeof formData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -88,6 +103,7 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
               required
             />
           </div>
+          
           <div className="space-y-2">
             <Label htmlFor="description">Deskripsi</Label>
             <Textarea
@@ -98,6 +114,7 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
               rows={3}
             />
           </div>
+          
           <div className="space-y-2">
             <Label htmlFor="price">Harga</Label>
             <Input
@@ -111,6 +128,39 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
               required
             />
           </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="hasExpiry"
+                checked={formData.hasExpiry}
+                onCheckedChange={(checked) => handleInputChange('hasExpiry', checked as boolean)}
+              />
+              <Label htmlFor="hasExpiry" className="text-sm font-medium">
+                Produk ini memiliki tanggal kadaluarsa
+              </Label>
+            </div>
+            
+            {formData.hasExpiry && (
+              <div className="space-y-2 pl-6">
+                <Label htmlFor="defaultExpiryDays">Masa kadaluarsa (hari)</Label>
+                <Input
+                  id="defaultExpiryDays"
+                  type="number"
+                  value={formData.defaultExpiryDays}
+                  onChange={(e) => handleInputChange('defaultExpiryDays', e.target.value)}
+                  placeholder="Contoh: 7 untuk seminggu"
+                  min="1"
+                  max="365"
+                  required={formData.hasExpiry}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Produk akan kadaluarsa setelah {formData.defaultExpiryDays || 'X'} hari dari tanggal produksi
+                </p>
+              </div>
+            )}
+          </div>
+          
           <div className="flex justify-end space-x-2">
             <Button
               type="button"

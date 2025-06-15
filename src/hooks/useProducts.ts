@@ -11,6 +11,8 @@ export interface Product {
   active: boolean;
   image_url: string | null;
   created_at: string;
+  has_expiry: boolean;
+  default_expiry_days: number | null;
 }
 
 interface UseProductsOptions {

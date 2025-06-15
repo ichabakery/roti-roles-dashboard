@@ -339,7 +339,9 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          default_expiry_days: number | null
           description: string | null
+          has_expiry: boolean | null
           id: string
           image_url: string | null
           name: string
@@ -349,7 +351,9 @@ export type Database = {
         Insert: {
           active?: boolean
           created_at?: string
+          default_expiry_days?: number | null
           description?: string | null
+          has_expiry?: boolean | null
           id?: string
           image_url?: string | null
           name: string
@@ -359,7 +363,9 @@ export type Database = {
         Update: {
           active?: boolean
           created_at?: string
+          default_expiry_days?: number | null
           description?: string | null
+          has_expiry?: boolean | null
           id?: string
           image_url?: string | null
           name?: string
