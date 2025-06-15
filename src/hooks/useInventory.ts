@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -96,8 +95,16 @@ export const useInventory = () => {
     }
   }, [user, selectedBranch]);
 
-  // Add or update stock
+  // Add or update stock, batasi kasir tidak boleh menambah stok
   const addStock = useCallback(async (productId: string, branchId: string, quantity: number) => {
+    if (!user || user.role === "kasir_cabang") {
+      toast({
+        variant: "destructive",
+        title: "Akses Ditolak",
+        description: "Anda tidak memiliki izin untuk menambah stok. Silakan hubungi admin pusat.",
+      });
+      return false;
+    }
     try {
       await addStockToInventory(productId, branchId, quantity);
 
@@ -120,7 +127,7 @@ export const useInventory = () => {
       });
       return false;
     }
-  }, [products, branches, fetchInventory]);
+  }, [user, products, branches, fetchInventory]);
 
   // Setup real-time updates
   useInventoryRealtime(user, fetchInventory);

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -35,6 +34,9 @@ export const AddStockDialog: React.FC<AddStockDialogProps> = ({
   userRole,
   userBranchId
 }) => {
+  // Jika role kasir cabang, render null (tidak boleh akses UI sama sekali)
+  if (userRole === "kasir_cabang") return null;
+
   const [productId, setProductId] = useState('');
   const [branchId, setBranchId] = useState('');
   const [quantity, setQuantity] = useState(0);

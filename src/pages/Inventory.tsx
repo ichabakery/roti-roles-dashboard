@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -30,20 +29,22 @@ const Inventory = () => {
     return await addStock(productId, branchId, quantity);
   };
 
-  // Show monitoring for admin roles
+  // Show monitoring untuk admin pusat & owner saja
   const showMonitoring = user?.role === 'owner' || user?.role === 'admin_pusat';
+
+  // Tambah stok hanya bisa untuk admin pusat & owner
+  const canAddStock = user?.role === 'owner' || user?.role === 'admin_pusat';
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <InventoryHeader
           loading={loading}
-          isAddDialogOpen={isAddDialogOpen}
-          setIsAddDialogOpen={setIsAddDialogOpen}
+          isAddDialogOpen={canAddStock ? isAddDialogOpen : false}
+          setIsAddDialogOpen={canAddStock ? setIsAddDialogOpen : () => {}}
           onRefresh={fetchInventory}
         />
         
-        {/* Stock Monitoring for Admin */}
         {showMonitoring && (
           <StockMonitoring />
         )}
@@ -72,15 +73,18 @@ const Inventory = () => {
           </CardContent>
         </Card>
 
-        <AddStockDialog
-          open={isAddDialogOpen}
-          onOpenChange={setIsAddDialogOpen}
-          products={products}
-          branches={branches}
-          onAddStock={handleAddStock}
-          userRole={user?.role}
-          userBranchId={user?.branchId}
-        />
+        {/* Dialog tambah stok hanya untuk owner & admin pusat */}
+        {canAddStock && (
+          <AddStockDialog
+            open={isAddDialogOpen}
+            onOpenChange={setIsAddDialogOpen}
+            products={products}
+            branches={branches}
+            onAddStock={handleAddStock}
+            userRole={user?.role}
+            userBranchId={user?.branchId}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
