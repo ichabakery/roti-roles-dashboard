@@ -13,15 +13,17 @@ export interface Product {
   created_at: string;
   has_expiry: boolean;
   default_expiry_days: number | null;
+  stock?: number; // New: stock per branch, optional
 }
 
 interface UseProductsOptions {
   branchId?: string | null;
   filterByStock?: boolean;
+  withStock?: boolean; // New: fetch stock join
 }
 
 export const useProducts = (options: UseProductsOptions = {}) => {
-  const { branchId, filterByStock = false } = options;
+  const { branchId, filterByStock = false, withStock = false } = options;
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -32,17 +34,14 @@ export const useProducts = (options: UseProductsOptions = {}) => {
       setLoading(true);
       setError(null);
       console.log('Fetching products from Supabase...');
-      
-      // If filtering by stock and branch is provided, use separate queries
-      if (filterByStock && branchId) {
-        console.log('Filtering products by branch stock:', branchId);
-        
-        // First, get products that have inventory in the specified branch
+
+      if ((filterByStock || withStock) && branchId) {
+        // Get inventory data with product join in one go
         const { data: inventoryData, error: inventoryError } = await supabase
           .from('inventory')
-          .select('product_id')
+          .select('product_id, quantity, products(*)')
           .eq('branch_id', branchId)
-          .gt('quantity', 0);
+          .gt('quantity', filterByStock ? 0 : -1); // stock>0 only for filterByStock
 
         if (inventoryError) {
           console.error('Error fetching inventory:', inventoryError);
@@ -50,33 +49,20 @@ export const useProducts = (options: UseProductsOptions = {}) => {
         }
 
         if (!inventoryData || inventoryData.length === 0) {
-          console.log('No products found with stock in this branch');
           setProducts([]);
           return;
         }
 
-        // Get unique product IDs that have stock
-        const productIds = [...new Set(inventoryData.map(item => item.product_id))];
-        
-        // Then fetch the actual products
-        const { data: productsData, error: productsError } = await supabase
-          .from('products')
-          .select('*')
-          .eq('active', true)
-          .in('id', productIds)
-          .order('name');
-
-        if (productsError) {
-          console.error('Error fetching products:', productsError);
-          throw productsError;
-        }
-
-        console.log('Products with stock fetched successfully:', productsData);
-        setProducts(productsData || []);
+        // Merge products with stock field
+        const productsWithStock: Product[] = inventoryData.map(item => ({
+          ...item.products,
+          stock: item.quantity ?? 0,
+        }));
+        setProducts(productsWithStock);
         return;
       }
-      
-      // Default behavior: fetch all active products
+
+      // Default fallback: fetch products
       const { data, error } = await supabase
         .from('products')
         .select('*')
@@ -88,10 +74,9 @@ export const useProducts = (options: UseProductsOptions = {}) => {
         throw error;
       }
 
-      console.log('Products fetched successfully:', data);
+      // If withStock is requested but no branchId, stock will be undefined
       setProducts(data || []);
     } catch (error: any) {
-      console.error('Error fetching products:', error);
       setError(error.message);
       toast({
         variant: "destructive",
@@ -105,7 +90,8 @@ export const useProducts = (options: UseProductsOptions = {}) => {
 
   useEffect(() => {
     fetchProducts();
-  }, [branchId, filterByStock]);
+    // eslint-disable-next-line
+  }, [branchId, filterByStock, withStock]);
 
   return { products, loading, error, refetchProducts: fetchProducts };
 };

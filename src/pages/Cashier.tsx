@@ -9,6 +9,7 @@ import { useCashierAuth } from '@/hooks/useCashierAuth';
 import { useCashierPayment } from '@/hooks/useCashierPayment';
 import { useCashierState } from '@/hooks/useCashierState';
 import { ProductGrid } from '@/components/cashier/ProductGrid';
+import { ProductTable } from '@/components/cashier/ProductTable';
 import { CartPanel } from '@/components/cashier/CartPanel';
 import { PaymentSuccessDialog } from '@/components/cashier/PaymentSuccessDialog';
 import { CashierHeader } from '@/components/cashier/CashierHeader';
@@ -27,10 +28,12 @@ const Cashier = () => {
     verifyBranchAccess 
   } = useCashierAuth();
   
-  // Use products hook with branch filtering for cashier
+  // Use products hook with stock info per branch
+  const { viewMode, setViewMode, searchQuery, setSearchQuery, paymentMethod, setPaymentMethod } = useCashierState();
   const { products, loading: productsLoading } = useProducts({
     branchId: selectedBranch,
-    filterByStock: true
+    filterByStock: true,
+    withStock: true // stock field included
   });
   
   const {
@@ -41,13 +44,6 @@ const Cashier = () => {
     processPayment
   } = useCashierPayment();
 
-  const {
-    searchQuery,
-    setSearchQuery,
-    paymentMethod,
-    setPaymentMethod
-  } = useCashierState();
-  
   // Filter produk berdasarkan pencarian
   const filteredProducts = products.filter(product => 
     product.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -99,16 +95,27 @@ const Cashier = () => {
             selectedBranch={selectedBranch}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
           />
 
           <StockValidationAlert branchError={branchError} />
           
-          <ProductGrid
-            products={filteredProducts}
-            loading={productsLoading}
-            searchQuery={searchQuery}
-            onAddToCart={addToCart}
-          />
+          {viewMode === 'grid' ? (
+            <ProductGrid
+              products={filteredProducts}
+              loading={productsLoading}
+              searchQuery={searchQuery}
+              onAddToCart={addToCart}
+            />
+          ) : (
+            <ProductTable
+              products={filteredProducts}
+              loading={productsLoading}
+              searchQuery={searchQuery}
+              onAddToCart={addToCart}
+            />
+          )}
         </div>
         
         {/* Panel Keranjang */}
@@ -130,7 +137,6 @@ const Cashier = () => {
           />
         </div>
       </div>
-
       {/* Success Dialog */}
       <PaymentSuccessDialog
         open={showSuccessDialog}
