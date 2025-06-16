@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { PaymentData } from '@/components/cashier/PaymentOptionsDialog';
 
 interface Product {
   id: string;
@@ -24,6 +25,10 @@ interface Transaction {
   transaction_date: string;
   total_amount: number;
   payment_method: string;
+  payment_status: string;
+  amount_paid: number | null;
+  amount_remaining: number | null;
+  due_date: string | null;
   notes: string | null;
   status: string;
 }
@@ -78,7 +83,8 @@ export const useCashierPayment = () => {
     paymentMethod: string,
     calculateTotal: () => number,
     clearCart: () => void,
-    verifyBranchAccess: (branchId: string) => Promise<boolean>
+    verifyBranchAccess: (branchId: string) => Promise<boolean>,
+    paymentData?: PaymentData
   ) => {
     if (cart.length === 0 || !selectedBranch || !user?.id) {
       toast({
@@ -94,7 +100,7 @@ export const useCashierPayment = () => {
     setProcessingPayment(true);
 
     try {
-      console.log('💳 Processing payment...');
+      console.log('💳 Processing payment with data:', paymentData);
       console.log('👤 User ID:', user.id);
       console.log('🏪 Branch ID:', selectedBranch);
       console.log('🛒 Cart items:', cart.length);
@@ -116,18 +122,55 @@ export const useCashierPayment = () => {
         }
       }
 
-      // Step 1: Validate stock availability
-      const stockValid = await validateStock(cart, selectedBranch);
-      if (!stockValid) {
-        return;
+      // For deferred payments, we don't need to validate stock immediately
+      // For other payment types, validate stock
+      if (!paymentData || paymentData.type !== 'deferred') {
+        const stockValid = await validateStock(cart, selectedBranch);
+        if (!stockValid) {
+          return;
+        }
       }
 
-      // Step 2: Create transaction
+      // Determine payment status and amounts based on payment type
+      let payment_status = 'paid';
+      let amount_paid = totalAmount;
+      let amount_remaining = 0;
+      let due_date = null;
+
+      if (paymentData) {
+        switch (paymentData.type) {
+          case 'deferred':
+            payment_status = 'pending';
+            amount_paid = 0;
+            amount_remaining = totalAmount;
+            due_date = paymentData.dueDate || null;
+            break;
+          case 'down_payment':
+            payment_status = 'partial';
+            amount_paid = paymentData.amountPaid || 0;
+            amount_remaining = totalAmount - amount_paid;
+            due_date = paymentData.dueDate || null;
+            break;
+          case 'full':
+          default:
+            payment_status = 'paid';
+            amount_paid = totalAmount;
+            amount_remaining = 0;
+            break;
+        }
+      }
+
+      // Create transaction
       const transactionData = {
         branch_id: selectedBranch,
         cashier_id: user.id,
         total_amount: totalAmount,
-        payment_method: paymentMethod
+        payment_method: paymentData?.paymentMethod || paymentMethod,
+        payment_status,
+        amount_paid: amount_paid > 0 ? amount_paid : null,
+        amount_remaining: amount_remaining > 0 ? amount_remaining : null,
+        due_date,
+        notes: paymentData?.notes || null
       };
 
       console.log('📝 Creating transaction with data:', transactionData);
@@ -145,7 +188,7 @@ export const useCashierPayment = () => {
 
       console.log('✅ Transaction created successfully:', transaction.id);
 
-      // Step 3: Create transaction items (trigger will auto-update inventory with SECURITY DEFINER)
+      // Create transaction items
       const transactionItems = cart.map(item => ({
         transaction_id: transaction.id,
         product_id: item.product.id,
@@ -165,7 +208,25 @@ export const useCashierPayment = () => {
         throw new Error(`Gagal menyimpan item transaksi: ${itemsError.message}`);
       }
 
-      console.log('✅ Transaction items created successfully - Database trigger updated inventory automatically');
+      // For paid and partial payments, record the payment history
+      if (amount_paid > 0) {
+        const { error: paymentHistoryError } = await supabase
+          .from('payment_history')
+          .insert({
+            transaction_id: transaction.id,
+            amount_paid: amount_paid,
+            payment_method: paymentData?.paymentMethod || paymentMethod,
+            cashier_id: user.id,
+            notes: paymentData?.notes || null
+          });
+
+        if (paymentHistoryError) {
+          console.error('❌ Payment history error:', paymentHistoryError);
+          // Don't throw error here, just log it
+        }
+      }
+
+      console.log('✅ Transaction items created successfully');
 
       // Success - Store complete transaction data
       setLastTransaction(transaction);
@@ -174,14 +235,16 @@ export const useCashierPayment = () => {
       // Clear cart
       clearCart();
       
+      const statusText = payment_status === 'paid' ? 'lunas' : 
+                        payment_status === 'partial' ? 'sebagian dibayar' : 'pending';
+      
       toast({
-        title: "Pembayaran Berhasil",
-        description: `Transaksi selesai dengan ID: ${transaction.id.substring(0, 8)}... Stok telah diperbarui otomatis.`,
+        title: "Transaksi Berhasil",
+        description: `Transaksi ${statusText} dengan ID: ${transaction.id.substring(0, 8)}...`,
       });
     } catch (error: any) {
       console.error('❌ Payment error:', error);
       
-      // Enhanced error handling based on common error patterns
       let errorMessage = error.message || "Gagal memproses pembayaran";
       
       if (error.code === '42501') {
@@ -189,7 +252,7 @@ export const useCashierPayment = () => {
       } else if (error.message?.includes('violates row-level security')) {
         errorMessage = "Terjadi masalah keamanan data. Silakan coba lagi atau hubungi administrator.";
       } else if (error.message?.includes('insufficient stock') || error.message?.includes('stok')) {
-        errorMessage = error.message; // Keep stock-related messages as is
+        errorMessage = error.message;
       }
       
       toast({

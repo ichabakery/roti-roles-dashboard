@@ -14,6 +14,7 @@ import { CartPanel } from '@/components/cashier/CartPanel';
 import { PaymentSuccessDialog } from '@/components/cashier/PaymentSuccessDialog';
 import { CashierHeader } from '@/components/cashier/CashierHeader';
 import { StockValidationAlert } from '@/components/cashier/StockValidationAlert';
+import { PaymentData } from '@/components/cashier/PaymentOptionsDialog';
 
 const Cashier = () => {
   const { cart, addToCart, removeFromCart, updateQuantity, calculateTotal, clearCart } = useCart();
@@ -28,12 +29,11 @@ const Cashier = () => {
     verifyBranchAccess 
   } = useCashierAuth();
   
-  // Use products hook with stock info per branch
   const { viewMode, setViewMode, searchQuery, setSearchQuery, paymentMethod, setPaymentMethod } = useCashierState();
   const { products, loading: productsLoading } = useProducts({
     branchId: selectedBranch,
     filterByStock: true,
-    withStock: true // stock field included
+    withStock: true
   });
   
   const {
@@ -49,14 +49,15 @@ const Cashier = () => {
     product.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleProcessPayment = () => {
+  const handleProcessPayment = (paymentData?: PaymentData) => {
     processPayment(
       cart,
       selectedBranch!,
       paymentMethod,
       calculateTotal,
       clearCart,
-      verifyBranchAccess
+      verifyBranchAccess,
+      paymentData
     );
   };
 
@@ -137,6 +138,7 @@ const Cashier = () => {
           />
         </div>
       </div>
+      
       {/* Success Dialog */}
       <PaymentSuccessDialog
         open={showSuccessDialog}

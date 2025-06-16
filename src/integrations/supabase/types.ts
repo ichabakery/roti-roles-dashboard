@@ -135,6 +135,47 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_history: {
+        Row: {
+          amount_paid: number
+          cashier_id: string
+          created_at: string | null
+          id: string
+          notes: string | null
+          payment_date: string | null
+          payment_method: string
+          transaction_id: string
+        }
+        Insert: {
+          amount_paid: number
+          cashier_id: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_method: string
+          transaction_id: string
+        }
+        Update: {
+          amount_paid?: number
+          cashier_id?: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_method?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_history_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_batches: {
         Row: {
           batch_number: string
@@ -682,31 +723,46 @@ export type Database = {
       }
       transactions: {
         Row: {
+          amount_paid: number | null
+          amount_remaining: number | null
           branch_id: string
           cashier_id: string
+          due_date: string | null
           id: string
+          installment_plan: Json | null
           notes: string | null
           payment_method: string
+          payment_status: Database["public"]["Enums"]["payment_status"] | null
           status: string
           total_amount: number
           transaction_date: string
         }
         Insert: {
+          amount_paid?: number | null
+          amount_remaining?: number | null
           branch_id: string
           cashier_id: string
+          due_date?: string | null
           id?: string
+          installment_plan?: Json | null
           notes?: string | null
           payment_method?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"] | null
           status?: string
           total_amount?: number
           transaction_date?: string
         }
         Update: {
+          amount_paid?: number | null
+          amount_remaining?: number | null
           branch_id?: string
           cashier_id?: string
+          due_date?: string | null
           id?: string
+          installment_plan?: Json | null
           notes?: string | null
           payment_method?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"] | null
           status?: string
           total_amount?: number
           transaction_date?: string
@@ -794,6 +850,7 @@ export type Database = {
       }
     }
     Enums: {
+      payment_status: "paid" | "pending" | "partial" | "cancelled"
       product_type: "regular" | "package" | "bundle"
     }
     CompositeTypes: {
@@ -910,6 +967,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      payment_status: ["paid", "pending", "partial", "cancelled"],
       product_type: ["regular", "package", "bundle"],
     },
   },
