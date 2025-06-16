@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus } from 'lucide-react';
 import { ProductType } from '@/types/products';
 import { useEnhancedProducts } from '@/hooks/useEnhancedProducts';
+import { ProductExpiryCalendar } from './ProductExpiryCalendar';
 
 interface EnhancedAddProductDialogProps {
   onProductAdded?: () => void;
@@ -28,6 +29,7 @@ export const EnhancedAddProductDialog: React.FC<EnhancedAddProductDialogProps> =
     productType: 'regular' as ProductType,
     hasExpiry: false,
     defaultExpiryDays: '',
+    expiryDate: undefined as Date | undefined,
   });
   const { toast } = useToast();
   const { addProduct } = useEnhancedProducts();
@@ -50,7 +52,8 @@ export const EnhancedAddProductDialog: React.FC<EnhancedAddProductDialogProps> =
         price: '', 
         productType: 'regular',
         hasExpiry: false,
-        defaultExpiryDays: ''
+        defaultExpiryDays: '',
+        expiryDate: undefined,
       });
       setOpen(false);
       onProductAdded?.();
@@ -61,7 +64,7 @@ export const EnhancedAddProductDialog: React.FC<EnhancedAddProductDialogProps> =
     }
   };
 
-  const handleInputChange = (field: keyof typeof formData, value: string | boolean) => {
+  const handleInputChange = (field: keyof typeof formData, value: string | boolean | Date | undefined) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -150,21 +153,36 @@ export const EnhancedAddProductDialog: React.FC<EnhancedAddProductDialogProps> =
               </div>
               
               {formData.hasExpiry && (
-                <div className="space-y-2 pl-6">
-                  <Label htmlFor="defaultExpiryDays">Masa kadaluarsa (hari)</Label>
-                  <Input
-                    id="defaultExpiryDays"
-                    type="number"
-                    value={formData.defaultExpiryDays}
-                    onChange={(e) => handleInputChange('defaultExpiryDays', e.target.value)}
-                    placeholder="Contoh: 7 untuk seminggu"
-                    min="1"
-                    max="365"
-                    required={formData.hasExpiry}
+                <div className="space-y-4 pl-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="defaultExpiryDays">Masa kadaluarsa (hari)</Label>
+                    <Input
+                      id="defaultExpiryDays"
+                      type="number"
+                      value={formData.defaultExpiryDays}
+                      onChange={(e) => handleInputChange('defaultExpiryDays', e.target.value)}
+                      placeholder="Contoh: 7 untuk seminggu"
+                      min="1"
+                      max="365"
+                      required={formData.hasExpiry}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Produk akan kadaluarsa setelah {formData.defaultExpiryDays || 'X'} hari dari tanggal produksi
+                    </p>
+                  </div>
+
+                  <ProductExpiryCalendar
+                    hasExpiry={formData.hasExpiry}
+                    expiryDate={formData.expiryDate}
+                    onExpiryDateChange={(date) => handleInputChange('expiryDate', date)}
+                    label="Tanggal Kadaluarsa (Opsional)"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Produk akan kadaluarsa setelah {formData.defaultExpiryDays || 'X'} hari dari tanggal produksi
-                  </p>
+                  
+                  {formData.expiryDate && (
+                    <p className="text-xs text-muted-foreground pl-0">
+                      Jika tanggal kadaluarsa dipilih, akan digunakan sebagai contoh untuk batch produksi
+                    </p>
+                  )}
                 </div>
               )}
             </div>
