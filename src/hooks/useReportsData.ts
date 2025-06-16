@@ -1,6 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { fetchBranchesFromDB, fetchTransactionsFromDB } from '@/services/reportsService';
 import { transformTransactionData, generateSummaries } from '@/utils/reportsUtils';
 import type { Branch, Transaction, TransactionSummary, ProductSummary, PaymentMethodSummary, DateRange } from '@/types/reports';
@@ -37,13 +39,31 @@ export const useReportsData = () => {
       console.warn('⚠️ No user found, skipping reports fetch');
       return;
     }
+
+    // Fix: Get the actual branchId from user_branches table for kasir_cabang
+    let userBranchId = user.branchId;
+    if (user.role === 'kasir_cabang') {
+      try {
+        const { data: userBranch } = await supabase
+          .from('user_branches')
+          .select('branch_id')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (userBranch) {
+          userBranchId = userBranch.branch_id;
+        }
+      } catch (error) {
+        console.error('Failed to fetch user branch:', error);
+      }
+    }
     
     setLoading(true);
     console.log('📊 ===== REPORTS DATA FETCH START =====');
     console.log('📊 Fetch parameters:', {
       userEmail: user.email,
       userRole: user.role,
-      userBranchId: user.branchId,
+      userBranchId: userBranchId,
       selectedBranch,
       dateRange,
       timestamp: new Date().toISOString()
@@ -52,7 +72,7 @@ export const useReportsData = () => {
     try {
       const rawData = await fetchTransactionsFromDB(
         user.role,
-        user.branchId,
+        userBranchId,
         selectedBranch,
         dateRange
       );
@@ -77,7 +97,7 @@ export const useReportsData = () => {
         paymentSummary: summaries.paymentSummary.length
       });
       
-      // Enhanced feedback ONLY IF valid kasir doesn't have assignment
+      // Enhanced feedback
       if (transformedTransactions.length > 0) {
         toast({
           title: "Data Laporan Dimuat",
@@ -87,7 +107,7 @@ export const useReportsData = () => {
         // Special: cek kasir tanpa assignment, tapi only jika branchId undefined/null!
         if (
           user.role === 'kasir_cabang' &&
-          (!user.branchId || user.branchId === '' || user.branchId === null)
+          (!userBranchId || userBranchId === '' || userBranchId === null)
         ) {
           toast({
             title: "Perlu Assignment Cabang",
@@ -109,8 +129,8 @@ export const useReportsData = () => {
           selectedBranch,
           dateRange,
           userRole: user.role,
-          userBranchId: user.branchId,
-          hasRequiredBranchAssignment: user.role !== 'kasir_cabang' || !!user.branchId
+          userBranchId: userBranchId,
+          hasRequiredBranchAssignment: user.role !== 'kasir_cabang' || !!userBranchId
         });
       }
       
@@ -120,7 +140,7 @@ export const useReportsData = () => {
       let errorMessage = error.message || 'Gagal memuat data laporan';
       
       // Show only for kasir_cabang jika benar-benar tidak ada branchId
-      if (user.role === 'kasir_cabang' && (!user.branchId || user.branchId === '' || user.branchId === null)) {
+      if (user.role === 'kasir_cabang' && (!userBranchId || userBranchId === '' || userBranchId === null)) {
         errorMessage = 'Akun kasir cabang Anda belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang.';
       }
       

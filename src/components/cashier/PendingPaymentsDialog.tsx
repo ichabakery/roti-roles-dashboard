@@ -1,14 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Clock, CreditCard, AlertTriangle } from 'lucide-react';
+import { PendingTransactionCard } from './PendingTransactionCard';
+import { PaymentForm } from './PaymentForm';
 
 interface PendingTransaction {
   id: string;
@@ -146,32 +142,6 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
     }
   };
 
-  const getStatusBadge = (status: string, dueDate: string | null) => {
-    const isOverdue = dueDate && new Date(dueDate) < new Date();
-    
-    if (isOverdue) {
-      return <Badge variant="destructive">Jatuh Tempo</Badge>;
-    }
-    
-    switch (status) {
-      case 'pending':
-        return <Badge variant="secondary">Pending</Badge>;
-      case 'partial':
-        return <Badge variant="outline">Sebagian</Badge>;
-      default:
-        return <Badge>{status}</Badge>;
-    }
-  };
-
-  const getDaysUntilDue = (dueDate: string | null) => {
-    if (!dueDate) return null;
-    const today = new Date();
-    const due = new Date(dueDate);
-    const diffTime = due.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -191,66 +161,14 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
               </div>
             ) : (
               <div className="space-y-2 max-h-96 overflow-y-auto">
-                {pendingTransactions.map((transaction) => {
-                  const daysUntilDue = getDaysUntilDue(transaction.due_date);
-                  const isOverdue = daysUntilDue !== null && daysUntilDue < 0;
-                  
-                  return (
-                    <Card 
-                      key={transaction.id}
-                      className={`cursor-pointer transition-colors ${
-                        selectedTransaction?.id === transaction.id 
-                          ? 'border-primary bg-primary/5' 
-                          : 'hover:bg-muted/50'
-                      } ${isOverdue ? 'border-destructive' : ''}`}
-                      onClick={() => setSelectedTransaction(transaction)}
-                    >
-                      <CardContent className="p-3">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <p className="font-medium text-sm">
-                              ID: {transaction.id.substring(0, 8)}...
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(transaction.transaction_date).toLocaleDateString('id-ID')}
-                            </p>
-                          </div>
-                          {getStatusBadge(transaction.payment_status, transaction.due_date)}
-                        </div>
-                        
-                        <div className="space-y-1 text-xs">
-                          <div className="flex justify-between">
-                            <span>Total:</span>
-                            <span>Rp {transaction.total_amount.toLocaleString('id-ID')}</span>
-                          </div>
-                          {transaction.amount_paid && (
-                            <div className="flex justify-between">
-                              <span>Dibayar:</span>
-                              <span>Rp {transaction.amount_paid.toLocaleString('id-ID')}</span>
-                            </div>
-                          )}
-                          <div className="flex justify-between font-medium">
-                            <span>Sisa:</span>
-                            <span>Rp {(transaction.amount_remaining || transaction.total_amount).toLocaleString('id-ID')}</span>
-                          </div>
-                          {transaction.due_date && (
-                            <div className="flex justify-between items-center">
-                              <span>Jatuh Tempo:</span>
-                              <span className={isOverdue ? 'text-destructive' : ''}>
-                                {new Date(transaction.due_date).toLocaleDateString('id-ID')}
-                                {daysUntilDue !== null && (
-                                  <span className="ml-1">
-                                    ({isOverdue ? `${Math.abs(daysUntilDue)} hari terlewat` : `${daysUntilDue} hari lagi`})
-                                  </span>
-                                )}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+                {pendingTransactions.map((transaction) => (
+                  <PendingTransactionCard
+                    key={transaction.id}
+                    transaction={transaction}
+                    isSelected={selectedTransaction?.id === transaction.id}
+                    onSelect={setSelectedTransaction}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -258,75 +176,15 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
           {/* Right: Payment Form */}
           <div className="space-y-4">
             <h3 className="font-medium">Form Pembayaran</h3>
-            {selectedTransaction ? (
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Detail Transaksi</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>ID Transaksi:</span>
-                      <span>{selectedTransaction.id.substring(0, 8)}...</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Total Transaksi:</span>
-                      <span>Rp {selectedTransaction.total_amount.toLocaleString('id-ID')}</span>
-                    </div>
-                    {selectedTransaction.amount_paid && (
-                      <div className="flex justify-between">
-                        <span>Sudah Dibayar:</span>
-                        <span>Rp {selectedTransaction.amount_paid.toLocaleString('id-ID')}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between font-medium">
-                      <span>Sisa Pembayaran:</span>
-                      <span>Rp {(selectedTransaction.amount_remaining || selectedTransaction.total_amount).toLocaleString('id-ID')}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <div className="space-y-3">
-                  <div>
-                    <Label>Jumlah Pembayaran</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={paymentAmount}
-                      onChange={(e) => setPaymentAmount(e.target.value)}
-                      max={selectedTransaction.amount_remaining || selectedTransaction.total_amount}
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Metode Pembayaran</Label>
-                    <select 
-                      className="w-full p-2 border rounded"
-                      value={paymentMethod}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                    >
-                      <option value="cash">Tunai</option>
-                      <option value="card">Kartu Kredit/Debit</option>
-                      <option value="transfer">Transfer Bank</option>
-                      <option value="qris">QRIS</option>
-                    </select>
-                  </div>
-
-                  <Button 
-                    onClick={handlePayment}
-                    disabled={!paymentAmount || loading}
-                    className="w-full"
-                  >
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    Proses Pembayaran
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                Pilih transaksi untuk memproses pembayaran
-              </div>
-            )}
+            <PaymentForm
+              selectedTransaction={selectedTransaction}
+              paymentAmount={paymentAmount}
+              setPaymentAmount={setPaymentAmount}
+              paymentMethod={paymentMethod}
+              setPaymentMethod={setPaymentMethod}
+              onPayment={handlePayment}
+              loading={loading}
+            />
           </div>
         </div>
       </DialogContent>
