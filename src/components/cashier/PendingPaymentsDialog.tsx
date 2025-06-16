@@ -18,7 +18,7 @@ interface PendingTransaction {
   due_date: string | null;
   payment_status: string;
   transaction_date: string;
-  branches?: { name: string };
+  branches?: { name: string } | null;
   payment_method: string;
 }
 
@@ -73,7 +73,15 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
 
       if (error) throw error;
 
-      setPendingTransactions(data || []);
+      // Transform the data to ensure branches is properly typed
+      const transformedData: PendingTransaction[] = (data || []).map(item => ({
+        ...item,
+        branches: Array.isArray(item.branches) && item.branches.length > 0 
+          ? item.branches[0] 
+          : item.branches || null
+      }));
+
+      setPendingTransactions(transformedData);
     } catch (error: any) {
       console.error('Error fetching pending transactions:', error);
       toast({
