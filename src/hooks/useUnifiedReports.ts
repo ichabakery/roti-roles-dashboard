@@ -42,11 +42,17 @@ export const useUnifiedReports = () => {
       if (user?.role === 'kasir_cabang' && user.id) {
         try {
           console.log('🔍 Fetching actual branch for kasir_cabang:', user.id);
-          const { data: userBranch } = await supabase
+          const { data: userBranch, error } = await supabase
             .from('user_branches')
             .select('branch_id')
             .eq('user_id', user.id)
-            .single();
+            .maybeSingle();
+          
+          if (error) {
+            console.error('❌ Error fetching user branch:', error);
+            setUserActualBranchId(null);
+            return;
+          }
           
           if (userBranch) {
             console.log('✅ Found user branch:', userBranch.branch_id);
@@ -85,6 +91,7 @@ export const useUnifiedReports = () => {
         const data = await fetchBranchesFromDB();
         setBranches(data);
       } catch (error: any) {
+        console.error('❌ Error loading branches:', error);
         toast({
           variant: "destructive",
           title: "Error",
@@ -94,7 +101,7 @@ export const useUnifiedReports = () => {
     };
     
     loadBranches();
-  }, []);
+  }, [toast]);
 
   // Fetch transactions when filters change
   useEffect(() => {
@@ -112,10 +119,12 @@ export const useUnifiedReports = () => {
 
         const rawData = await fetchTransactionsFromDB(
           user.role,
-          userActualBranchId, // Use actual branch ID for kasir_cabang
+          userActualBranchId,
           selectedBranch,
           dateRange
         );
+
+        console.log('📈 Raw data received:', rawData.length, 'transactions');
 
         const transformedTransactions = transformTransactionData(rawData);
         setTransactions(transformedTransactions);
@@ -142,7 +151,7 @@ export const useUnifiedReports = () => {
             
             toast({
               title: "Tidak Ada Data Transaksi",
-              description: `Tidak ada transaksi ditemukan untuk ${branchText} pada periode ${periodText}. Pastikan data transaksi tersedia untuk periode ini.`,
+              description: `Tidak ada transaksi ditemukan untuk ${branchText} pada periode ${periodText}.`,
               variant: "default",
             });
           }
@@ -167,8 +176,13 @@ export const useUnifiedReports = () => {
       }
     };
 
-    fetchData();
-  }, [user, userActualBranchId, selectedBranch, dateRange]);
+    // Add delay to prevent too many requests
+    const timeoutId = setTimeout(() => {
+      fetchData();
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [user, userActualBranchId, selectedBranch, dateRange, toast]);
 
   // Quick date range presets
   const setQuickDateRange = (days: number) => {

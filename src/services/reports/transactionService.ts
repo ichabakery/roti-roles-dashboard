@@ -1,7 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { buildTransactionQuery, applyRoleBasedFiltering, applyDateRangeFilter } from './queryBuilder';
-import { validateTransactionData, enrichTransactionData } from './dataValidator';
+import { buildTransactionQuery, applyRoleBasedFiltering, applyDateRangeFilter, fetchTransactionDetails } from './queryBuilder';
 import { handleTransactionQueryError } from './errorHandler';
 
 export const fetchTransactionsFromDB = async (
@@ -30,84 +29,64 @@ export const fetchTransactionsFromDB = async (
     console.log('✅ Role with multi-branch access:', userRole, 'userBranchId:', userBranchId || 'not required');
   }
 
-  // Debug: Check what branches exist in system
-  const { data: availableBranches } = await supabase
-    .from('branches')
-    .select('id, name');
-  console.log('🏪 Available branches:', availableBranches);
+  try {
+    // Build simplified query
+    let transactionQuery = buildTransactionQuery();
 
-  // Debug: Check what transactions exist (without filters first)
-  const { data: allTransactions, count: totalCount } = await supabase
-    .from('transactions')
-    .select('id, branch_id, transaction_date, total_amount', { count: 'exact' })
-    .limit(10);
-  
-  console.log('💾 Sample transactions in database:', {
-    totalCount,
-    sampleTransactions: allTransactions
-  });
+    // Apply role-based filtering
+    transactionQuery = applyRoleBasedFiltering(transactionQuery, userRole, userBranchId, selectedBranch);
 
-  // Build optimized query with proper foreign key hints
-  let transactionQuery = buildTransactionQuery();
+    // Apply date range filter
+    transactionQuery = applyDateRangeFilter(transactionQuery, dateRange);
 
-  // Apply role-based filtering
-  transactionQuery = applyRoleBasedFiltering(transactionQuery, userRole, userBranchId, selectedBranch);
+    console.log('🚀 Executing simplified transaction query...');
+    const { data: transactionData, error } = await transactionQuery;
 
-  // Apply date range filter
-  transactionQuery = applyDateRangeFilter(transactionQuery, dateRange);
+    if (error) {
+      console.error('❌ Query execution error:', error);
+      handleTransactionQueryError(error, userRole);
+      return []; // This won't be reached due to throw above, but helps TypeScript
+    }
 
-  console.log('🚀 Executing transaction query with filters applied...');
-  const { data: transactionData, error } = await transactionQuery;
+    console.log('📊 Basic transactions fetched:', {
+      recordCount: transactionData?.length || 0,
+      firstRecord: transactionData?.[0] || null
+    });
 
-  if (error) {
-    console.error('❌ Query execution error:', error);
+    if (!transactionData || transactionData.length === 0) {
+      console.log('📋 No transactions found');
+      return [];
+    }
+
+    // Fetch related data separately
+    const transactionIds = transactionData.map(t => t.id);
+    const { items, profiles, branches } = await fetchTransactionDetails(transactionIds);
+
+    // Enrich transactions with related data
+    const enrichedTransactions = transactionData.map(transaction => {
+      const transactionItems = items.filter(item => item.transaction_id === transaction.id);
+      const cashierProfile = profiles.find(p => p.id === transaction.cashier_id);
+      const branch = branches.find(b => b.id === transaction.branch_id);
+
+      return {
+        ...transaction,
+        transaction_items: transactionItems || [],
+        cashier_name: cashierProfile?.name || 'Unknown Cashier',
+        branches: branch ? { id: branch.id, name: branch.name } : { id: '', name: 'Unknown Branch' }
+      };
+    });
+
+    console.log('🔍 ===== REPORTS FETCH END =====');
+    console.log('✅ Final enriched result:', {
+      enrichedTransactions: enrichedTransactions.length,
+      sampleTransaction: enrichedTransactions[0] || null
+    });
+
+    return enrichedTransactions;
+
+  } catch (error: any) {
+    console.error('❌ Transaction service error:', error);
     handleTransactionQueryError(error, userRole);
-    return []; // This won't be reached due to throw above, but helps TypeScript
+    return []; // This won't be reached due to throw above
   }
-
-  console.log('📊 Raw query result:', {
-    recordCount: transactionData?.length || 0,
-    firstRecord: transactionData?.[0] || null
-  });
-
-  // If no data found, provide more specific debugging
-  if (!transactionData || transactionData.length === 0) {
-    console.log('🔍 ===== NO DATA DEBUGGING =====');
-    
-    // Check if it's a date range issue
-    if (dateRange) {
-      const { data: transactionsInRange } = await supabase
-        .from('transactions')
-        .select('id, transaction_date, branch_id')
-        .gte('transaction_date', dateRange.start + 'T00:00:00')
-        .lte('transaction_date', dateRange.end + 'T23:59:59');
-      
-      console.log('📅 Transactions in date range (no branch filter):', transactionsInRange?.length || 0);
-    }
-    
-    // Check if it's a branch filter issue
-    const targetBranch = userRole === 'kasir_cabang' ? userBranchId : selectedBranch;
-    if (targetBranch && targetBranch !== 'all') {
-      const { data: branchTransactions } = await supabase
-        .from('transactions')
-        .select('id, transaction_date, branch_id')
-        .eq('branch_id', targetBranch);
-      
-      console.log(`🏪 Transactions for branch ${targetBranch}:`, branchTransactions?.length || 0);
-    }
-    
-    console.log('🔍 ===== END NO DATA DEBUGGING =====');
-  }
-
-  // Validate and enrich the data
-  const validTransactions = validateTransactionData(transactionData || []);
-  const enrichedTransactions = enrichTransactionData(validTransactions);
-
-  console.log('🔍 ===== REPORTS FETCH END =====');
-  console.log('✅ Final result:', {
-    validTransactions: validTransactions.length,
-    enrichedTransactions: enrichedTransactions.length
-  });
-
-  return enrichedTransactions;
 };

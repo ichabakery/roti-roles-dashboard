@@ -11,21 +11,47 @@ export const buildTransactionQuery = () => {
       transaction_date,
       total_amount,
       payment_method,
-      profiles:cashier_id(id, name),
-      branches:branch_id(id, name),
-      transaction_items(
-        id,
-        product_id,
-        quantity,
-        price_per_item,
-        subtotal,
-        products:product_id(
-          id,
-          name,
-          description
-        )
-      )
+      notes,
+      status
     `);
+};
+
+export const fetchTransactionDetails = async (transactionIds: string[]) => {
+  if (transactionIds.length === 0) return [];
+  
+  // Fetch transaction items separately
+  const { data: items } = await supabase
+    .from('transaction_items')
+    .select(`
+      id,
+      transaction_id,
+      product_id,
+      quantity,
+      price_per_item,
+      subtotal,
+      products:product_id(
+        id,
+        name,
+        description
+      )
+    `)
+    .in('transaction_id', transactionIds);
+
+  // Fetch profiles separately
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, name');
+
+  // Fetch branches separately
+  const { data: branches } = await supabase
+    .from('branches')
+    .select('id, name');
+
+  return {
+    items: items || [],
+    profiles: profiles || [],
+    branches: branches || []
+  };
 };
 
 export const applyRoleBasedFiltering = (
