@@ -60,13 +60,27 @@ export const fetchTransactionsFromDB = async (
 
     // Fetch related data separately
     const transactionIds = transactionData.map(t => t.id);
+    console.log('🔍 Fetching details for transaction IDs:', transactionIds);
+    
     const transactionDetails = await fetchTransactionDetails(transactionIds);
+    console.log('📋 Transaction details fetched:', {
+      items: transactionDetails.items.length,
+      profiles: transactionDetails.profiles.length,
+      branches: transactionDetails.branches.length
+    });
 
     // Enrich transactions with related data
     const enrichedTransactions = transactionData.map(transaction => {
       const transactionItems = transactionDetails.items.filter(item => item.transaction_id === transaction.id);
       const cashierProfile = transactionDetails.profiles.find(p => p.id === transaction.cashier_id);
       const branch = transactionDetails.branches.find(b => b.id === transaction.branch_id);
+
+      console.log(`🔍 Transaction ${transaction.id} enrichment:`, {
+        items: transactionItems.length,
+        cashier: cashierProfile?.name,
+        branch: branch?.name,
+        firstItem: transactionItems[0]
+      });
 
       return {
         ...transaction,
@@ -79,7 +93,8 @@ export const fetchTransactionsFromDB = async (
     console.log('🔍 ===== REPORTS FETCH END =====');
     console.log('✅ Final enriched result:', {
       enrichedTransactions: enrichedTransactions.length,
-      sampleTransaction: enrichedTransactions[0] || null
+      sampleTransaction: enrichedTransactions[0] || null,
+      sampleItems: enrichedTransactions[0]?.transaction_items || []
     });
 
     return enrichedTransactions;

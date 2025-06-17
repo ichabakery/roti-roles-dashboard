@@ -43,39 +43,12 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
   };
 
   const getStatusBadge = () => {
-    // Kolom status default always selesai (completed)
     return <span className="bg-green-100 text-green-800 rounded px-2 py-0.5 text-xs">Selesai</span>;
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   const getTotalQuantity = (items: any[]) => {
     if (!items || items.length === 0) return 0;
     return items.reduce((sum, item) => sum + item.quantity, 0);
-  };
-
-  const handleCopy = (transactionId: string) => {
-    navigator.clipboard.writeText(transactionId);
-  };
-
-  const handleView = (transaction: Transaction) => {
-    console.log('View transaction:', transaction);
-  };
-
-  const handlePrint = (transaction: Transaction) => {
-    console.log('Print transaction:', transaction);
-  };
-
-  const handleDelete = (transaction: Transaction) => {
-    console.log('Delete transaction:', transaction);
   };
 
   if (loading) {
@@ -85,6 +58,11 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
       </div>
     );
   }
+
+  console.log('EnhancedTransactionTable rendering with transactions:', transactions.length);
+  transactions.forEach(t => {
+    console.log('Transaction:', t.id, 'Items:', t.transaction_items?.length || 0, 'First item:', t.transaction_items?.[0]);
+  });
 
   return (
     <div className="bg-white rounded-lg border overflow-hidden">
@@ -104,7 +82,6 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
               <TableHead className="text-right">Harga Satuan</TableHead>
               <TableHead className="text-right">Subtotal</TableHead>
               <TableHead className="text-right">Total</TableHead>
-              <TableHead className="w-32">Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -120,10 +97,6 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
                     getPaymentMethodBadge={getPaymentMethodBadge}
                     getStatusBadge={getStatusBadge}
                     getTotalQuantity={getTotalQuantity}
-                    handleView={handleView}
-                    handleCopy={handleCopy}
-                    handlePrint={handlePrint}
-                    handleDelete={handleDelete}
                   />
                   {isExpanded && (
                     <ExpandedProductRows transaction={transaction} />
@@ -133,7 +106,7 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
             })}
             {transactions.length === 0 && (
               <TableRow>
-                <TableCell colSpan={12} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={11} className="text-center py-8 text-gray-500">
                   Tidak ada transaksi ditemukan untuk periode yang dipilih
                 </TableCell>
               </TableRow>
@@ -142,19 +115,56 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
         </Table>
       </div>
 
-      {/* Mobile Cards */}
+      {/* Mobile Cards - Remove action buttons */}
       <div className="lg:hidden space-y-4 p-4">
         {transactions.map((transaction) => (
-          <TransactionMobileCard
-            key={transaction.id}
-            transaction={transaction}
-            getStatusBadge={getStatusBadge}
-            getPaymentMethodBadge={getPaymentMethodBadge}
-            handleView={handleView}
-            handleCopy={handleCopy}
-            handlePrint={handlePrint}
-            formatDate={formatDate}
-          />
+          <div key={transaction.id} className="bg-white border rounded-lg p-4 space-y-3">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="font-mono text-sm text-gray-600">
+                  {transaction.id.substring(0, 8)}...
+                </p>
+                <p className="text-xs text-gray-500">
+                  {new Date(transaction.transaction_date).toLocaleDateString('id-ID', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+              <div className="text-right">
+                {getStatusBadge()}
+                <p className="text-lg font-semibold mt-1">
+                  Rp {transaction.total_amount.toLocaleString('id-ID')}
+                </p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <span className="text-gray-500">Kasir:</span>
+                <p className="font-medium">{transaction.cashier_name}</p>
+              </div>
+              <div>
+                <span className="text-gray-500">Metode:</span>
+                <div className="mt-1">{getPaymentMethodBadge(transaction.payment_method)}</div>
+              </div>
+            </div>
+
+            {transaction.transaction_items && transaction.transaction_items.length > 0 && (
+              <div className="border-t pt-2">
+                <p className="text-sm text-gray-500 mb-2">Produk:</p>
+                {transaction.transaction_items.map((item, idx) => (
+                  <div key={idx} className="flex justify-between text-sm">
+                    <span>{item.products?.name || 'Produk tidak dikenal'}</span>
+                    <span>{item.quantity}x</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         ))}
       </div>
     </div>

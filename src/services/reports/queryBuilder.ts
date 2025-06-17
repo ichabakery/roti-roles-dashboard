@@ -25,8 +25,10 @@ export const fetchTransactionDetails = async (transactionIds: string[]) => {
     };
   }
   
-  // Fetch transaction items separately
-  const { data: items } = await supabase
+  console.log('🔍 Fetching transaction items for IDs:', transactionIds);
+  
+  // Fetch transaction items with products data
+  const { data: items, error: itemsError } = await supabase
     .from('transaction_items')
     .select(`
       id,
@@ -35,7 +37,7 @@ export const fetchTransactionDetails = async (transactionIds: string[]) => {
       quantity,
       price_per_item,
       subtotal,
-      products:product_id(
+      products!inner(
         id,
         name,
         description
@@ -43,15 +45,30 @@ export const fetchTransactionDetails = async (transactionIds: string[]) => {
     `)
     .in('transaction_id', transactionIds);
 
+  if (itemsError) {
+    console.error('❌ Error fetching transaction items:', itemsError);
+  } else {
+    console.log('✅ Transaction items fetched:', items?.length || 0);
+    console.log('📋 Sample item:', items?.[0]);
+  }
+
   // Fetch profiles separately
-  const { data: profiles } = await supabase
+  const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
     .select('id, name');
 
+  if (profilesError) {
+    console.error('❌ Error fetching profiles:', profilesError);
+  }
+
   // Fetch branches separately
-  const { data: branches } = await supabase
+  const { data: branches, error: branchesError } = await supabase
     .from('branches')
     .select('id, name');
+
+  if (branchesError) {
+    console.error('❌ Error fetching branches:', branchesError);
+  }
 
   return {
     items: items || [],

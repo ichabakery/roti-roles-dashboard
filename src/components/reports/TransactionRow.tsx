@@ -1,8 +1,7 @@
 
 import React from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Eye, Copy, Receipt, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import type { Transaction } from "@/types/reports";
 
 interface TransactionRowProps {
@@ -13,10 +12,6 @@ interface TransactionRowProps {
   getPaymentMethodBadge: (method: string) => React.ReactNode;
   getStatusBadge: () => React.ReactNode;
   getTotalQuantity: (items: any[]) => number;
-  handleView: (transaction: Transaction) => void;
-  handleCopy: (id: string) => void;
-  handlePrint: (transaction: Transaction) => void;
-  handleDelete: (transaction: Transaction) => void;
 }
 
 export const TransactionRow: React.FC<TransactionRowProps> = ({
@@ -27,13 +22,11 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
   getPaymentMethodBadge,
   getStatusBadge,
   getTotalQuantity,
-  handleView,
-  handleCopy,
-  handlePrint,
-  handleDelete,
 }) => {
   const hasMultipleProducts = transaction.transaction_items && transaction.transaction_items.length > 1;
   const firstItem = transaction.transaction_items?.[0];
+  
+  console.log('TransactionRow - transaction:', transaction.id, 'items:', transaction.transaction_items);
   
   // Improved product display logic
   const getProductDisplay = () => {
@@ -46,7 +39,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
         <span className="text-sm text-gray-600">
           {transaction.transaction_items.length} produk - 
           <span className="font-medium ml-1">
-            {transaction.transaction_items[0].products?.name}
+            {transaction.transaction_items[0]?.products?.name || "Produk tidak dikenal"}
             {transaction.transaction_items.length > 1 && ` +${transaction.transaction_items.length - 1} lainnya`}
           </span>
         </span>
@@ -120,42 +113,6 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
       <td className="text-right p-2">{getSubtotalDisplay()}</td>
       <td className="text-right font-medium p-2">
         Rp {transaction.total_amount.toLocaleString("id-ID")}
-      </td>
-      <td className="p-2">
-        <div className="flex gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="p-1"
-            onClick={() => handleView(transaction)}
-          >
-            <Eye className="h-3 w-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="p-1"
-            onClick={() => handleCopy(transaction.id)}
-          >
-            <Copy className="h-3 w-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="p-1"
-            onClick={() => handlePrint(transaction)}
-          >
-            <Receipt className="h-3 w-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="p-1 text-red-600"
-            onClick={() => handleDelete(transaction)}
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        </div>
       </td>
     </tr>
   );
