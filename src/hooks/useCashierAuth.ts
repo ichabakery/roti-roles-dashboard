@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,24 +15,63 @@ export const useCashierAuth = () => {
   const [branchError, setBranchError] = useState<string | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
+  const [userActualBranchId, setUserActualBranchId] = useState<string | null>(null);
 
+  // Fetch user's actual branch assignment from database
   useEffect(() => {
-    if (user?.role === 'kasir_cabang' && user.branchId) {
-      console.log('Setting branch for kasir:', user.branchId);
-      setSelectedBranch(user.branchId);
-      setBranchError(null);
-      setHasAccess(true);
+    const fetchUserBranch = async () => {
+      if (user?.role === 'kasir_cabang' && user.id) {
+        try {
+          console.log('🔍 Fetching actual branch assignment for kasir_cabang:', user.id);
+          const { data: userBranch, error } = await supabase
+            .from('user_branches')
+            .select('branch_id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          
+          if (error) {
+            console.error('❌ Error fetching user branch:', error);
+            setUserActualBranchId(null);
+            return;
+          }
+          
+          if (userBranch) {
+            console.log('✅ Found user branch assignment:', userBranch.branch_id);
+            setUserActualBranchId(userBranch.branch_id);
+          } else {
+            console.warn('⚠️ No branch assignment found for kasir_cabang');
+            setUserActualBranchId(null);
+          }
+        } catch (error) {
+          console.error('❌ Failed to fetch user branch:', error);
+          setUserActualBranchId(null);
+        }
+      }
+    };
+
+    fetchUserBranch();
+  }, [user]);
+
+  // Set access permissions based on actual branch assignment
+  useEffect(() => {
+    if (user?.role === 'kasir_cabang') {
+      if (userActualBranchId) {
+        console.log('✅ Kasir has branch assignment:', userActualBranchId);
+        setSelectedBranch(userActualBranchId);
+        setBranchError(null);
+        setHasAccess(true);
+      } else {
+        console.error('❌ Kasir user without branch assignment:', user);
+        setBranchError('Akun kasir Anda belum dikaitkan dengan cabang. Silakan hubungi administrator.');
+        setHasAccess(false);
+      }
       setIsCheckingAccess(false);
-    } else if (user?.role === 'kasir_cabang' && !user.branchId) {
-      console.error('Kasir user without branch assignment:', user);
-      setBranchError('Akun kasir Anda belum dikaitkan dengan cabang. Silakan hubungi administrator.');
-      setHasAccess(false);
-      setIsCheckingAccess(false);
-    } else {
+    } else if (user?.role) {
+      // Other roles have access by default
       setHasAccess(true);
       setIsCheckingAccess(false);
     }
-  }, [user]);
+  }, [user, userActualBranchId]);
 
   useEffect(() => {
     if (user) {

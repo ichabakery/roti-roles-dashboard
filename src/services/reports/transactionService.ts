@@ -60,13 +60,13 @@ export const fetchTransactionsFromDB = async (
 
     // Fetch related data separately
     const transactionIds = transactionData.map(t => t.id);
-    const { items, profiles, branches } = await fetchTransactionDetails(transactionIds);
+    const transactionDetails = await fetchTransactionDetails(transactionIds);
 
     // Enrich transactions with related data
     const enrichedTransactions = transactionData.map(transaction => {
-      const transactionItems = items.filter(item => item.transaction_id === transaction.id);
-      const cashierProfile = profiles.find(p => p.id === transaction.cashier_id);
-      const branch = branches.find(b => b.id === transaction.branch_id);
+      const transactionItems = transactionDetails.items.filter(item => item.transaction_id === transaction.id);
+      const cashierProfile = transactionDetails.profiles.find(p => p.id === transaction.cashier_id);
+      const branch = transactionDetails.branches.find(b => b.id === transaction.branch_id);
 
       return {
         ...transaction,

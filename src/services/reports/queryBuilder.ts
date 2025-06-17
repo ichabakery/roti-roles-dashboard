@@ -17,7 +17,13 @@ export const buildTransactionQuery = () => {
 };
 
 export const fetchTransactionDetails = async (transactionIds: string[]) => {
-  if (transactionIds.length === 0) return [];
+  if (transactionIds.length === 0) {
+    return {
+      items: [],
+      profiles: [],
+      branches: []
+    };
+  }
   
   // Fetch transaction items separately
   const { data: items } = await supabase
