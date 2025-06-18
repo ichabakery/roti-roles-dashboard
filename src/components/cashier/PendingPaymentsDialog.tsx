@@ -45,6 +45,8 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
   const fetchPendingTransactions = async () => {
     try {
       setLoading(true);
+      console.log('🔍 Fetching pending transactions for branch:', branchId);
+      
       let query = supabase
         .from('transactions')
         .select(`
@@ -56,42 +58,65 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
           payment_status,
           transaction_date,
           payment_method,
-          branches (name)
+          branches!inner (
+            name
+          )
         `)
         .in('payment_status', ['pending', 'partial'])
-        .order('due_date', { ascending: true });
+        .order('transaction_date', { ascending: false });
 
-      if (branchId) {
+      if (branchId && branchId !== 'all') {
         query = query.eq('branch_id', branchId);
       }
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error fetching pending transactions:', error);
+        throw error;
+      }
 
-      // Transform the data to ensure branches is properly typed
+      console.log('✅ Pending transactions fetched:', data?.length || 0);
+      console.log('📋 Sample transaction:', data?.[0]);
+
+      // Transform the data to ensure proper structure
       const transformedData: PendingTransaction[] = (data || []).map(item => ({
         ...item,
-        branches: Array.isArray(item.branches) && item.branches.length > 0 
-          ? item.branches[0] 
-          : item.branches || null
+        branches: item.branches && !Array.isArray(item.branches) 
+          ? item.branches 
+          : null
       }));
 
       setPendingTransactions(transformedData);
+      
+      if (transformedData.length === 0) {
+        toast({
+          title: "Info",
+          description: "Tidak ada transaksi pembayaran pending saat ini",
+        });
+      }
     } catch (error: any) {
-      console.error('Error fetching pending transactions:', error);
+      console.error('❌ Error fetching pending transactions:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Gagal memuat transaksi pending",
+        description: `Gagal memuat transaksi pending: ${error.message}`,
       });
+      setPendingTransactions([]);
     } finally {
       setLoading(false);
     }
   };
 
   const handlePayment = async () => {
-    if (!selectedTransaction || !paymentAmount) return;
+    if (!selectedTransaction || !paymentAmount) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Pilih transaksi dan masukkan jumlah pembayaran",
+      });
+      return;
+    }
 
     const amount = parseFloat(paymentAmount);
     const remainingAmount = selectedTransaction.amount_remaining || selectedTransaction.total_amount;
@@ -107,6 +132,17 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
 
     try {
       setLoading(true);
+      console.log('💳 Processing payment:', {
+        transactionId: selectedTransaction.id,
+        amount,
+        paymentMethod
+      });
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User tidak terautentikasi');
+      }
 
       // Insert payment history
       const { error: paymentError } = await supabase
@@ -115,10 +151,14 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
           transaction_id: selectedTransaction.id,
           amount_paid: amount,
           payment_method: paymentMethod,
-          cashier_id: (await supabase.auth.getUser()).data.user?.id
+          cashier_id: user.id,
+          notes: `Pembayaran cicilan sebesar Rp ${amount.toLocaleString('id-ID')}`
         });
 
-      if (paymentError) throw paymentError;
+      if (paymentError) {
+        console.error('❌ Payment error:', paymentError);
+        throw paymentError;
+      }
 
       toast({
         title: "Pembayaran Berhasil",
@@ -131,11 +171,11 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
       setPaymentAmount('');
       
     } catch (error: any) {
-      console.error('Error processing payment:', error);
+      console.error('❌ Error processing payment:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Gagal memproses pembayaran",
+        description: `Gagal memproses pembayaran: ${error.message}`,
       });
     } finally {
       setLoading(false);
@@ -154,10 +194,14 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
           <div className="space-y-3">
             <h3 className="font-medium">Daftar Transaksi Pending</h3>
             {loading ? (
-              <div className="text-center py-4">Loading...</div>
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <p className="mt-2 text-sm text-muted-foreground">Memuat transaksi...</p>
+              </div>
             ) : pendingTransactions.length === 0 ? (
-              <div className="text-center py-4 text-muted-foreground">
-                Tidak ada transaksi pending
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-lg">Tidak ada transaksi pending</p>
+                <p className="text-sm mt-1">Semua transaksi sudah lunas</p>
               </div>
             ) : (
               <div className="space-y-2 max-h-96 overflow-y-auto">

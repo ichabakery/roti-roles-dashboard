@@ -35,6 +35,10 @@ export const fetchTransactionsFromDB = async (
     // Build simplified query
     let transactionQuery = buildTransactionQuery();
 
+    if (!transactionQuery) {
+      throw new Error('Failed to build transaction query');
+    }
+
     // Apply role-based filtering with payment status
     transactionQuery = applyRoleBasedFiltering(
       transactionQuery, 
@@ -57,22 +61,22 @@ export const fetchTransactionsFromDB = async (
     }
 
     console.log('📊 Basic transactions fetched:', {
-      recordCount: transactionData?.length || 0,
-      firstRecord: transactionData?.[0] || null,
-      paymentStatusDistribution: transactionData?.reduce((acc, t) => {
+      recordCount: Array.isArray(transactionData) ? transactionData.length : 0,
+      firstRecord: Array.isArray(transactionData) ? transactionData[0] || null : null,
+      paymentStatusDistribution: Array.isArray(transactionData) ? transactionData.reduce((acc, t) => {
         acc[t.payment_status] = (acc[t.payment_status] || 0) + 1;
         return acc;
-      }, {}) || {}
+      }, {}) : {}
     });
 
-    if (!transactionData || transactionData.length === 0) {
+    if (!transactionData || !Array.isArray(transactionData) || transactionData.length === 0) {
       console.log('📋 No transactions found');
       return [];
     }
 
     // Fetch related data separately
     const transactionIds = transactionData.map(t => t.id);
-    console.log('🔍 Fetching details for transaction IDs:', transactionIds);
+    console.log('🔍 Fetching details for transaction IDs:', transactionIds.length);
     
     const transactionDetails = await fetchTransactionDetails(transactionIds);
     console.log('📋 Transaction details fetched:', {
@@ -97,7 +101,7 @@ export const fetchTransactionsFromDB = async (
 
       return {
         ...transaction,
-        transaction_items: transactionItems || [],
+        transaction_items: Array.isArray(transactionItems) ? transactionItems : [],
         cashier_name: cashierProfile?.name || 'Unknown Cashier',
         branches: branch ? { id: branch.id, name: branch.name } : { id: '', name: 'Unknown Branch' }
       };

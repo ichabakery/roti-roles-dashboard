@@ -25,7 +25,10 @@ export const useUnifiedReports = () => {
 
   // Computed summaries
   const summaries = useMemo(() => {
-    const filtered = transactions.filter(transaction => {
+    // Ensure transactions is an array before filtering
+    const safeTransactions = Array.isArray(transactions) ? transactions : [];
+    
+    const filtered = safeTransactions.filter(transaction => {
       const matchesSearch = searchQuery === '' || 
         transaction.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         transaction.branches?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -34,6 +37,7 @@ export const useUnifiedReports = () => {
       return matchesSearch;
     });
     
+    console.log('🔍 Generating summaries from transactions:', filtered.length);
     return generateSummaries(filtered);
   }, [transactions, searchQuery]);
 
@@ -90,9 +94,10 @@ export const useUnifiedReports = () => {
     const loadBranches = async () => {
       try {
         const data = await fetchBranchesFromDB();
-        setBranches(data);
+        setBranches(Array.isArray(data) ? data : []);
       } catch (error: any) {
         console.error('❌ Error loading branches:', error);
+        setBranches([]);
         toast({
           variant: "destructive",
           title: "Error",
@@ -127,9 +132,11 @@ export const useUnifiedReports = () => {
           paymentStatusFilter
         );
 
-        console.log('📈 Raw data received:', rawData.length, 'transactions');
+        console.log('📈 Raw data received:', Array.isArray(rawData) ? rawData.length : 0, 'transactions');
 
-        const transformedTransactions = transformTransactionData(rawData);
+        // Ensure rawData is an array
+        const safeRawData = Array.isArray(rawData) ? rawData : [];
+        const transformedTransactions = transformTransactionData(safeRawData);
         setTransactions(transformedTransactions);
         
         if (transformedTransactions.length > 0) {
@@ -197,20 +204,22 @@ export const useUnifiedReports = () => {
 
   // Get available branches based on user role and actual branch
   const getAvailableBranches = () => {
+    const safeBranches = Array.isArray(branches) ? branches : [];
+    
     if (user?.role === 'kasir_cabang') {
-      const userBranch = branches.filter(branch => branch.id === userActualBranchId);
+      const userBranch = safeBranches.filter(branch => branch.id === userActualBranchId);
       console.log('📍 Available branches for kasir_cabang:', userBranch);
       return userBranch;
     }
-    console.log('🌍 Available branches for', user?.role, ':', branches.length, 'branches');
-    return branches;
+    console.log('🌍 Available branches for', user?.role, ':', safeBranches.length, 'branches');
+    return safeBranches;
   };
 
   const isBranchSelectionDisabled = user?.role === 'kasir_cabang';
 
   return {
-    transactions,
-    branches,
+    transactions: Array.isArray(transactions) ? transactions : [],
+    branches: Array.isArray(branches) ? branches : [],
     loading,
     selectedBranch,
     setSelectedBranch,

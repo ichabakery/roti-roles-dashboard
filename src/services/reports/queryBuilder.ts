@@ -20,7 +20,8 @@ export const buildTransactionQuery = () => {
 };
 
 export const fetchTransactionDetails = async (transactionIds: string[]) => {
-  if (transactionIds.length === 0) {
+  if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
+    console.log('📋 No transaction IDs provided for details fetch');
     return {
       items: [],
       profiles: [],
@@ -28,56 +29,65 @@ export const fetchTransactionDetails = async (transactionIds: string[]) => {
     };
   }
   
-  console.log('🔍 Fetching transaction items for IDs:', transactionIds);
+  console.log('🔍 Fetching transaction items for IDs:', transactionIds.length, 'transactions');
   
-  // Fetch transaction items with products data using !inner join to ensure products exist
-  const { data: items, error: itemsError } = await supabase
-    .from('transaction_items')
-    .select(`
-      id,
-      transaction_id,
-      product_id,
-      quantity,
-      price_per_item,
-      subtotal,
-      products!inner(
+  try {
+    // Fetch transaction items with products data using !inner join to ensure products exist
+    const { data: items, error: itemsError } = await supabase
+      .from('transaction_items')
+      .select(`
         id,
-        name,
-        description
-      )
-    `)
-    .in('transaction_id', transactionIds);
+        transaction_id,
+        product_id,
+        quantity,
+        price_per_item,
+        subtotal,
+        products!inner(
+          id,
+          name,
+          description
+        )
+      `)
+      .in('transaction_id', transactionIds);
 
-  if (itemsError) {
-    console.error('❌ Error fetching transaction items:', itemsError);
-  } else {
-    console.log('✅ Transaction items fetched:', items?.length || 0);
-    console.log('📋 Sample item with product:', items?.[0]);
+    if (itemsError) {
+      console.error('❌ Error fetching transaction items:', itemsError);
+    } else {
+      console.log('✅ Transaction items fetched:', items?.length || 0);
+      console.log('📋 Sample item with product:', items?.[0]);
+    }
+
+    // Fetch profiles separately
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, name');
+
+    if (profilesError) {
+      console.error('❌ Error fetching profiles:', profilesError);
+    }
+
+    // Fetch branches separately
+    const { data: branches, error: branchesError } = await supabase
+      .from('branches')
+      .select('id, name');
+
+    if (branchesError) {
+      console.error('❌ Error fetching branches:', branchesError);
+    }
+
+    return {
+      items: Array.isArray(items) ? items : [],
+      profiles: Array.isArray(profiles) ? profiles : [],
+      branches: Array.isArray(branches) ? branches : []
+    };
+  } catch (error) {
+    console.error('❌ Error in fetchTransactionDetails:', error);
+    return {
+      items: [],
+      profiles: [],
+      branches: []
+    };
   }
-
-  // Fetch profiles separately
-  const { data: profiles, error: profilesError } = await supabase
-    .from('profiles')
-    .select('id, name');
-
-  if (profilesError) {
-    console.error('❌ Error fetching profiles:', profilesError);
-  }
-
-  // Fetch branches separately
-  const { data: branches, error: branchesError } = await supabase
-    .from('branches')
-    .select('id, name');
-
-  if (branchesError) {
-    console.error('❌ Error fetching branches:', branchesError);
-  }
-
-  return {
-    items: items || [],
-    profiles: profiles || [],
-    branches: branches || []
-  };
 };
 
 export const applyRoleBasedFiltering = (
@@ -94,6 +104,11 @@ export const applyRoleBasedFiltering = (
     paymentStatusFilter,
     filteringDecision: 'determining...'
   });
+
+  if (!query) {
+    console.error('❌ Query object is null or undefined');
+    return query;
+  }
 
   switch (userRole) {
     case 'kasir_cabang':
@@ -141,6 +156,11 @@ export const applyDateRangeFilter = (
   query: any,
   dateRange?: { start: string; end: string }
 ) => {
+  if (!query) {
+    console.error('❌ Query object is null or undefined in date filter');
+    return query;
+  }
+
   if (dateRange) {
     const startDateTime = dateRange.start + 'T00:00:00';
     const endDateTime = dateRange.end + 'T23:59:59';
