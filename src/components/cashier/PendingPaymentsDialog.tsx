@@ -57,10 +57,7 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
           payment_status,
           transaction_date,
           payment_method,
-          branch_id,
-          branches:branch_id (
-            name
-          )
+          branch_id
         `)
         .in('payment_status', ['pending', 'partial'])
         .order('transaction_date', { ascending: false });
@@ -69,32 +66,45 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
         query = query.eq('branch_id', branchId);
       }
 
-      const { data, error } = await query;
+      const { data: transactionData, error } = await query;
 
       if (error) {
         console.error('❌ Error fetching pending transactions:', error);
         throw error;
       }
 
-      console.log('✅ Pending transactions fetched:', data?.length || 0);
-      console.log('📋 Sample transaction:', data?.[0]);
+      console.log('✅ Pending transactions fetched:', transactionData?.length || 0);
 
-      // Transform the data to ensure proper structure
-      const transformedData: PendingTransaction[] = (data || []).map(item => ({
-        ...item,
-        branches: item.branches && !Array.isArray(item.branches) 
-          ? item.branches 
+      if (!transactionData || transactionData.length === 0) {
+        setPendingTransactions([]);
+        toast({
+          title: "Info",
+          description: "Tidak ada transaksi pembayaran pending saat ini",
+        });
+        return;
+      }
+
+      // Fetch branch names separately to avoid relationship issues
+      const branchIds = [...new Set(transactionData.map(t => t.branch_id))];
+      const { data: branchData, error: branchError } = await supabase
+        .from('branches')
+        .select('id, name')
+        .in('id', branchIds);
+
+      if (branchError) {
+        console.error('❌ Error fetching branches:', branchError);
+      }
+
+      // Transform the data to include branch information
+      const transformedData: PendingTransaction[] = transactionData.map(transaction => ({
+        ...transaction,
+        branches: branchData?.find(b => b.id === transaction.branch_id) 
+          ? { name: branchData.find(b => b.id === transaction.branch_id)!.name }
           : null
       }));
 
       setPendingTransactions(transformedData);
       
-      if (transformedData.length === 0) {
-        toast({
-          title: "Info",
-          description: "Tidak ada transaksi pembayaran pending saat ini",
-        });
-      }
     } catch (error: any) {
       console.error('❌ Error fetching pending transactions:', error);
       toast({
