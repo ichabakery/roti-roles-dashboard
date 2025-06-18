@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -58,7 +57,8 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
           payment_status,
           transaction_date,
           payment_method,
-          branches!inner (
+          branch_id,
+          branches:branch_id (
             name
           )
         `)
