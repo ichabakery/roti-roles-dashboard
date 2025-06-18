@@ -187,12 +187,20 @@ export const useInventory = () => {
     }
   }, [user, userActualBranchId, fetchBranches, fetchProducts]);
 
-  // Fetch inventory when branch changes or user is available
+  // Fixed: Change comparison logic to avoid type conflict
   useEffect(() => {
-    if (user && user.role !== 'kasir_cabang' && (selectedBranch || user.role === 'kasir_cabang')) {
-      fetchInventory();
-    } else if (user && user.role === 'kasir_cabang' && userActualBranchId && (selectedBranch || user.role === 'kasir_cabang')) {
-      fetchInventory();
+    if (user) {
+      // Check if user is kasir_cabang and has branch assignment before fetching
+      if (user.role === 'kasir_cabang') {
+        if (userActualBranchId && selectedBranch) {
+          fetchInventory();
+        }
+      } else {
+        // For non-kasir roles (owner, admin_pusat, kepala_produksi)
+        if (selectedBranch) {
+          fetchInventory();
+        }
+      }
     }
   }, [selectedBranch, user, userActualBranchId, fetchInventory]);
 

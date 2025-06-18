@@ -12,6 +12,7 @@ export const useUnifiedReports = () => {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange>({
     start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
@@ -114,14 +115,16 @@ export const useUnifiedReports = () => {
           userRole: user.role,
           userActualBranchId,
           selectedBranch,
-          dateRange
+          dateRange,
+          paymentStatusFilter
         });
 
         const rawData = await fetchTransactionsFromDB(
           user.role,
           userActualBranchId,
           selectedBranch,
-          dateRange
+          dateRange,
+          paymentStatusFilter
         );
 
         console.log('📈 Raw data received:', rawData.length, 'transactions');
@@ -148,10 +151,11 @@ export const useUnifiedReports = () => {
           } else {
             const periodText = `${dateRange.start} - ${dateRange.end}`;
             const branchText = selectedBranch === 'all' ? 'semua cabang' : 'cabang yang dipilih';
+            const statusText = paymentStatusFilter === 'all' ? 'semua status' : `status ${paymentStatusFilter}`;
             
             toast({
               title: "Tidak Ada Data Transaksi",
-              description: `Tidak ada transaksi ditemukan untuk ${branchText} pada periode ${periodText}.`,
+              description: `Tidak ada transaksi ditemukan untuk ${branchText} dengan ${statusText} pada periode ${periodText}.`,
               variant: "default",
             });
           }
@@ -182,7 +186,7 @@ export const useUnifiedReports = () => {
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [user, userActualBranchId, selectedBranch, dateRange, toast]);
+  }, [user, userActualBranchId, selectedBranch, dateRange, paymentStatusFilter, toast]);
 
   // Quick date range presets
   const setQuickDateRange = (days: number) => {
@@ -210,6 +214,8 @@ export const useUnifiedReports = () => {
     loading,
     selectedBranch,
     setSelectedBranch,
+    paymentStatusFilter,
+    setPaymentStatusFilter,
     dateRange,
     setDateRange,
     searchQuery,

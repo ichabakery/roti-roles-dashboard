@@ -7,7 +7,8 @@ export const fetchTransactionsFromDB = async (
   userRole: string,
   userBranchId?: string,
   selectedBranch?: string,
-  dateRange?: { start: string; end: string }
+  dateRange?: { start: string; end: string },
+  paymentStatusFilter?: string
 ) => {
   console.log('🔍 ===== REPORTS FETCH START =====');
   console.log('🔍 Input parameters:', {
@@ -15,6 +16,7 @@ export const fetchTransactionsFromDB = async (
     userBranchId,
     selectedBranch,
     dateRange,
+    paymentStatusFilter,
     timestamp: new Date().toISOString()
   });
 
@@ -33,13 +35,19 @@ export const fetchTransactionsFromDB = async (
     // Build simplified query
     let transactionQuery = buildTransactionQuery();
 
-    // Apply role-based filtering
-    transactionQuery = applyRoleBasedFiltering(transactionQuery, userRole, userBranchId, selectedBranch);
+    // Apply role-based filtering with payment status
+    transactionQuery = applyRoleBasedFiltering(
+      transactionQuery, 
+      userRole, 
+      userBranchId, 
+      selectedBranch,
+      paymentStatusFilter
+    );
 
     // Apply date range filter
     transactionQuery = applyDateRangeFilter(transactionQuery, dateRange);
 
-    console.log('🚀 Executing simplified transaction query...');
+    console.log('🚀 Executing transaction query with payment status filter...');
     const { data: transactionData, error } = await transactionQuery;
 
     if (error) {
@@ -50,7 +58,11 @@ export const fetchTransactionsFromDB = async (
 
     console.log('📊 Basic transactions fetched:', {
       recordCount: transactionData?.length || 0,
-      firstRecord: transactionData?.[0] || null
+      firstRecord: transactionData?.[0] || null,
+      paymentStatusDistribution: transactionData?.reduce((acc, t) => {
+        acc[t.payment_status] = (acc[t.payment_status] || 0) + 1;
+        return acc;
+      }, {}) || {}
     });
 
     if (!transactionData || transactionData.length === 0) {
@@ -79,6 +91,7 @@ export const fetchTransactionsFromDB = async (
         items: transactionItems.length,
         cashier: cashierProfile?.name,
         branch: branch?.name,
+        paymentStatus: transaction.payment_status,
         firstItem: transactionItems[0]
       });
 
@@ -94,7 +107,11 @@ export const fetchTransactionsFromDB = async (
     console.log('✅ Final enriched result:', {
       enrichedTransactions: enrichedTransactions.length,
       sampleTransaction: enrichedTransactions[0] || null,
-      sampleItems: enrichedTransactions[0]?.transaction_items || []
+      sampleItems: enrichedTransactions[0]?.transaction_items || [],
+      statusBreakdown: enrichedTransactions.reduce((acc, t) => {
+        acc[t.payment_status] = (acc[t.payment_status] || 0) + 1;
+        return acc;
+      }, {})
     });
 
     return enrichedTransactions;

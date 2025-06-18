@@ -11,6 +11,9 @@ export const buildTransactionQuery = () => {
       transaction_date,
       total_amount,
       payment_method,
+      payment_status,
+      amount_paid,
+      amount_remaining,
       notes,
       status
     `);
@@ -27,7 +30,7 @@ export const fetchTransactionDetails = async (transactionIds: string[]) => {
   
   console.log('🔍 Fetching transaction items for IDs:', transactionIds);
   
-  // Fetch transaction items with products data
+  // Fetch transaction items with products data using !inner join to ensure products exist
   const { data: items, error: itemsError } = await supabase
     .from('transaction_items')
     .select(`
@@ -49,7 +52,7 @@ export const fetchTransactionDetails = async (transactionIds: string[]) => {
     console.error('❌ Error fetching transaction items:', itemsError);
   } else {
     console.log('✅ Transaction items fetched:', items?.length || 0);
-    console.log('📋 Sample item:', items?.[0]);
+    console.log('📋 Sample item with product:', items?.[0]);
   }
 
   // Fetch profiles separately
@@ -81,12 +84,14 @@ export const applyRoleBasedFiltering = (
   query: any,
   userRole: string,
   userBranchId?: string,
-  selectedBranch?: string
+  selectedBranch?: string,
+  paymentStatusFilter?: string
 ) => {
   console.log('🔍 Role-based filtering input:', {
     userRole,
     userBranchId,
     selectedBranch,
+    paymentStatusFilter,
     filteringDecision: 'determining...'
   });
 
@@ -121,6 +126,12 @@ export const applyRoleBasedFiltering = (
       // Return empty query instead of throwing error
       query = query.eq('id', 'never-match-any-id');
       break;
+  }
+
+  // Apply payment status filter if provided
+  if (paymentStatusFilter && paymentStatusFilter !== 'all') {
+    query = query.eq('payment_status', paymentStatusFilter);
+    console.log('💳 Payment status filter applied:', paymentStatusFilter);
   }
 
   return query;
