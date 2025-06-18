@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -6,6 +7,7 @@ import { fetchInventoryData, addStockToInventory } from '@/services/inventorySer
 import { fetchBranchesForUser } from '@/services/branchService';
 import { fetchActiveProducts } from '@/services/productService';
 import { useInventoryRealtime } from '@/hooks/useInventoryRealtime';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useInventory = () => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -13,13 +15,51 @@ export const useInventory = () => {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBranch, setSelectedBranch] = useState<string>('');
+  const [userActualBranchId, setUserActualBranchId] = useState<string | null>(null);
   
   const { user } = useAuth();
+
+  // Fetch user's actual branch assignment from database (sama seperti useCashierAuth)
+  useEffect(() => {
+    const fetchUserBranch = async () => {
+      if (user?.role === 'kasir_cabang' && user.id) {
+        try {
+          console.log('🔍 [Inventory] Fetching actual branch assignment for kasir_cabang:', user.id);
+          const { data: userBranch, error } = await supabase
+            .from('user_branches')
+            .select('branch_id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          
+          if (error) {
+            console.error('❌ [Inventory] Error fetching user branch:', error);
+            setUserActualBranchId(null);
+            return;
+          }
+          
+          if (userBranch) {
+            console.log('✅ [Inventory] Found user branch assignment:', userBranch.branch_id);
+            setUserActualBranchId(userBranch.branch_id);
+          } else {
+            console.warn('⚠️ [Inventory] No branch assignment found for kasir_cabang');
+            setUserActualBranchId(null);
+          }
+        } catch (error) {
+          console.error('❌ [Inventory] Failed to fetch user branch:', error);
+          setUserActualBranchId(null);
+        }
+      }
+    };
+
+    fetchUserBranch();
+  }, [user]);
 
   // Fetch branches based on user role
   const fetchBranches = useCallback(async () => {
     try {
-      const branchData = await fetchBranchesForUser(user?.role || '', user?.branchId);
+      // Gunakan userActualBranchId untuk kasir_cabang, bukan user.branchId
+      const effectiveBranchId = user?.role === 'kasir_cabang' ? userActualBranchId : user?.branchId;
+      const branchData = await fetchBranchesForUser(user?.role || '', effectiveBranchId);
       setBranches(branchData);
       
       if (user?.role === 'kasir_cabang' && branchData.length > 0) {
@@ -28,14 +68,14 @@ export const useInventory = () => {
         setSelectedBranch('all');
       }
     } catch (error: any) {
-      console.error('❌ Error fetching branches:', error);
+      console.error('❌ [Inventory] Error fetching branches:', error);
       toast({
         variant: "destructive",
         title: "Error",
         description: `Gagal memuat data cabang: ${error.message}`,
       });
     }
-  }, [user, selectedBranch]);
+  }, [user, selectedBranch, userActualBranchId]);
 
   // Fetch products
   const fetchProducts = useCallback(async () => {
@@ -43,7 +83,7 @@ export const useInventory = () => {
       const productData = await fetchActiveProducts();
       setProducts(productData);
     } catch (error: any) {
-      console.error('❌ Error fetching products:', error);
+      console.error('❌ [Inventory] Error fetching products:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -60,8 +100,8 @@ export const useInventory = () => {
     }
 
     // For kasir_cabang, ensure they have a branch assigned
-    if (user.role === 'kasir_cabang' && !user.branchId) {
-      console.error('❌ Kasir user without branch assignment');
+    if (user.role === 'kasir_cabang' && !userActualBranchId) {
+      console.error('❌ [Inventory] Kasir user without branch assignment');
       toast({
         variant: "destructive",
         title: "Error",
@@ -73,10 +113,12 @@ export const useInventory = () => {
 
     setLoading(true);
     try {
-      const inventoryData = await fetchInventoryData(user.role, user.branchId, selectedBranch);
+      // Gunakan userActualBranchId untuk kasir_cabang
+      const effectiveBranchId = user.role === 'kasir_cabang' ? userActualBranchId : user.branchId;
+      const inventoryData = await fetchInventoryData(user.role, effectiveBranchId, selectedBranch);
       setInventory(inventoryData);
     } catch (error: any) {
-      console.error('❌ Error fetching inventory:', error);
+      console.error('❌ [Inventory] Error fetching inventory:', error);
       if (error.code === '42501') {
         toast({
           variant: "destructive",
@@ -93,7 +135,7 @@ export const useInventory = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, selectedBranch]);
+  }, [user, selectedBranch, userActualBranchId]);
 
   // Add or update stock, batasi kasir tidak boleh menambah stok
   const addStock = useCallback(async (productId: string, branchId: string, quantity: number) => {
@@ -119,7 +161,7 @@ export const useInventory = () => {
       fetchInventory();
       return true;
     } catch (error: any) {
-      console.error('❌ Error adding stock:', error);
+      console.error('❌ [Inventory] Error adding stock:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -132,20 +174,27 @@ export const useInventory = () => {
   // Setup real-time updates
   useInventoryRealtime(user, fetchInventory);
 
-  // Initialize data
+  // Initialize data - tunggu userActualBranchId untuk kasir_cabang
   useEffect(() => {
-    if (user) {
+    if (user && user.role !== 'kasir_cabang') {
+      // Untuk non-kasir, langsung fetch
+      fetchBranches();
+      fetchProducts();
+    } else if (user && user.role === 'kasir_cabang' && userActualBranchId !== null) {
+      // Untuk kasir, tunggu sampai userActualBranchId tersedia
       fetchBranches();
       fetchProducts();
     }
-  }, [user, fetchBranches, fetchProducts]);
+  }, [user, userActualBranchId, fetchBranches, fetchProducts]);
 
   // Fetch inventory when branch changes or user is available
   useEffect(() => {
-    if (user && (selectedBranch || user.role === 'kasir_cabang')) {
+    if (user && user.role !== 'kasir_cabang' && (selectedBranch || user.role === 'kasir_cabang')) {
+      fetchInventory();
+    } else if (user && user.role === 'kasir_cabang' && userActualBranchId && (selectedBranch || user.role === 'kasir_cabang')) {
       fetchInventory();
     }
-  }, [selectedBranch, user, fetchInventory]);
+  }, [selectedBranch, user, userActualBranchId, fetchInventory]);
 
   return {
     inventory,

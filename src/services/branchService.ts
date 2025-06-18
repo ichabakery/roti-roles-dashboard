@@ -2,8 +2,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Branch } from '@/types/inventory';
 
-export const fetchBranchesForUser = async (userRole: string, userBranchId?: string) => {
-  console.log('📍 Fetching branches for user role:', userRole);
+export const fetchBranchesForUser = async (userRole: string, userBranchId?: string | null) => {
+  console.log('📍 Fetching branches for user role:', userRole, 'branchId:', userBranchId);
   
   if (userRole === 'kasir_cabang' && userBranchId) {
     // For kasir, only get their assigned branch
