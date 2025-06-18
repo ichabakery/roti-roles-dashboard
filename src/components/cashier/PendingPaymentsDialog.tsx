@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PendingTransactionCard } from './PendingTransactionCard';
 import { PaymentForm } from './PaymentForm';
+import { usePendingTransactions } from '@/hooks/usePendingTransactions';
 
 interface PendingTransaction {
   id: string;
@@ -28,95 +28,16 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
   onOpenChange,
   branchId
 }) => {
-  const [pendingTransactions, setPendingTransactions] = useState<PendingTransaction[]>([]);
   const [selectedTransaction, setSelectedTransaction] = useState<PendingTransaction | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-
-  useEffect(() => {
-    if (open) {
-      fetchPendingTransactions();
-    }
-  }, [open, branchId]);
-
-  const fetchPendingTransactions = async () => {
-    try {
-      setLoading(true);
-      console.log('🔍 Fetching pending transactions for branch:', branchId);
-      
-      let query = supabase
-        .from('transactions')
-        .select(`
-          id,
-          total_amount,
-          amount_paid,
-          amount_remaining,
-          due_date,
-          payment_status,
-          transaction_date,
-          payment_method,
-          branch_id
-        `)
-        .in('payment_status', ['pending', 'partial'])
-        .order('transaction_date', { ascending: false });
-
-      if (branchId && branchId !== 'all') {
-        query = query.eq('branch_id', branchId);
-      }
-
-      const { data: transactionData, error } = await query;
-
-      if (error) {
-        console.error('❌ Error fetching pending transactions:', error);
-        throw error;
-      }
-
-      console.log('✅ Pending transactions fetched:', transactionData?.length || 0);
-
-      if (!transactionData || transactionData.length === 0) {
-        setPendingTransactions([]);
-        toast({
-          title: "Info",
-          description: "Tidak ada transaksi pembayaran pending saat ini",
-        });
-        return;
-      }
-
-      // Fetch branch names separately to avoid relationship issues
-      const branchIds = [...new Set(transactionData.map(t => t.branch_id))];
-      const { data: branchData, error: branchError } = await supabase
-        .from('branches')
-        .select('id, name')
-        .in('id', branchIds);
-
-      if (branchError) {
-        console.error('❌ Error fetching branches:', branchError);
-      }
-
-      // Transform the data to include branch information
-      const transformedData: PendingTransaction[] = transactionData.map(transaction => ({
-        ...transaction,
-        branches: branchData?.find(b => b.id === transaction.branch_id) 
-          ? { name: branchData.find(b => b.id === transaction.branch_id)!.name }
-          : null
-      }));
-
-      setPendingTransactions(transformedData);
-      
-    } catch (error: any) {
-      console.error('❌ Error fetching pending transactions:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: `Gagal memuat transaksi pending: ${error.message}`,
-      });
-      setPendingTransactions([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  
+  const {
+    pendingTransactions,
+    loading,
+    refetch: fetchPendingTransactions
+  } = usePendingTransactions(branchId, open);
 
   const handlePayment = async () => {
     if (!selectedTransaction || !paymentAmount) {
