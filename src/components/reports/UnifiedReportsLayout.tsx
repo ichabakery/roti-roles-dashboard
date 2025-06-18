@@ -40,8 +40,6 @@ export const UnifiedReportsLayout = () => {
         </div>
         <ExportButtons 
           transactions={transactions}
-          selectedBranch={selectedBranch}
-          dateRange={dateRange}
         />
       </div>
 
@@ -63,8 +61,7 @@ export const UnifiedReportsLayout = () => {
 
       {/* Summary Stats */}
       <TransactionSummaryStats 
-        loading={loading}
-        summary={summaries.branchSummary}
+        transactions={transactions}
       />
 
       {/* Main Content Tabs */}
@@ -133,6 +130,8 @@ export const UnifiedReportsLayout = () => {
         <TabsContent value="charts" className="space-y-4">
           <ReportsCharts 
             transactions={transactions}
+            paymentSummary={summaries.paymentSummary}
+            productSummary={summaries.productSummary}
           />
         </TabsContent>
       </Tabs>
