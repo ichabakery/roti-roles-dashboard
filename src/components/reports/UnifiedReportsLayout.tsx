@@ -40,7 +40,6 @@ export const UnifiedReportsLayout = () => {
         </div>
         <ExportButtons 
           transactions={transactions}
-          summaries={summaries}
           selectedBranch={selectedBranch}
           dateRange={dateRange}
         />
@@ -63,7 +62,10 @@ export const UnifiedReportsLayout = () => {
       />
 
       {/* Summary Stats */}
-      <TransactionSummaryStats summaries={summaries} loading={loading} />
+      <TransactionSummaryStats 
+        loading={loading}
+        summary={summaries.branchSummary}
+      />
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="transactions" className="w-full">
@@ -78,7 +80,6 @@ export const UnifiedReportsLayout = () => {
           <EnhancedTransactionTable
             transactions={transactions}
             loading={loading}
-            searchQuery={searchQuery}
           />
         </TabsContent>
 
@@ -88,11 +89,11 @@ export const UnifiedReportsLayout = () => {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Ringkasan per Cabang</h3>
               {summaries.branchSummary.map((branch) => (
-                <div key={branch.branchId} className="p-4 border rounded-lg">
-                  <h4 className="font-medium">{branch.branchName}</h4>
+                <div key={branch.branch_id} className="p-4 border rounded-lg">
+                  <h4 className="font-medium">{branch.branch_name}</h4>
                   <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
-                    <div>Transaksi: {branch.totalTransactions}</div>
-                    <div>Pendapatan: Rp {branch.totalRevenue.toLocaleString('id-ID')}</div>
+                    <div>Transaksi: {branch.total_transactions}</div>
+                    <div>Pendapatan: Rp {branch.total_revenue.toLocaleString('id-ID')}</div>
                   </div>
                 </div>
               ))}
@@ -102,11 +103,11 @@ export const UnifiedReportsLayout = () => {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Metode Pembayaran</h3>
               {summaries.paymentSummary.map((payment) => (
-                <div key={payment.method} className="p-4 border rounded-lg">
-                  <h4 className="font-medium capitalize">{payment.method}</h4>
+                <div key={payment.payment_method} className="p-4 border rounded-lg">
+                  <h4 className="font-medium capitalize">{payment.payment_method}</h4>
                   <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
                     <div>Transaksi: {payment.count}</div>
-                    <div>Total: Rp {payment.total.toLocaleString('id-ID')}</div>
+                    <div>Total: Rp {payment.total_amount.toLocaleString('id-ID')}</div>
                   </div>
                 </div>
               ))}
@@ -118,12 +119,11 @@ export const UnifiedReportsLayout = () => {
           <h3 className="text-lg font-semibold">Produk Terlaris</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {summaries.productSummary.slice(0, 10).map((product) => (
-              <div key={product.productId} className="p-4 border rounded-lg">
-                <h4 className="font-medium">{product.productName}</h4>
+              <div key={product.product_id} className="p-4 border rounded-lg">
+                <h4 className="font-medium">{product.product_name}</h4>
                 <div className="mt-2 text-sm space-y-1">
-                  <div>Terjual: {product.totalQuantity} unit</div>
-                  <div>Pendapatan: Rp {product.totalRevenue.toLocaleString('id-ID')}</div>
-                  <div>Transaksi: {product.transactionCount}x</div>
+                  <div>Terjual: {product.total_quantity} unit</div>
+                  <div>Pendapatan: Rp {product.total_revenue.toLocaleString('id-ID')}</div>
                 </div>
               </div>
             ))}
@@ -132,7 +132,6 @@ export const UnifiedReportsLayout = () => {
 
         <TabsContent value="charts" className="space-y-4">
           <ReportsCharts 
-            summaries={summaries}
             transactions={transactions}
           />
         </TabsContent>

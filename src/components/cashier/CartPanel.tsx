@@ -86,7 +86,6 @@ export const CartPanel: React.FC<CartPanelProps> = ({
               branches={branches}
               selectedBranch={selectedBranch}
               onBranchChange={onBranchChange}
-              disabled={userRole === 'kasir_cabang'}
             />
           )}
 
