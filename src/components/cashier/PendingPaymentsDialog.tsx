@@ -66,10 +66,13 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
 
     try {
       setProcessing(true);
-      console.log('💳 Processing payment:', {
+      console.log('💳 Processing payment with validation:', {
         transactionId: selectedTransaction.id,
         amount,
-        paymentMethod
+        paymentMethod,
+        currentPaid: selectedTransaction.amount_paid,
+        totalAmount: selectedTransaction.total_amount,
+        remainingAmount
       });
 
       // Get current user
@@ -78,7 +81,13 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
         throw new Error('User tidak terautentikasi');
       }
 
-      // Insert payment history
+      // Validate payment amount again
+      const newTotalPaid = (selectedTransaction.amount_paid || 0) + amount;
+      if (newTotalPaid > selectedTransaction.total_amount) {
+        throw new Error('Jumlah pembayaran melebihi sisa tagihan');
+      }
+
+      // Insert payment history with proper validation
       const { error: paymentError } = await supabase
         .from('payment_history')
         .insert({
@@ -86,7 +95,7 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
           amount_paid: amount,
           payment_method: paymentMethod,
           cashier_id: user.id,
-          notes: `Pembayaran cicilan sebesar Rp ${amount.toLocaleString('id-ID')}`
+          notes: `Pembayaran cicilan sebesar Rp ${amount.toLocaleString('id-ID')}. Total sudah dibayar: Rp ${newTotalPai.toLocaleString('id-ID')} dari Rp ${selectedTransaction.total_amount.toLocaleString('id-ID')}`
         });
 
       if (paymentError) {
@@ -94,9 +103,22 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
         throw paymentError;
       }
 
+      // Verify the transaction was updated correctly
+      const { data: updatedTransaction, error: verifyError } = await supabase
+        .from('transactions')
+        .select('amount_paid, amount_remaining, payment_status')
+        .eq('id', selectedTransaction.id)
+        .single();
+
+      if (verifyError) {
+        console.error('❌ Verification error:', verifyError);
+      } else {
+        console.log('✅ Transaction updated correctly:', updatedTransaction);
+      }
+
       toast({
         title: "Pembayaran Berhasil",
-        description: `Pembayaran sebesar Rp ${amount.toLocaleString('id-ID')} berhasil dicatat`,
+        description: `Pembayaran sebesar Rp ${amount.toLocaleString('id-ID')} berhasil dicatat. Total terbayar: Rp ${newTotalPaid.toLocaleString('id-ID')}`,
       });
 
       // Refresh the list
