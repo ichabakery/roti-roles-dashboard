@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { PendingTransactionCard } from './PendingTransactionCard';
 import { PaymentForm } from './PaymentForm';
 import { usePendingTransactions } from '@/hooks/usePendingTransactions';
@@ -31,6 +33,7 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
   const [selectedTransaction, setSelectedTransaction] = useState<PendingTransaction | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [processing, setProcessing] = useState(false);
   const { toast } = useToast();
   
   const {
@@ -62,7 +65,7 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
     }
 
     try {
-      setLoading(true);
+      setProcessing(true);
       console.log('💳 Processing payment:', {
         transactionId: selectedTransaction.id,
         amount,
@@ -109,7 +112,7 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
         description: `Gagal memproses pembayaran: ${error.message}`,
       });
     } finally {
-      setLoading(false);
+      setProcessing(false);
     }
   };
 
@@ -158,7 +161,7 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
               paymentMethod={paymentMethod}
               setPaymentMethod={setPaymentMethod}
               onPayment={handlePayment}
-              loading={loading}
+              loading={processing}
             />
           </div>
         </div>

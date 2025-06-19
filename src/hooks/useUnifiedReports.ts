@@ -25,7 +25,6 @@ export const useUnifiedReports = () => {
 
   // Computed summaries
   const summaries = useMemo(() => {
-    // Ensure transactions is an array before filtering
     const safeTransactions = Array.isArray(transactions) ? transactions : [];
     
     const filtered = safeTransactions.filter(transaction => {
@@ -134,7 +133,6 @@ export const useUnifiedReports = () => {
 
         console.log('📈 Raw data received:', Array.isArray(rawData) ? rawData.length : 0, 'transactions');
 
-        // Ensure rawData is an array
         const safeRawData = Array.isArray(rawData) ? rawData : [];
         const transformedTransactions = transformTransactionData(safeRawData);
         setTransactions(transformedTransactions);
@@ -145,7 +143,6 @@ export const useUnifiedReports = () => {
             description: `${transformedTransactions.length} transaksi berhasil dimuat.`,
           });
         } else {
-          // Enhanced feedback for different scenarios
           if (
             user.role === 'kasir_cabang' &&
             (!userActualBranchId || userActualBranchId === '' || userActualBranchId === null)
@@ -187,7 +184,6 @@ export const useUnifiedReports = () => {
       }
     };
 
-    // Add delay to prevent too many requests
     const timeoutId = setTimeout(() => {
       fetchData();
     }, 300);
