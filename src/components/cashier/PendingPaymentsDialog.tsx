@@ -81,13 +81,43 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
         throw new Error('User tidak terautentikasi');
       }
 
+      // Calculate new payment totals
+      const currentPaid = selectedTransaction.amount_paid || 0;
+      const newTotalPaid = currentPaid + amount;
+      const newRemainingAmount = selectedTransaction.total_amount - newTotalPaid;
+      
       // Validate payment amount again
-      const newTotalPaid = (selectedTransaction.amount_paid || 0) + amount;
       if (newTotalPaid > selectedTransaction.total_amount) {
         throw new Error('Jumlah pembayaran melebihi sisa tagihan');
       }
 
-      // Insert payment history with proper validation
+      // Determine new payment status
+      const newPaymentStatus = newRemainingAmount <= 0 ? 'paid' : 'partial';
+
+      console.log('💰 Payment calculation:', {
+        currentPaid,
+        amount,
+        newTotalPaid,
+        newRemainingAmount,
+        newPaymentStatus
+      });
+
+      // Update transaction payment status first
+      const { error: updateError } = await supabase
+        .from('transactions')
+        .update({
+          amount_paid: newTotalPaid,
+          amount_remaining: newRemainingAmount,
+          payment_status: newPaymentStatus
+        })
+        .eq('id', selectedTransaction.id);
+
+      if (updateError) {
+        console.error('❌ Transaction update error:', updateError);
+        throw updateError;
+      }
+
+      // Insert payment history
       const { error: paymentError } = await supabase
         .from('payment_history')
         .insert({
@@ -99,7 +129,7 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
         });
 
       if (paymentError) {
-        console.error('❌ Payment error:', paymentError);
+        console.error('❌ Payment history error:', paymentError);
         throw paymentError;
       }
 

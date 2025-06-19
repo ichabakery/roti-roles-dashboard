@@ -20,7 +20,7 @@ export const useReportsData = (
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Fetch user's actual branch for kasir_cabang
+  // Fetch user's actual branch for kasir_cabang with improved error handling
   useEffect(() => {
     const fetchUserBranch = async () => {
       if (user?.role === 'kasir_cabang' && user.id) {
@@ -34,21 +34,32 @@ export const useReportsData = (
           
           if (error) {
             console.error('❌ Error fetching user branch:', error);
+            console.warn('⚠️ Kasir user without branch assignment:', { 
+              userId: user.id, 
+              email: user.email, 
+              error: error.message 
+            });
             setUserActualBranchId(null);
             return;
           }
           
-          if (userBranch) {
+          if (userBranch?.branch_id) {
             console.log('✅ Found user branch:', userBranch.branch_id);
             setUserActualBranchId(userBranch.branch_id);
           } else {
-            console.warn('⚠️ No branch assignment found for kasir_cabang');
+            console.warn('⚠️ No branch assignment found for kasir_cabang:', { 
+              userId: user.id, 
+              email: user.email 
+            });
             setUserActualBranchId(null);
           }
         } catch (error) {
           console.error('❌ Failed to fetch user branch:', error);
           setUserActualBranchId(null);
         }
+      } else {
+        // For non-kasir roles, clear the branch ID
+        setUserActualBranchId(null);
       }
     };
 
@@ -75,7 +86,7 @@ export const useReportsData = (
     loadBranches();
   }, [toast]);
 
-  // Fetch transactions
+  // Fetch transactions with improved validation
   useEffect(() => {
     if (!user) return;
     
@@ -89,6 +100,20 @@ export const useReportsData = (
           dateRange,
           paymentStatusFilter
         });
+
+        // Enhanced validation for kasir_cabang
+        if (user.role === 'kasir_cabang') {
+          if (!userActualBranchId) {
+            console.error('❌ Kasir cabang missing branch assignment');
+            setTransactions([]);
+            toast({
+              title: "Assignment Cabang Diperlukan",
+              description: "Akun kasir cabang Anda belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang.",
+              variant: "destructive",
+            });
+            return;
+          }
+        }
 
         const rawData = await fetchTransactionsFromDB(
           user.role,
@@ -105,35 +130,39 @@ export const useReportsData = (
         setTransactions(transformedTransactions);
         
         if (transformedTransactions.length > 0) {
+          // Calculate actual revenue (only count paid amounts)
           const actualRevenue = transformedTransactions.reduce((sum, t) => {
-            return sum + (t.payment_status === 'paid' ? t.total_amount : (t.amount_paid || 0));
+            switch (t.payment_status) {
+              case 'paid':
+                return sum + t.total_amount;
+              case 'partial':
+                return sum + (t.amount_paid || 0);
+              case 'pending':
+              case 'cancelled':
+                return sum;
+              default:
+                return sum + (t.amount_paid || t.total_amount);
+            }
           }, 0);
+          
+          const paidCount = transformedTransactions.filter(t => t.payment_status === 'paid').length;
+          const partialCount = transformedTransactions.filter(t => t.payment_status === 'partial').length;
+          const pendingCount = transformedTransactions.filter(t => t.payment_status === 'pending').length;
           
           toast({
             title: "Data Laporan Dimuat",
-            description: `${transformedTransactions.length} transaksi berhasil dimuat. Pendapatan aktual: Rp ${actualRevenue.toLocaleString('id-ID')}`,
+            description: `${transformedTransactions.length} transaksi berhasil dimuat. Lunas: ${paidCount}, Cicilan: ${partialCount}, Pending: ${pendingCount}. Pendapatan aktual: Rp ${actualRevenue.toLocaleString('id-ID')}`,
           });
         } else {
-          if (
-            user.role === 'kasir_cabang' &&
-            (!userActualBranchId || userActualBranchId === '' || userActualBranchId === null)
-          ) {
-            toast({
-              title: "Perlu Assignment Cabang",
-              description: "Akun kasir cabang Anda belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang agar dapat mengakses data transaksi.",
-              variant: "destructive",
-            });
-          } else {
-            const periodText = `${dateRange.start} - ${dateRange.end}`;
-            const branchText = selectedBranch === 'all' ? 'semua cabang' : 'cabang yang dipilih';
-            const statusText = paymentStatusFilter === 'all' ? 'semua status' : `status ${paymentStatusFilter}`;
-            
-            toast({
-              title: "Tidak Ada Data Transaksi",
-              description: `Tidak ada transaksi ditemukan untuk ${branchText} dengan ${statusText} pada periode ${periodText}.`,
-              variant: "default",
-            });
-          }
+          const periodText = `${dateRange.start} - ${dateRange.end}`;
+          const branchText = selectedBranch === 'all' ? 'semua cabang' : 'cabang yang dipilih';
+          const statusText = paymentStatusFilter === 'all' ? 'semua status' : `status ${paymentStatusFilter}`;
+          
+          toast({
+            title: "Tidak Ada Data Transaksi",
+            description: `Tidak ada transaksi ditemukan untuk ${branchText} dengan ${statusText} pada periode ${periodText}.`,
+            variant: "default",
+          });
         }
       } catch (error: any) {
         console.error('❌ Error fetching reports data:', error);

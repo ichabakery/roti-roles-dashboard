@@ -7,7 +7,15 @@ import { useAuth } from '@/contexts/AuthContext';
 export const useUnifiedReports = () => {
   const { user } = useAuth();
   
-  // Initialize filters first
+  // Fetch data first to get branches and userActualBranchId
+  const {
+    transactions,
+    branches,
+    loading,
+    userActualBranchId
+  } = useReportsData('all', { start: '', end: '' }, 'all'); // Initial values
+
+  // Initialize filters with actual data
   const {
     selectedBranch,
     setSelectedBranch,
@@ -20,38 +28,33 @@ export const useUnifiedReports = () => {
     setQuickDateRange,
     getAvailableBranches,
     isBranchSelectionDisabled
-  } = useReportsFilters([], null); // Will be updated when branches are loaded
+  } = useReportsFilters(branches, userActualBranchId);
 
-  // Fetch data based on filters
+  // Fetch data with actual filters
   const {
-    transactions,
-    branches,
-    loading,
-    userActualBranchId
+    transactions: filteredTransactions,
+    loading: dataLoading
   } = useReportsData(selectedBranch, dateRange, paymentStatusFilter);
 
-  // Update filters with actual data
-  const filtersWithData = useReportsFilters(branches, userActualBranchId);
-
-  // Generate summaries
-  const summaries = useReportsSummaries(transactions, searchQuery);
+  // Generate summaries from filtered data
+  const summaries = useReportsSummaries(filteredTransactions, searchQuery);
 
   return {
-    transactions: Array.isArray(transactions) ? transactions : [],
+    transactions: Array.isArray(filteredTransactions) ? filteredTransactions : [],
     branches: Array.isArray(branches) ? branches : [],
-    loading,
-    selectedBranch: filtersWithData.selectedBranch,
-    setSelectedBranch: filtersWithData.setSelectedBranch,
-    paymentStatusFilter: filtersWithData.paymentStatusFilter,
-    setPaymentStatusFilter: filtersWithData.setPaymentStatusFilter,
-    dateRange: filtersWithData.dateRange,
-    setDateRange: filtersWithData.setDateRange,
-    searchQuery: filtersWithData.searchQuery,
-    setSearchQuery: filtersWithData.setSearchQuery,
+    loading: loading || dataLoading,
+    selectedBranch,
+    setSelectedBranch,
+    paymentStatusFilter,
+    setPaymentStatusFilter,
+    dateRange,
+    setDateRange,
+    searchQuery,
+    setSearchQuery,
     summaries,
-    setQuickDateRange: filtersWithData.setQuickDateRange,
-    getAvailableBranches: filtersWithData.getAvailableBranches,
-    isBranchSelectionDisabled: filtersWithData.isBranchSelectionDisabled,
+    setQuickDateRange,
+    getAvailableBranches,
+    isBranchSelectionDisabled,
     isKasir: user?.role === 'kasir_cabang'
   };
 };
