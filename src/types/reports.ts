@@ -1,5 +1,4 @@
 
-
 export interface Branch {
   id: string;
   name: string;
@@ -22,10 +21,13 @@ export interface Transaction {
   cashier_id: string;
   transaction_date: string;
   total_amount: number;
+  amount_paid?: number | null;
+  amount_remaining?: number | null;
+  payment_status: string;
   payment_method: string;
   branches: Branch;
-  transaction_items: TransactionItem[]; // Made required, not optional
-  cashier_name: string; // Required, not optional!
+  transaction_items: TransactionItem[];
+  cashier_name: string;
   received?: number;
   change?: number;
 }
@@ -55,4 +57,3 @@ export interface DateRange {
   start: string;
   end: string;
 }
-

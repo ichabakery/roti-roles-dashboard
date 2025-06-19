@@ -95,7 +95,7 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
           amount_paid: amount,
           payment_method: paymentMethod,
           cashier_id: user.id,
-          notes: `Pembayaran cicilan sebesar Rp ${amount.toLocaleString('id-ID')}. Total sudah dibayar: Rp ${newTotalPai.toLocaleString('id-ID')} dari Rp ${selectedTransaction.total_amount.toLocaleString('id-ID')}`
+          notes: `Pembayaran cicilan sebesar Rp ${amount.toLocaleString('id-ID')}. Total sudah dibayar: Rp ${newTotalPaid.toLocaleString('id-ID')} dari Rp ${selectedTransaction.total_amount.toLocaleString('id-ID')}`
         });
 
       if (paymentError) {
