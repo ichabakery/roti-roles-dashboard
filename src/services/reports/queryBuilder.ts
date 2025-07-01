@@ -32,7 +32,6 @@ export const fetchTransactionDetails = async (transactionIds: string[]) => {
   console.log('🔍 Fetching transaction items for IDs:', transactionIds.length, 'transactions');
   
   try {
-    // Fetch transaction items with products data using !inner join to ensure products exist
     const { data: items, error: itemsError } = await supabase
       .from('transaction_items')
       .select(`
@@ -54,10 +53,8 @@ export const fetchTransactionDetails = async (transactionIds: string[]) => {
       console.error('❌ Error fetching transaction items:', itemsError);
     } else {
       console.log('✅ Transaction items fetched:', items?.length || 0);
-      console.log('📋 Sample item with product:', items?.[0]);
     }
 
-    // Fetch profiles separately
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, name');
@@ -66,7 +63,6 @@ export const fetchTransactionDetails = async (transactionIds: string[]) => {
       console.error('❌ Error fetching profiles:', profilesError);
     }
 
-    // Fetch branches separately
     const { data: branches, error: branchesError } = await supabase
       .from('branches')
       .select('id, name');
@@ -97,12 +93,11 @@ export const applyRoleBasedFiltering = (
   selectedBranch?: string,
   paymentStatusFilter?: string
 ) => {
-  console.log('🔍 Role-based filtering input:', {
+  console.log('🔍 Role-based filtering:', {
     userRole,
     userBranchId,
     selectedBranch,
-    paymentStatusFilter,
-    filteringDecision: 'determining...'
+    paymentStatusFilter
   });
 
   if (!query) {
@@ -112,13 +107,10 @@ export const applyRoleBasedFiltering = (
 
   switch (userRole) {
     case 'kasir_cabang':
-      // Kasir cabang harus memiliki branch assignment untuk akses data
       if (!userBranchId) {
         console.error('❌ Kasir cabang tidak memiliki branch assignment');
-        // Return empty query instead of throwing error to allow graceful handling
-        query = query.eq('id', 'never-match-any-id');
-        console.log('📊 Kasir filtering applied - no access due to missing branch assignment');
-        return query;
+        // Return query yang tidak akan match data apapun
+        return query.eq('id', '00000000-0000-0000-0000-000000000000');
       }
       query = query.eq('branch_id', userBranchId);
       console.log('📊 Kasir filtering applied - branch_id:', userBranchId);
@@ -127,7 +119,6 @@ export const applyRoleBasedFiltering = (
     case 'owner':
     case 'admin_pusat':
     case 'kepala_produksi':
-      // Role ini bisa akses semua cabang atau filter berdasarkan pilihan
       if (selectedBranch && selectedBranch !== 'all') {
         query = query.eq('branch_id', selectedBranch);
         console.log('📊 Admin/Owner/KepProd filtering by selected branch:', selectedBranch);
@@ -138,12 +129,10 @@ export const applyRoleBasedFiltering = (
       
     default:
       console.error('❌ Unauthorized role for reports:', userRole);
-      // Return empty query instead of throwing error
-      query = query.eq('id', 'never-match-any-id');
-      break;
+      return query.eq('id', '00000000-0000-0000-0000-000000000000');
   }
 
-  // Apply payment status filter if provided
+  // Apply payment status filter
   if (paymentStatusFilter && paymentStatusFilter !== 'all') {
     query = query.eq('payment_status', paymentStatusFilter);
     console.log('💳 Payment status filter applied:', paymentStatusFilter);
@@ -162,11 +151,19 @@ export const applyDateRangeFilter = (
   }
 
   if (dateRange && dateRange.start && dateRange.end) {
-    // Format tanggal yang benar untuk PostgreSQL
-    const startDate = new Date(dateRange.start + 'T00:00:00.000Z');
-    const endDate = new Date(dateRange.end + 'T23:59:59.999Z');
+    // Validasi format tanggal terlebih dahulu
+    const startDate = new Date(dateRange.start);
+    const endDate = new Date(dateRange.end);
     
-    // Pastikan format ISO string yang valid
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      console.error('❌ Invalid date format:', dateRange);
+      return query.order('transaction_date', { ascending: false });
+    }
+    
+    // Set time untuk awal dan akhir hari
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
+    
     const startDateTime = startDate.toISOString();
     const endDateTime = endDate.toISOString();
     

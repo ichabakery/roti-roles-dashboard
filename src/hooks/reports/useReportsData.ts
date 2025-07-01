@@ -20,12 +20,12 @@ export const useReportsData = (
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Fetch user's actual branch for kasir_cabang with improved error handling
+  // Fetch user's actual branch untuk kasir_cabang
   useEffect(() => {
     const fetchUserBranch = async () => {
       if (user?.role === 'kasir_cabang' && user.id) {
         try {
-          console.log('🔍 Fetching actual branch for kasir_cabang:', user.id);
+          console.log('🔍 Fetching branch assignment for kasir:', user.id);
           const { data: userBranch, error } = await supabase
             .from('user_branches')
             .select('branch_id')
@@ -34,37 +34,38 @@ export const useReportsData = (
           
           if (error) {
             console.error('❌ Error fetching user branch:', error);
-            console.warn('⚠️ Kasir user without branch assignment:', { 
-              userId: user.id, 
-              email: user.email, 
-              error: error.message 
-            });
             setUserActualBranchId(null);
             return;
           }
           
           if (userBranch?.branch_id) {
-            console.log('✅ Found user branch:', userBranch.branch_id);
+            console.log('✅ Found branch assignment:', userBranch.branch_id);
             setUserActualBranchId(userBranch.branch_id);
           } else {
-            console.warn('⚠️ No branch assignment found for kasir_cabang:', { 
+            console.warn('⚠️ Kasir user without branch assignment:', { 
               userId: user.id, 
               email: user.email 
             });
             setUserActualBranchId(null);
+            
+            // Show warning toast for missing branch assignment
+            toast({
+              title: "Perlu Assignment Cabang",
+              description: "Akun kasir cabang Anda belum dikaitkan dengan cabang. Silakan hubungi administrator untuk mengatur assignment cabang.",
+              variant: "destructive",
+            });
           }
         } catch (error) {
           console.error('❌ Failed to fetch user branch:', error);
           setUserActualBranchId(null);
         }
       } else {
-        // For non-kasir roles, clear the branch ID
         setUserActualBranchId(null);
       }
     };
 
     fetchUserBranch();
-  }, [user]);
+  }, [user, toast]);
 
   // Fetch branches on mount
   useEffect(() => {
@@ -86,13 +87,36 @@ export const useReportsData = (
     loadBranches();
   }, [toast]);
 
-  // Fetch transactions with improved validation
+  // Fetch transactions dengan validasi ketat
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      console.log('⚠️ No user, skipping fetch');
+      setLoading(false);
+      return;
+    }
     
-    // Validasi date range sebelum fetch
+    // Validasi date range dengan ketat
     if (!dateRange?.start || !dateRange?.end) {
       console.warn('⚠️ Invalid date range, skipping fetch:', dateRange);
+      setLoading(false);
+      return;
+    }
+
+    // Validasi tanggal format
+    const startDate = new Date(dateRange.start);
+    const endDate = new Date(dateRange.end);
+    
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      console.warn('⚠️ Invalid date format, skipping fetch:', dateRange);
+      setLoading(false);
+      return;
+    }
+
+    // Untuk kasir_cabang, harus ada branch assignment
+    if (user.role === 'kasir_cabang' && !userActualBranchId) {
+      console.warn('⚠️ Kasir without branch assignment, skipping fetch');
+      setTransactions([]);
+      setLoading(false);
       return;
     }
     
@@ -106,20 +130,6 @@ export const useReportsData = (
           dateRange,
           paymentStatusFilter
         });
-
-        // Enhanced validation for kasir_cabang
-        if (user.role === 'kasir_cabang') {
-          if (!userActualBranchId) {
-            console.error('❌ Kasir cabang missing branch assignment');
-            setTransactions([]);
-            toast({
-              title: "Assignment Cabang Diperlukan",
-              description: "Akun kasir cabang Anda belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang.",
-              variant: "destructive",
-            });
-            return;
-          }
-        }
 
         const rawData = await fetchTransactionsFromDB(
           user.role,
@@ -136,7 +146,6 @@ export const useReportsData = (
         setTransactions(transformedTransactions);
         
         if (transformedTransactions.length > 0) {
-          // Calculate actual revenue (only count paid amounts)
           const actualRevenue = transformedTransactions.reduce((sum, t) => {
             switch (t.payment_status) {
               case 'paid':
@@ -157,7 +166,7 @@ export const useReportsData = (
           
           toast({
             title: "Data Laporan Dimuat",
-            description: `${transformedTransactions.length} transaksi berhasil dimuat. Lunas: ${paidCount}, Cicilan: ${partialCount}, Pending: ${pendingCount}. Pendapatan aktual: Rp ${actualRevenue.toLocaleString('id-ID')}`,
+            description: `${transformedTransactions.length} transaksi dimuat. Lunas: ${paidCount}, Cicilan: ${partialCount}, Pending: ${pendingCount}. Pendapatan: Rp ${actualRevenue.toLocaleString('id-ID')}`,
           });
         } else {
           const periodText = `${dateRange.start} - ${dateRange.end}`;
@@ -173,16 +182,10 @@ export const useReportsData = (
       } catch (error: any) {
         console.error('❌ Error fetching reports data:', error);
         
-        let errorMessage = error.message || 'Gagal memuat data laporan';
-        
-        if (user.role === 'kasir_cabang' && (!userActualBranchId || userActualBranchId === '' || userActualBranchId === null)) {
-          errorMessage = 'Akun kasir cabang Anda belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang.';
-        }
-        
         toast({
           variant: "destructive",
           title: "Error Memuat Laporan",
-          description: errorMessage,
+          description: error.message || 'Gagal memuat data laporan',
         });
         setTransactions([]);
       } finally {
@@ -190,6 +193,7 @@ export const useReportsData = (
       }
     };
 
+    // Debounce untuk menghindari multiple calls
     const timeoutId = setTimeout(() => {
       fetchData();
     }, 300);

@@ -5,7 +5,6 @@ import { useUnifiedReports } from '@/hooks/useUnifiedReports';
 import { EnhancedFilters } from './EnhancedFilters';
 import { TransactionSummaryStats } from './TransactionSummaryStats';
 import { EnhancedTransactionTable } from './EnhancedTransactionTable';
-import { ReportsCharts } from './ReportsCharts';
 import { ExportButtons } from './ExportButtons';
 
 export const UnifiedReportsLayout = () => {
@@ -64,13 +63,12 @@ export const UnifiedReportsLayout = () => {
         transactions={transactions}
       />
 
-      {/* Main Content Tabs */}
+      {/* Main Content Tabs - Grafik dihapus */}
       <Tabs defaultValue="transactions" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="transactions">Transaksi</TabsTrigger>
           <TabsTrigger value="summary">Ringkasan</TabsTrigger>
           <TabsTrigger value="products">Produk</TabsTrigger>
-          <TabsTrigger value="charts">Grafik</TabsTrigger>
         </TabsList>
 
         <TabsContent value="transactions" className="space-y-4">
@@ -125,14 +123,6 @@ export const UnifiedReportsLayout = () => {
               </div>
             ))}
           </div>
-        </TabsContent>
-
-        <TabsContent value="charts" className="space-y-4">
-          <ReportsCharts 
-            transactions={transactions}
-            paymentSummary={summaries.paymentSummary}
-            productSummary={summaries.productSummary}
-          />
         </TabsContent>
       </Tabs>
     </div>
