@@ -90,6 +90,12 @@ export const useReportsData = (
   useEffect(() => {
     if (!user) return;
     
+    // Validasi date range sebelum fetch
+    if (!dateRange?.start || !dateRange?.end) {
+      console.warn('⚠️ Invalid date range, skipping fetch:', dateRange);
+      return;
+    }
+    
     const fetchData = async () => {
       setLoading(true);
       try {

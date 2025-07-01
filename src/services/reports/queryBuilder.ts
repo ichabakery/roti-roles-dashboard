@@ -161,9 +161,14 @@ export const applyDateRangeFilter = (
     return query;
   }
 
-  if (dateRange) {
-    const startDateTime = dateRange.start + 'T00:00:00';
-    const endDateTime = dateRange.end + 'T23:59:59';
+  if (dateRange && dateRange.start && dateRange.end) {
+    // Format tanggal yang benar untuk PostgreSQL
+    const startDate = new Date(dateRange.start + 'T00:00:00.000Z');
+    const endDate = new Date(dateRange.end + 'T23:59:59.999Z');
+    
+    // Pastikan format ISO string yang valid
+    const startDateTime = startDate.toISOString();
+    const endDateTime = endDate.toISOString();
     
     query = query
       .gte('transaction_date', startDateTime)
@@ -175,7 +180,7 @@ export const applyDateRangeFilter = (
       originalRange: dateRange
     });
   } else {
-    console.log('📅 No date range filter applied');
+    console.log('📅 No date range filter applied - missing or invalid date range');
   }
 
   return query.order('transaction_date', { ascending: false });

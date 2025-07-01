@@ -6,9 +6,16 @@ import type { DateRange, Branch } from '@/types/reports';
 export const useReportsFilters = (branches: Branch[], userActualBranchId: string | null) => {
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all');
-  const [dateRange, setDateRange] = useState<DateRange>({
-    start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0]
+  const [dateRange, setDateRange] = useState<DateRange>(() => {
+    // Pastikan tanggal default selalu valid
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+    
+    return {
+      start: startDate.toISOString().split('T')[0],
+      end: endDate.toISOString().split('T')[0]
+    };
   });
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -28,9 +35,14 @@ export const useReportsFilters = (branches: Branch[], userActualBranchId: string
   }, [user, userActualBranchId, branches, selectedBranch]);
 
   const setQuickDateRange = (days: number) => {
-    const end = new Date().toISOString().split('T')[0];
-    const start = new Date(new Date().setDate(new Date().getDate() - days)).toISOString().split('T')[0];
-    setDateRange({ start, end });
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - days);
+    
+    setDateRange({ 
+      start: start.toISOString().split('T')[0], 
+      end: end.toISOString().split('T')[0] 
+    });
   };
 
   const getAvailableBranches = () => {
