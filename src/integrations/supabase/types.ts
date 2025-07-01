@@ -848,6 +848,18 @@ export type Database = {
           days_until_expiry: number
         }[]
       }
+      update_inventory: {
+        Args: {
+          p_product_id: string
+          p_branch_id: string
+          p_quantity_change: number
+          p_movement_type: string
+          p_reference_id: string
+          p_reference_type: string
+          p_performed_by: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       payment_status: "paid" | "pending" | "partial" | "cancelled"

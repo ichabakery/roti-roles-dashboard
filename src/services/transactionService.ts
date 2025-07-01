@@ -133,27 +133,78 @@ export const createTransaction = async ({
 
   console.log('✅ Transaction items created successfully:', createdItems?.length || 0, 'items');
 
-  // Update inventory for each item
+  // Update inventory for each item using direct table updates
   for (const item of cart) {
     try {
       console.log(`📦 Updating inventory for product ${item.product.id}, qty: -${item.quantity}`);
       
-      const { error: inventoryError } = await supabase.rpc('update_inventory', {
-        p_product_id: item.product.id,
-        p_branch_id: selectedBranch,
-        p_quantity_change: -item.quantity,
-        p_movement_type: 'sale',
-        p_reference_id: transaction.id,
-        p_reference_type: 'transaction',
-        p_performed_by: userId
-      });
+      // First try to update existing inventory
+      const { data: existingInventory, error: fetchError } = await supabase
+        .from('inventory')
+        .select('id, quantity')
+        .eq('product_id', item.product.id)
+        .eq('branch_id', selectedBranch)
+        .maybeSingle();
 
-      if (inventoryError) {
-        console.error(`❌ Inventory update error for product ${item.product.id}:`, inventoryError);
-        // Don't throw error here, just log it
-      } else {
-        console.log(`✅ Inventory updated for product ${item.product.id}`);
+      if (fetchError) {
+        console.error(`❌ Error fetching inventory for product ${item.product.id}:`, fetchError);
+        continue;
       }
+
+      if (existingInventory) {
+        // Update existing inventory
+        const newQuantity = Math.max(0, existingInventory.quantity - item.quantity);
+        const { error: updateError } = await supabase
+          .from('inventory')
+          .update({ 
+            quantity: newQuantity,
+            last_updated: new Date().toISOString()
+          })
+          .eq('id', existingInventory.id);
+
+        if (updateError) {
+          console.error(`❌ Error updating inventory for product ${item.product.id}:`, updateError);
+        } else {
+          console.log(`✅ Inventory updated for product ${item.product.id}: ${existingInventory.quantity} -> ${newQuantity}`);
+        }
+      } else {
+        // Create new inventory record with 0 quantity (since we're selling from non-existing stock)
+        const { error: insertError } = await supabase
+          .from('inventory')
+          .insert({
+            product_id: item.product.id,
+            branch_id: selectedBranch,
+            quantity: 0,
+            last_updated: new Date().toISOString()
+          });
+
+        if (insertError) {
+          console.error(`❌ Error creating inventory for product ${item.product.id}:`, insertError);
+        } else {
+          console.log(`✅ New inventory record created for product ${item.product.id}`);
+        }
+      }
+
+      // Log stock movement
+      const { error: movementError } = await supabase
+        .from('stock_movements')
+        .insert({
+          product_id: item.product.id,
+          branch_id: selectedBranch,
+          quantity_change: -item.quantity,
+          movement_type: 'out',
+          reference_id: transaction.id,
+          reference_type: 'transaction',
+          performed_by: userId,
+          movement_date: new Date().toISOString()
+        });
+
+      if (movementError) {
+        console.error(`❌ Error logging stock movement for product ${item.product.id}:`, movementError);
+      } else {
+        console.log(`✅ Stock movement logged for product ${item.product.id}`);
+      }
+
     } catch (error) {
       console.error(`❌ Inventory update failed for product ${item.product.id}:`, error);
       // Continue with other items
