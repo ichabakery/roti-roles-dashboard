@@ -49,7 +49,6 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
   onOpenChange,
   transaction
 }) => {
-  // Enhanced invoice data with proper validation
   const branchName = transaction?.branch_name || "Cabang";
   const cashierName = transaction?.cashier_name || "Kasir";
   const transactionDate = transaction?.transaction_date || new Date().toISOString();
@@ -68,7 +67,6 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
     branchName
   });
 
-  // Validate and ensure products data is properly formatted
   const validatedProducts = products.map(product => ({
     name: product.name || 'Produk Tidak Dikenal',
     quantity: product.quantity || 1,
@@ -76,7 +74,6 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
   }));
 
   if (validatedProducts.length === 0 && total > 0) {
-    // If no products but there's a total, create a generic item
     validatedProducts.push({
       name: 'Item Transaksi',
       quantity: 1,
@@ -84,7 +81,6 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
     });
   }
 
-  // Print handler
   const handlePrint = () => {
     const receiptContent = document.getElementById('sales-receipt-print');
     if (!receiptContent) {
@@ -109,12 +105,11 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
     }
   };
 
-  // Generate PDF with proper data validation
   const handleDownloadPDF = async () => {
     try {
       const branding = {
         logoUrl: "",
-        storeName: "Toko Roti Makmur",
+        storeName: "Icha Bakery", // Updated store name
         address: "Jl. Raya Bakery No. 123, Jakarta",
         phone: "021-12345678"
       };
@@ -157,7 +152,6 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
     }
   };
 
-  // Copy WhatsApp format
   const handleCopyWA = () => {
     try {
       const text = salesReceiptToWhatsapp({
@@ -195,7 +189,6 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Receipt Preview */}
         <div id="sales-receipt-print" className="mb-4">
           <SalesReceipt
             branchName={branchName}
@@ -207,7 +200,7 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
             change={change}
             transactionId={transactionId}
             logoUrl=""
-            storeName="Toko Roti Makmur"
+            storeName="Icha Bakery" // Updated store name
             address="Jl. Raya Bakery No. 123, Jakarta"
             phone="021-12345678"
           />

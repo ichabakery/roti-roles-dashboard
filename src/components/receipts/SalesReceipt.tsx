@@ -32,9 +32,9 @@ export const SalesReceipt: React.FC<SalesReceiptProps> = ({
   change,
   transactionId,
   logoUrl,
-  storeName,
-  address,
-  phone
+  storeName = "Icha Bakery", // Changed from dummy name
+  address = "Jl. Raya Bakery No. 123", // Keep consistent with business settings
+  phone = "021-12345678"
 }) => {
   return (
     <div className="w-[320px] p-4 bg-white rounded shadow text-xs text-gray-900 font-mono mx-auto">
@@ -44,7 +44,7 @@ export const SalesReceipt: React.FC<SalesReceiptProps> = ({
           <img src={logoUrl} alt="Logo Toko" className="h-6 object-contain" />
         </div>
       )}
-      <div className="text-center font-bold text-base mb-1">{storeName || "Toko Roti Makmur"}</div>
+      <div className="text-center font-bold text-base mb-1">{storeName}</div>
       {address && (
         <div className="text-center text-xs">{address}</div>
       )}
