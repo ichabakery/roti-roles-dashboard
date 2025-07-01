@@ -32,6 +32,7 @@ export const fetchTransactionDetails = async (transactionIds: string[]) => {
   console.log('🔍 Fetching transaction items for IDs:', transactionIds.length, 'transactions');
   
   try {
+    // Fetch transaction items with product details
     const { data: items, error: itemsError } = await supabase
       .from('transaction_items')
       .select(`
@@ -53,22 +54,32 @@ export const fetchTransactionDetails = async (transactionIds: string[]) => {
       console.error('❌ Error fetching transaction items:', itemsError);
     } else {
       console.log('✅ Transaction items fetched:', items?.length || 0);
+      // Log sample item for debugging
+      if (items && items.length > 0) {
+        console.log('📋 Sample transaction item:', items[0]);
+      }
     }
 
+    // Fetch profiles (cashiers)
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, name');
 
     if (profilesError) {
       console.error('❌ Error fetching profiles:', profilesError);
+    } else {
+      console.log('✅ Profiles fetched:', profiles?.length || 0);
     }
 
+    // Fetch branches
     const { data: branches, error: branchesError } = await supabase
       .from('branches')
       .select('id, name');
 
     if (branchesError) {
       console.error('❌ Error fetching branches:', branchesError);
+    } else {
+      console.log('✅ Branches fetched:', branches?.length || 0);
     }
 
     return {
@@ -160,12 +171,9 @@ export const applyDateRangeFilter = (
       return query.order('transaction_date', { ascending: false });
     }
     
-    // Set time untuk awal dan akhir hari
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(23, 59, 59, 999);
-    
-    const startDateTime = startDate.toISOString();
-    const endDateTime = endDate.toISOString();
+    // Set time untuk awal dan akhir hari dalam timezone lokal
+    const startDateTime = `${dateRange.start}T00:00:00`;
+    const endDateTime = `${dateRange.end}T23:59:59`;
     
     query = query
       .gte('transaction_date', startDateTime)

@@ -16,6 +16,7 @@ export const useReportsData = (
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [userActualBranchId, setUserActualBranchId] = useState<string | null>(null);
+  const [branchAssignmentChecked, setBranchAssignmentChecked] = useState(false);
   
   const { toast } = useToast();
   const { user } = useAuth();
@@ -35,6 +36,7 @@ export const useReportsData = (
           if (error) {
             console.error('❌ Error fetching user branch:', error);
             setUserActualBranchId(null);
+            setBranchAssignmentChecked(true);
             return;
           }
           
@@ -47,25 +49,21 @@ export const useReportsData = (
               email: user.email 
             });
             setUserActualBranchId(null);
-            
-            // Show warning toast for missing branch assignment
-            toast({
-              title: "Perlu Assignment Cabang",
-              description: "Akun kasir cabang Anda belum dikaitkan dengan cabang. Silakan hubungi administrator untuk mengatur assignment cabang.",
-              variant: "destructive",
-            });
           }
+          setBranchAssignmentChecked(true);
         } catch (error) {
           console.error('❌ Failed to fetch user branch:', error);
           setUserActualBranchId(null);
+          setBranchAssignmentChecked(true);
         }
       } else {
         setUserActualBranchId(null);
+        setBranchAssignmentChecked(true);
       }
     };
 
     fetchUserBranch();
-  }, [user, toast]);
+  }, [user]);
 
   // Fetch branches on mount
   useEffect(() => {
@@ -89,15 +87,28 @@ export const useReportsData = (
 
   // Fetch transactions dengan validasi ketat
   useEffect(() => {
-    if (!user) {
-      console.log('⚠️ No user, skipping fetch');
+    if (!user || !branchAssignmentChecked) {
+      console.log('⚠️ User not ready or branch assignment not checked yet');
+      return;
+    }
+
+    // Show warning for kasir without branch assignment
+    if (user.role === 'kasir_cabang' && !userActualBranchId) {
+      console.warn('⚠️ Kasir without branch assignment, showing warning and skipping fetch');
+      setTransactions([]);
       setLoading(false);
+      toast({
+        title: "Perlu Assignment Cabang",
+        description: "Akun kasir cabang Anda belum dikaitkan dengan cabang. Silakan hubungi administrator untuk mengatur assignment cabang.",
+        variant: "destructive",
+      });
       return;
     }
     
     // Validasi date range dengan ketat
     if (!dateRange?.start || !dateRange?.end) {
       console.warn('⚠️ Invalid date range, skipping fetch:', dateRange);
+      setTransactions([]);
       setLoading(false);
       return;
     }
@@ -108,13 +119,6 @@ export const useReportsData = (
     
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       console.warn('⚠️ Invalid date format, skipping fetch:', dateRange);
-      setLoading(false);
-      return;
-    }
-
-    // Untuk kasir_cabang, harus ada branch assignment
-    if (user.role === 'kasir_cabang' && !userActualBranchId) {
-      console.warn('⚠️ Kasir without branch assignment, skipping fetch');
       setTransactions([]);
       setLoading(false);
       return;
@@ -199,7 +203,7 @@ export const useReportsData = (
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [user, userActualBranchId, selectedBranch, dateRange, paymentStatusFilter, toast]);
+  }, [user, userActualBranchId, branchAssignmentChecked, selectedBranch, dateRange, paymentStatusFilter, toast]);
 
   return {
     transactions,

@@ -36,10 +36,18 @@ export const useCashierPayment = () => {
     setProcessingPayment(true);
 
     try {
-      console.log('💳 Processing payment with data:', paymentData);
-      console.log('👤 User ID:', user.id);
-      console.log('🏪 Branch ID:', selectedBranch);
-      console.log('🛒 Cart items:', cart.length);
+      console.log('💳 Processing payment with data:', {
+        cartItems: cart.length,
+        paymentData,
+        userId: user.id,
+        branchId: selectedBranch,
+        cartDetails: cart.map(item => ({
+          productId: item.product.id,
+          productName: item.product.name,
+          quantity: item.quantity,
+          price: item.product.price
+        }))
+      });
       
       const totalAmount = calculateTotal();
       console.log('💰 Total amount:', totalAmount);
@@ -67,7 +75,7 @@ export const useCashierPayment = () => {
         }
       }
 
-      // Create transaction
+      // Create transaction with all product details
       const transaction = await createTransaction({
         cart,
         selectedBranch,
@@ -77,11 +85,24 @@ export const useCashierPayment = () => {
         paymentMethod
       });
 
-      // Success - Store complete transaction data
-      setLastTransaction(transaction);
+      console.log('🎉 Transaction created successfully:', transaction);
+
+      // Store complete transaction data for receipt with product details
+      const transactionWithProducts = {
+        ...transaction,
+        products: cart.map(item => ({
+          name: item.product.name,
+          quantity: item.quantity,
+          price: item.product.price * item.quantity
+        })),
+        cashier_name: user.name || 'Kasir',
+        branch_name: 'Cabang' // This should be fetched from branches data
+      };
+
+      setLastTransaction(transactionWithProducts);
       setShowSuccessDialog(true);
       
-      // Clear cart
+      // Clear cart after successful transaction
       clearCart();
       
       const statusText = transaction.payment_status === 'paid' ? 'lunas' : 
@@ -89,7 +110,7 @@ export const useCashierPayment = () => {
       
       toast({
         title: "Transaksi Berhasil",
-        description: `Transaksi ${statusText} dengan ID: ${transaction.id.substring(0, 8)}...`,
+        description: `Transaksi ${statusText} dengan ID: ${transaction.id.substring(0, 8)}... Total: Rp ${totalAmount.toLocaleString('id-ID')}`,
       });
     } catch (error: any) {
       console.error('❌ Payment error:', error);
@@ -102,6 +123,8 @@ export const useCashierPayment = () => {
         errorMessage = "Terjadi masalah keamanan data. Silakan coba lagi atau hubungi administrator.";
       } else if (error.message?.includes('insufficient stock') || error.message?.includes('stok')) {
         errorMessage = error.message;
+      } else if (error.message?.includes('Keranjang belanja kosong')) {
+        errorMessage = "Keranjang belanja kosong. Silakan pilih produk terlebih dahulu.";
       }
       
       toast({
