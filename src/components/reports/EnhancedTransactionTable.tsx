@@ -78,7 +78,7 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
               <TableHead>Kasir</TableHead>
               <TableHead>Metode Bayar</TableHead>
               <TableHead>Produk</TableHead>
-              <TableHead className="text-right">Jumlah</TableHead>
+              <TableHead className="text-center">Qty</TableHead>
               <TableHead className="text-right">Harga Satuan</TableHead>
               <TableHead className="text-right">Subtotal</TableHead>
               <TableHead className="text-right">Total</TableHead>

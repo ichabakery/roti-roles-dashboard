@@ -113,12 +113,20 @@ export const useReportsData = (
       return;
     }
 
-    // Validasi tanggal format
-    const startDate = new Date(dateRange.start);
-    const endDate = new Date(dateRange.end);
+    // Validasi tanggal format dengan parse yang lebih robust
+    const startDate = new Date(dateRange.start + 'T00:00:00');
+    const endDate = new Date(dateRange.end + 'T23:59:59');
     
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       console.warn('⚠️ Invalid date format, skipping fetch:', dateRange);
+      setTransactions([]);
+      setLoading(false);
+      return;
+    }
+
+    // Validasi logical date range
+    if (startDate > endDate) {
+      console.warn('⚠️ Start date is after end date, skipping fetch:', dateRange);
       setTransactions([]);
       setLoading(false);
       return;

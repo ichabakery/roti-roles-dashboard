@@ -7,10 +7,10 @@ export const useReportsFilters = (branches: Branch[], userActualBranchId: string
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange>(() => {
-    // Pastikan tanggal default selalu valid
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 30);
+    // Pastikan tanggal default selalu valid dalam timezone Indonesia
+    const now = new Date();
+    const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
     
     return {
       start: startDate.toISOString().split('T')[0],
