@@ -12,10 +12,13 @@ export const useReportsFilters = (branches: Branch[], userActualBranchId: string
     const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
     
-    return {
+    const range = {
       start: startDate.toISOString().split('T')[0],
       end: endDate.toISOString().split('T')[0]
     };
+    
+    console.log('🗓️ Initial date range set:', range);
+    return range;
   });
   const [searchQuery, setSearchQuery] = useState('');
   

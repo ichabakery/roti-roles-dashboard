@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { fetchBranchesFromDB, fetchTransactionsFromDB } from '@/services/reportsService';
+import { fetchTransactionsFromDB } from '@/services/reportsService';
 import { transformTransactionData } from '@/utils/reportsUtils';
-import type { Branch, Transaction, DateRange } from '@/types/reports';
+import type { Transaction, DateRange } from '@/types/reports';
 
 export const useReportsData = (
   selectedBranch: string,
@@ -13,8 +12,7 @@ export const useReportsData = (
   paymentStatusFilter: string
 ) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [branches, setBranches] = useState<Branch[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [userActualBranchId, setUserActualBranchId] = useState<string | null>(null);
   const [branchAssignmentChecked, setBranchAssignmentChecked] = useState(false);
   
@@ -27,37 +25,26 @@ export const useReportsData = (
       if (user?.role === 'kasir_cabang' && user.id) {
         try {
           console.log('🔍 Fetching branch assignment for kasir:', user.id);
-          const { data: userBranch, error } = await supabase
+          const { data: userBranch } = await supabase
             .from('user_branches')
             .select('branch_id')
             .eq('user_id', user.id)
             .maybeSingle();
           
-          if (error) {
-            console.error('❌ Error fetching user branch:', error);
-            setUserActualBranchId(null);
-            setBranchAssignmentChecked(true);
-            return;
-          }
-          
           if (userBranch?.branch_id) {
             console.log('✅ Found branch assignment:', userBranch.branch_id);
             setUserActualBranchId(userBranch.branch_id);
           } else {
-            console.warn('⚠️ Kasir user without branch assignment:', { 
-              userId: user.id, 
-              email: user.email 
-            });
+            console.warn('⚠️ Kasir user without branch assignment');
             setUserActualBranchId(null);
           }
-          setBranchAssignmentChecked(true);
         } catch (error) {
           console.error('❌ Failed to fetch user branch:', error);
           setUserActualBranchId(null);
+        } finally {
           setBranchAssignmentChecked(true);
         }
       } else {
-        setUserActualBranchId(null);
         setBranchAssignmentChecked(true);
       }
     };
@@ -65,42 +52,20 @@ export const useReportsData = (
     fetchUserBranch();
   }, [user]);
 
-  // Fetch branches on mount
-  useEffect(() => {
-    const loadBranches = async () => {
-      try {
-        const data = await fetchBranchesFromDB();
-        setBranches(Array.isArray(data) ? data : []);
-      } catch (error: any) {
-        console.error('❌ Error loading branches:', error);
-        setBranches([]);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: `Gagal memuat data cabang: ${error.message}`,
-        });
-      }
-    };
-    
-    loadBranches();
-  }, [toast]);
-
   // Fetch transactions dengan validasi ketat
   useEffect(() => {
     // Skip fetch if user or filters are not ready
     if (!user || !branchAssignmentChecked) {
-      console.log('⚠️ User not ready or branch assignment not checked yet');
       return;
     }
 
     // Show warning for kasir without branch assignment
     if (user.role === 'kasir_cabang' && !userActualBranchId) {
-      console.warn('⚠️ Kasir without branch assignment, showing warning and skipping fetch');
       setTransactions([]);
       setLoading(false);
       toast({
         title: "Perlu Assignment Cabang",
-        description: "Akun kasir cabang Anda belum dikaitkan dengan cabang. Silakan hubungi administrator untuk mengatur assignment cabang.",
+        description: "Akun kasir cabang Anda belum dikaitkan dengan cabang.",
         variant: "destructive",
       });
       return;
@@ -114,25 +79,6 @@ export const useReportsData = (
       return;
     }
 
-    // Validasi tanggal format dengan parse yang lebih robust
-    const startDate = new Date(dateRange.start + 'T00:00:00');
-    const endDate = new Date(dateRange.end + 'T23:59:59');
-    
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      console.warn('⚠️ Invalid date format, skipping fetch:', dateRange);
-      setTransactions([]);
-      setLoading(false);
-      return;
-    }
-
-    // Validasi logical date range
-    if (startDate > endDate) {
-      console.warn('⚠️ Start date is after end date, skipping fetch:', dateRange);
-      setTransactions([]);
-      setLoading(false);
-      return;
-    }
-    
     const fetchData = async () => {
       setLoading(true);
       try {
@@ -152,49 +98,24 @@ export const useReportsData = (
           paymentStatusFilter
         );
 
-        console.log('📈 Raw data received:', Array.isArray(rawData) ? rawData.length : 0, 'transactions');
-
         const safeRawData = Array.isArray(rawData) ? rawData : [];
         const transformedTransactions = transformTransactionData(safeRawData);
         setTransactions(transformedTransactions);
         
         if (transformedTransactions.length > 0) {
-          const actualRevenue = transformedTransactions.reduce((sum, t) => {
-            switch (t.payment_status) {
-              case 'paid':
-                return sum + t.total_amount;
-              case 'partial':
-                return sum + (t.amount_paid || 0);
-              case 'pending':
-              case 'cancelled':
-                return sum;
-              default:
-                return sum + (t.amount_paid || t.total_amount);
-            }
-          }, 0);
-          
-          const paidCount = transformedTransactions.filter(t => t.payment_status === 'paid').length;
-          const partialCount = transformedTransactions.filter(t => t.payment_status === 'partial').length;
-          const pendingCount = transformedTransactions.filter(t => t.payment_status === 'pending').length;
-          
           toast({
             title: "Data Laporan Dimuat",
-            description: `${transformedTransactions.length} transaksi dimuat. Lunas: ${paidCount}, Cicilan: ${partialCount}, Pending: ${pendingCount}. Pendapatan: Rp ${actualRevenue.toLocaleString('id-ID')}`,
+            description: `${transformedTransactions.length} transaksi berhasil dimuat.`,
           });
         } else {
-          const periodText = `${dateRange.start} - ${dateRange.end}`;
-          const branchText = selectedBranch === 'all' ? 'semua cabang' : 'cabang yang dipilih';
-          const statusText = paymentStatusFilter === 'all' ? 'semua status' : `status ${paymentStatusFilter}`;
-          
           toast({
             title: "Tidak Ada Data Transaksi",
-            description: `Tidak ada transaksi ditemukan untuk ${branchText} dengan ${statusText} pada periode ${periodText}.`,
+            description: `Tidak ada transaksi ditemukan untuk periode yang dipilih.`,
             variant: "default",
           });
         }
       } catch (error: any) {
         console.error('❌ Error fetching reports data:', error);
-        
         toast({
           variant: "destructive",
           title: "Error Memuat Laporan",
@@ -216,7 +137,6 @@ export const useReportsData = (
 
   return {
     transactions,
-    branches,
     loading,
     userActualBranchId
   };
