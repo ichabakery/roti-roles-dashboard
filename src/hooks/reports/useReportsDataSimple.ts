@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { fetchTransactionsFromDB } from '@/services/reportsService';
+import { fetchTransactionsFromDB } from '@/services/reports/transactionService';
 import { transformTransactionData } from '@/utils/reportsUtils';
 import type { Transaction, DateRange } from '@/types/reports';
 
@@ -26,13 +26,16 @@ export const useReportsData = (
       if (user?.role === 'kasir_cabang' && user.id) {
         try {
           console.log('🔍 Fetching branch assignment for kasir:', user.id);
-          const { data: userBranch } = await supabase
+          const { data: userBranch, error } = await supabase
             .from('user_branches')
             .select('branch_id')
             .eq('user_id', user.id)
             .maybeSingle();
           
-          if (userBranch?.branch_id) {
+          if (error) {
+            console.error('❌ Error fetching user branch:', error);
+            setUserActualBranchId(null);
+          } else if (userBranch?.branch_id) {
             console.log('✅ Found branch assignment:', userBranch.branch_id);
             setUserActualBranchId(userBranch.branch_id);
           } else {
@@ -141,7 +144,6 @@ export const useReportsData = (
       } catch (error: any) {
         console.error('❌ Error in fetchData:', error);
         
-        // Show user-friendly error message
         const errorMessage = error.message || 'Gagal memuat data laporan';
         
         toast({
@@ -159,7 +161,7 @@ export const useReportsData = (
     // Debounce untuk menghindari multiple calls
     const timeoutId = setTimeout(() => {
       fetchData();
-    }, 100);
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, [user, userActualBranchId, branchAssignmentChecked, selectedBranch, dateRange, paymentStatusFilter, toast]);

@@ -1,7 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { buildTransactionQuery, applyRoleBasedFiltering, applyDateRangeFilter, fetchTransactionDetails } from './queryBuilder';
-import { handleTransactionQueryError } from './errorHandler';
 
 export const fetchTransactionsFromDB = async (
   userRole: string,
@@ -33,25 +31,11 @@ export const fetchTransactionsFromDB = async (
   }
 
   try {
-    // Build basic query with proper joins
-    console.log('🚀 Building transaction query...');
+    // Step 1: Fetch transactions without transaction_items first
+    console.log('🚀 Building basic transaction query...');
     let query = supabase
       .from('transactions')
-      .select(`
-        *,
-        transaction_items (
-          id,
-          product_id,
-          quantity,
-          price_per_item,
-          subtotal,
-          products (
-            id,
-            name,
-            price
-          )
-        )
-      `);
+      .select('*');
 
     // Apply role-based filtering
     if (userRole === 'kasir_cabang' && userBranchId) {
@@ -65,7 +49,6 @@ export const fetchTransactionsFromDB = async (
     // Apply payment status filter with proper type checking
     if (paymentStatusFilter && paymentStatusFilter !== 'all') {
       console.log('💳 Applying payment status filter:', paymentStatusFilter);
-      // Ensure the payment status is one of the valid enum values
       const validStatuses = ['paid', 'pending', 'partial', 'cancelled'];
       if (validStatuses.includes(paymentStatusFilter)) {
         query = query.eq('payment_status', paymentStatusFilter as 'paid' | 'pending' | 'partial' | 'cancelled');
@@ -99,39 +82,59 @@ export const fetchTransactionsFromDB = async (
       return [];
     }
 
-    console.log('📊 Transactions fetched:', {
-      count: transactionData.length,
-      firstTransaction: transactionData[0] || null,
-      sampleItems: transactionData[0]?.transaction_items || []
-    });
+    console.log('📊 Transactions fetched:', transactionData.length);
 
-    // Fetch additional details (branches and profiles)
+    // Step 2: Fetch transaction items separately
     const transactionIds = transactionData.map(t => t.id);
+    let transactionItems: any[] = [];
     
-    // Fetch branches
+    if (transactionIds.length > 0) {
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('transaction_items')
+        .select(`
+          *,
+          products (
+            id,
+            name,
+            price
+          )
+        `)
+        .in('transaction_id', transactionIds);
+
+      if (itemsError) {
+        console.error('❌ Transaction items query error:', itemsError);
+        // Don't throw error here - continue without items
+      } else {
+        transactionItems = itemsData || [];
+      }
+    }
+
+    // Step 3: Fetch branches and profiles
     const { data: branches } = await supabase
       .from('branches')
       .select('id, name');
 
-    // Fetch profiles for cashier names
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, name');
 
     console.log('📋 Additional data fetched:', {
       branches: branches?.length || 0,
-      profiles: profiles?.length || 0
+      profiles: profiles?.length || 0,
+      items: transactionItems.length
     });
 
-    // Enrich transactions with related data
+    // Step 4: Combine the data
     const enrichedTransactions = transactionData.map(transaction => {
       const branch = branches?.find(b => b.id === transaction.branch_id);
       const cashierProfile = profiles?.find(p => p.id === transaction.cashier_id);
+      const items = transactionItems.filter(item => item.transaction_id === transaction.id);
 
       return {
         ...transaction,
         cashier_name: cashierProfile?.name || 'Unknown Cashier',
-        branches: branch ? { id: branch.id, name: branch.name } : { id: '', name: 'Unknown Branch' }
+        branches: branch ? { id: branch.id, name: branch.name } : { id: '', name: 'Unknown Branch' },
+        transaction_items: items
       };
     });
 
