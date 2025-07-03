@@ -7,18 +7,20 @@ export const useReportsFilters = (branches: Branch[], userActualBranchId: string
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange>(() => {
-    // Pastikan tanggal default selalu valid dalam timezone Indonesia
-    const now = new Date();
-    const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
+    // Generate valid default date range
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 30);
     
-    const range = {
-      start: startDate.toISOString().split('T')[0],
-      end: endDate.toISOString().split('T')[0]
+    const startDate = thirtyDaysAgo.toISOString().split('T')[0];
+    const endDate = today.toISOString().split('T')[0];
+    
+    console.log('🗓️ Default date range initialized:', { startDate, endDate });
+    
+    return {
+      start: startDate,
+      end: endDate
     };
-    
-    console.log('🗓️ Initial date range set:', range);
-    return range;
   });
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -38,14 +40,17 @@ export const useReportsFilters = (branches: Branch[], userActualBranchId: string
   }, [user, userActualBranchId, branches, selectedBranch]);
 
   const setQuickDateRange = (days: number) => {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(start.getDate() - days);
+    const today = new Date();
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - days);
     
-    setDateRange({ 
-      start: start.toISOString().split('T')[0], 
-      end: end.toISOString().split('T')[0] 
-    });
+    const newDateRange = { 
+      start: startDate.toISOString().split('T')[0], 
+      end: today.toISOString().split('T')[0] 
+    };
+    
+    console.log('📅 Quick date range set:', newDateRange);
+    setDateRange(newDateRange);
   };
 
   const getAvailableBranches = () => {

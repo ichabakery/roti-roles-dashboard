@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -52,15 +53,17 @@ export const useReportsData = (
     fetchUserBranch();
   }, [user]);
 
-  // Fetch transactions dengan validasi ketat
+  // Fetch transactions dengan validasi yang lebih baik
   useEffect(() => {
-    // Skip fetch if user or filters are not ready
+    // Skip if not ready
     if (!user || !branchAssignmentChecked) {
+      console.log('⏳ Waiting for user or branch assignment check...');
       return;
     }
 
-    // Show warning for kasir without branch assignment
+    // Validasi untuk kasir_cabang
     if (user.role === 'kasir_cabang' && !userActualBranchId) {
+      console.warn('⚠️ Kasir cabang without branch assignment');
       setTransactions([]);
       setLoading(false);
       toast({
@@ -71,9 +74,17 @@ export const useReportsData = (
       return;
     }
     
-    // Validasi date range dengan ketat
-    if (!dateRange?.start || !dateRange?.end || dateRange.start === '' || dateRange.end === '') {
-      console.warn('⚠️ Invalid or empty date range, skipping fetch:', dateRange);
+    // Validasi date range
+    if (!dateRange?.start || !dateRange?.end) {
+      console.warn('⚠️ Invalid date range, skipping fetch:', dateRange);
+      setTransactions([]);
+      setLoading(false);
+      return;
+    }
+
+    // Validasi tanggal tidak kosong
+    if (dateRange.start === '' || dateRange.end === '') {
+      console.warn('⚠️ Empty date range values, skipping fetch');
       setTransactions([]);
       setLoading(false);
       return;
@@ -81,8 +92,9 @@ export const useReportsData = (
 
     const fetchData = async () => {
       setLoading(true);
+      
       try {
-        console.log('📊 Fetching reports data:', {
+        console.log('📊 Starting reports data fetch:', {
           userRole: user.role,
           userActualBranchId,
           selectedBranch,
@@ -98,29 +110,46 @@ export const useReportsData = (
           paymentStatusFilter
         );
 
+        console.log('📊 Raw data received:', {
+          count: Array.isArray(rawData) ? rawData.length : 0,
+          sample: Array.isArray(rawData) ? rawData[0] : null
+        });
+
         const safeRawData = Array.isArray(rawData) ? rawData : [];
         const transformedTransactions = transformTransactionData(safeRawData);
+        
+        console.log('📊 Transformed transactions:', {
+          count: transformedTransactions.length,
+          sample: transformedTransactions[0]
+        });
+
         setTransactions(transformedTransactions);
         
         if (transformedTransactions.length > 0) {
           toast({
-            title: "Data Laporan Dimuat",
+            title: "Data Berhasil Dimuat",
             description: `${transformedTransactions.length} transaksi berhasil dimuat.`,
           });
         } else {
           toast({
-            title: "Tidak Ada Data Transaksi",
-            description: `Tidak ada transaksi ditemukan untuk periode yang dipilih.`,
+            title: "Tidak Ada Transaksi",
+            description: "Tidak ada transaksi ditemukan untuk periode yang dipilih.",
             variant: "default",
           });
         }
+
       } catch (error: any) {
-        console.error('❌ Error fetching reports data:', error);
+        console.error('❌ Error in fetchData:', error);
+        
+        // Show user-friendly error message
+        const errorMessage = error.message || 'Gagal memuat data laporan';
+        
         toast({
           variant: "destructive",
           title: "Error Memuat Laporan",
-          description: error.message || 'Gagal memuat data laporan',
+          description: errorMessage,
         });
+        
         setTransactions([]);
       } finally {
         setLoading(false);
@@ -130,7 +159,7 @@ export const useReportsData = (
     // Debounce untuk menghindari multiple calls
     const timeoutId = setTimeout(() => {
       fetchData();
-    }, 300);
+    }, 100);
 
     return () => clearTimeout(timeoutId);
   }, [user, userActualBranchId, branchAssignmentChecked, selectedBranch, dateRange, paymentStatusFilter, toast]);

@@ -20,109 +20,127 @@ export const fetchTransactionsFromDB = async (
     timestamp: new Date().toISOString()
   });
 
-  // Enhanced validation - only for roles that actually need branch assignment
+  // Simplified validation for kasir_cabang
   if (userRole === 'kasir_cabang' && !userBranchId) {
     console.error('❌ Kasir cabang missing required branch assignment');
     throw new Error('Kasir cabang belum dikaitkan dengan cabang manapun. Silakan hubungi administrator untuk mengatur assignment cabang.');
   }
 
-  // For other roles, log but don't throw error
-  if (['owner', 'admin_pusat', 'kepala_produksi'].includes(userRole)) {
-    console.log('✅ Role with multi-branch access:', userRole, 'userBranchId:', userBranchId || 'not required');
+  // Validate date range
+  if (!dateRange?.start || !dateRange?.end) {
+    console.error('❌ Invalid date range provided:', dateRange);
+    throw new Error('Rentang tanggal tidak valid');
   }
 
   try {
-    // Build simplified query
-    let transactionQuery = buildTransactionQuery();
+    // Build basic query with proper joins
+    console.log('🚀 Building transaction query...');
+    let query = supabase
+      .from('transactions')
+      .select(`
+        *,
+        transaction_items (
+          id,
+          product_id,
+          quantity,
+          price_per_item,
+          subtotal,
+          products (
+            id,
+            name,
+            price
+          )
+        )
+      `);
 
-    if (!transactionQuery) {
-      throw new Error('Failed to build transaction query');
+    // Apply role-based filtering
+    if (userRole === 'kasir_cabang' && userBranchId) {
+      console.log('🏪 Applying kasir branch filter:', userBranchId);
+      query = query.eq('branch_id', userBranchId);
+    } else if (selectedBranch && selectedBranch !== 'all') {
+      console.log('🏪 Applying selected branch filter:', selectedBranch);
+      query = query.eq('branch_id', selectedBranch);
     }
 
-    // Apply role-based filtering with payment status
-    transactionQuery = applyRoleBasedFiltering(
-      transactionQuery, 
-      userRole, 
-      userBranchId, 
-      selectedBranch,
-      paymentStatusFilter
-    );
+    // Apply payment status filter
+    if (paymentStatusFilter && paymentStatusFilter !== 'all') {
+      console.log('💳 Applying payment status filter:', paymentStatusFilter);
+      query = query.eq('payment_status', paymentStatusFilter);
+    }
 
-    // Apply date range filter
-    transactionQuery = applyDateRangeFilter(transactionQuery, dateRange);
+    // Apply date range filter with proper timezone handling
+    if (dateRange?.start && dateRange?.end) {
+      console.log('📅 Applying date range filter:', dateRange);
+      const startDateTime = `${dateRange.start}T00:00:00.000+07:00`;
+      const endDateTime = `${dateRange.end}T23:59:59.999+07:00`;
+      
+      query = query
+        .gte('transaction_date', startDateTime)
+        .lte('transaction_date', endDateTime);
+    }
 
-    console.log('🚀 Executing transaction query with payment status filter...');
-    const { data: transactionData, error } = await transactionQuery;
+    // Order by date
+    query = query.order('transaction_date', { ascending: false });
+
+    console.log('🚀 Executing transaction query...');
+    const { data: transactionData, error } = await query;
 
     if (error) {
-      console.error('❌ Query execution error:', error);
-      handleTransactionQueryError(error, userRole);
-      return []; // This won't be reached due to throw above, but helps TypeScript
+      console.error('❌ Transaction query error:', error);
+      throw new Error(`Error dalam query database: ${error.message}`);
     }
 
-    console.log('📊 Basic transactions fetched:', {
-      recordCount: Array.isArray(transactionData) ? transactionData.length : 0,
-      firstRecord: Array.isArray(transactionData) ? transactionData[0] || null : null,
-      paymentStatusDistribution: Array.isArray(transactionData) ? transactionData.reduce((acc, t) => {
-        acc[t.payment_status] = (acc[t.payment_status] || 0) + 1;
-        return acc;
-      }, {}) : {}
-    });
-
-    if (!transactionData || !Array.isArray(transactionData) || transactionData.length === 0) {
+    if (!transactionData || !Array.isArray(transactionData)) {
       console.log('📋 No transactions found');
       return [];
     }
 
-    // Fetch related data separately
+    console.log('📊 Transactions fetched:', {
+      count: transactionData.length,
+      firstTransaction: transactionData[0] || null,
+      sampleItems: transactionData[0]?.transaction_items || []
+    });
+
+    // Fetch additional details (branches and profiles)
     const transactionIds = transactionData.map(t => t.id);
-    console.log('🔍 Fetching details for transaction IDs:', transactionIds.length);
     
-    const transactionDetails = await fetchTransactionDetails(transactionIds);
-    console.log('📋 Transaction details fetched:', {
-      items: transactionDetails.items.length,
-      profiles: transactionDetails.profiles.length,
-      branches: transactionDetails.branches.length
+    // Fetch branches
+    const { data: branches } = await supabase
+      .from('branches')
+      .select('id, name');
+
+    // Fetch profiles for cashier names
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, name');
+
+    console.log('📋 Additional data fetched:', {
+      branches: branches?.length || 0,
+      profiles: profiles?.length || 0
     });
 
     // Enrich transactions with related data
     const enrichedTransactions = transactionData.map(transaction => {
-      const transactionItems = transactionDetails.items.filter(item => item.transaction_id === transaction.id);
-      const cashierProfile = transactionDetails.profiles.find(p => p.id === transaction.cashier_id);
-      const branch = transactionDetails.branches.find(b => b.id === transaction.branch_id);
-
-      console.log(`🔍 Transaction ${transaction.id} enrichment:`, {
-        items: transactionItems.length,
-        cashier: cashierProfile?.name,
-        branch: branch?.name,
-        paymentStatus: transaction.payment_status,
-        firstItem: transactionItems[0]
-      });
+      const branch = branches?.find(b => b.id === transaction.branch_id);
+      const cashierProfile = profiles?.find(p => p.id === transaction.cashier_id);
 
       return {
         ...transaction,
-        transaction_items: Array.isArray(transactionItems) ? transactionItems : [],
         cashier_name: cashierProfile?.name || 'Unknown Cashier',
         branches: branch ? { id: branch.id, name: branch.name } : { id: '', name: 'Unknown Branch' }
       };
     });
 
-    console.log('🔍 ===== REPORTS FETCH END =====');
     console.log('✅ Final enriched result:', {
       enrichedTransactions: enrichedTransactions.length,
-      sampleTransaction: enrichedTransactions[0] || null,
-      sampleItems: enrichedTransactions[0]?.transaction_items || [],
-      statusBreakdown: enrichedTransactions.reduce((acc, t) => {
-        acc[t.payment_status] = (acc[t.payment_status] || 0) + 1;
-        return acc;
-      }, {})
+      sampleTransaction: enrichedTransactions[0] || null
     });
 
+    console.log('🔍 ===== REPORTS FETCH END =====');
     return enrichedTransactions;
 
   } catch (error: any) {
     console.error('❌ Transaction service error:', error);
-    handleTransactionQueryError(error, userRole);
-    return []; // This won't be reached due to throw above
+    throw new Error(`Gagal memuat data transaksi: ${error.message}`);
   }
 };
