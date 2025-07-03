@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,7 +23,7 @@ export const useCashierAuth = () => {
     const fetchUserBranch = async () => {
       if (user?.role === 'kasir_cabang' && user.id) {
         try {
-          console.log('🔍 Fetching actual branch assignment for kasir_cabang:', user.id);
+          console.log('🔍 [KASIR] Fetching actual branch assignment for kasir_cabang:', user.id, user.email);
           const { data: userBranch, error } = await supabase
             .from('user_branches')
             .select('branch_id')
@@ -30,20 +31,20 @@ export const useCashierAuth = () => {
             .maybeSingle();
           
           if (error) {
-            console.error('❌ Error fetching user branch:', error);
+            console.error('❌ [KASIR] Error fetching user branch:', error);
             setUserActualBranchId(null);
             return;
           }
           
           if (userBranch) {
-            console.log('✅ Found user branch assignment:', userBranch.branch_id);
+            console.log('✅ [KASIR] Found user branch assignment:', userBranch.branch_id);
             setUserActualBranchId(userBranch.branch_id);
           } else {
-            console.warn('⚠️ No branch assignment found for kasir_cabang');
+            console.warn('⚠️ [KASIR] No branch assignment found for kasir_cabang');
             setUserActualBranchId(null);
           }
         } catch (error) {
-          console.error('❌ Failed to fetch user branch:', error);
+          console.error('❌ [KASIR] Failed to fetch user branch:', error);
           setUserActualBranchId(null);
         }
       }
@@ -56,12 +57,12 @@ export const useCashierAuth = () => {
   useEffect(() => {
     if (user?.role === 'kasir_cabang') {
       if (userActualBranchId) {
-        console.log('✅ Kasir has branch assignment:', userActualBranchId);
+        console.log('✅ [KASIR] Kasir has branch assignment:', userActualBranchId);
         setSelectedBranch(userActualBranchId);
         setBranchError(null);
         setHasAccess(true);
       } else {
-        console.error('❌ Kasir user without branch assignment:', user);
+        console.error('❌ [KASIR] Kasir user without branch assignment:', user.email);
         setBranchError('Akun kasir Anda belum dikaitkan dengan cabang. Silakan hubungi administrator.');
         setHasAccess(false);
       }
@@ -104,10 +105,10 @@ export const useCashierAuth = () => {
 
   const fetchBranches = async () => {
     try {
-      console.log('Fetching branches for current user...');
+      console.log('🔍 [KASIR] Fetching branches for current user...');
       
       if (!user?.id) {
-        console.log('No user ID available');
+        console.log('⚠️ [KASIR] No user ID available');
         return;
       }
 
@@ -127,7 +128,7 @@ export const useCashierAuth = () => {
           .eq('user_id', user.id);
 
         if (error) {
-          console.error('Error fetching user branches:', error);
+          console.error('❌ [KASIR] Error fetching user branches:', error);
           setBranchError('Gagal memuat data cabang yang dikaitkan dengan akun Anda');
           setHasAccess(false);
           return;
@@ -141,7 +142,7 @@ export const useCashierAuth = () => {
             name: branch!.name
           }));
         
-        console.log('Kasir branches:', branchData);
+        console.log('✅ [KASIR] Kasir branches:', branchData);
         setBranches(branchData);
         
         if (branchData.length > 0 && !selectedBranch) {
@@ -159,7 +160,7 @@ export const useCashierAuth = () => {
           .order('name');
 
         if (error) {
-          console.error('Error fetching all branches:', error);
+          console.error('❌ [KASIR] Error fetching all branches:', error);
           setBranchError('Gagal memuat data cabang');
           setHasAccess(false);
           return;
@@ -173,7 +174,7 @@ export const useCashierAuth = () => {
         }
       }
     } catch (error: any) {
-      console.error('Error fetching branches:', error);
+      console.error('❌ [KASIR] Error fetching branches:', error);
       setBranchError(`Gagal memuat data cabang: ${error.message}`);
       setHasAccess(false);
     }

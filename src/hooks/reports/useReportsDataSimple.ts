@@ -20,12 +20,14 @@ export const useReportsData = (
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Fetch user's actual branch untuk kasir_cabang
+  // Fetch user's actual branch untuk kasir_cabang dengan logic yang sama seperti kasir
   useEffect(() => {
     const fetchUserBranch = async () => {
       if (user?.role === 'kasir_cabang' && user.id) {
         try {
-          console.log('🔍 Fetching branch assignment for kasir:', user.id);
+          console.log('🔍 Fetching branch assignment for kasir:', user.id, user.email);
+          
+          // Menggunakan query yang sama dengan yang digunakan di kasir
           const { data: userBranch, error } = await supabase
             .from('user_branches')
             .select('branch_id')
@@ -56,7 +58,7 @@ export const useReportsData = (
     fetchUserBranch();
   }, [user]);
 
-  // Fetch transactions dengan validasi yang lebih baik
+  // Fetch transactions dengan validasi yang konsisten dengan kasir
   useEffect(() => {
     // Skip if not ready
     if (!user || !branchAssignmentChecked) {
@@ -64,17 +66,15 @@ export const useReportsData = (
       return;
     }
 
-    // Validasi untuk kasir_cabang
-    if (user.role === 'kasir_cabang' && !userActualBranchId) {
-      console.warn('⚠️ Kasir cabang without branch assignment');
-      setTransactions([]);
-      setLoading(false);
-      toast({
-        title: "Perlu Assignment Cabang",
-        description: "Akun kasir cabang Anda belum dikaitkan dengan cabang.",
-        variant: "destructive",
+    // Untuk kasir_cabang, cek apakah ada branch assignment
+    // TAPI jangan langsung blok - biarkan service yang handle
+    if (user.role === 'kasir_cabang') {
+      console.log('👤 Kasir user detected:', {
+        userId: user.id,
+        email: user.email,
+        userActualBranchId,
+        branchAssignmentChecked
       });
-      return;
     }
     
     // Validasi date range
@@ -105,6 +105,8 @@ export const useReportsData = (
           paymentStatusFilter
         });
 
+        // Panggil service dengan parameter yang tepat
+        // Service akan handle pengecekan branch assignment secara internal
         const rawData = await fetchTransactionsFromDB(
           user.role,
           userActualBranchId,
