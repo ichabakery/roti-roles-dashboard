@@ -65,12 +65,12 @@ export const fetchTransactionsFromDB = async (
       query = query.eq('branch_id', selectedBranch);
     }
 
-    // Apply payment status filter
+    // Apply payment status filter with proper type checking
     if (paymentStatusFilter && paymentStatusFilter !== 'all') {
       console.log('💳 Applying payment status filter:', paymentStatusFilter);
-      const validStatuses = ['paid', 'pending', 'partial', 'cancelled'];
-      if (validStatuses.includes(paymentStatusFilter)) {
-        query = query.eq('payment_status', paymentStatusFilter);
+      const validStatuses: ('paid' | 'pending' | 'partial' | 'cancelled')[] = ['paid', 'pending', 'partial', 'cancelled'];
+      if (validStatuses.includes(paymentStatusFilter as 'paid' | 'pending' | 'partial' | 'cancelled')) {
+        query = query.eq('payment_status', paymentStatusFilter as 'paid' | 'pending' | 'partial' | 'cancelled');
       }
     }
 
