@@ -25,7 +25,7 @@ export const useReportsData = (
     const fetchUserBranch = async () => {
       if (user?.role === 'kasir_cabang' && user.id) {
         try {
-          console.log('🔍 Fetching branch assignment for kasir:', user.id, user.email);
+          console.log('🔍 [REPORTS] Fetching branch assignment for kasir:', user.id, user.email);
           
           // Menggunakan query yang sama dengan yang digunakan di kasir
           const { data: userBranch, error } = await supabase
@@ -35,17 +35,17 @@ export const useReportsData = (
             .maybeSingle();
           
           if (error) {
-            console.error('❌ Error fetching user branch:', error);
+            console.error('❌ [REPORTS] Error fetching user branch:', error);
             setUserActualBranchId(null);
           } else if (userBranch?.branch_id) {
-            console.log('✅ Found branch assignment:', userBranch.branch_id);
+            console.log('✅ [REPORTS] Found branch assignment:', userBranch.branch_id);
             setUserActualBranchId(userBranch.branch_id);
           } else {
-            console.warn('⚠️ Kasir user without branch assignment');
+            console.warn('⚠️ [REPORTS] Kasir user without branch assignment');
             setUserActualBranchId(null);
           }
         } catch (error) {
-          console.error('❌ Failed to fetch user branch:', error);
+          console.error('❌ [REPORTS] Failed to fetch user branch:', error);
           setUserActualBranchId(null);
         } finally {
           setBranchAssignmentChecked(true);
@@ -62,14 +62,13 @@ export const useReportsData = (
   useEffect(() => {
     // Skip if not ready
     if (!user || !branchAssignmentChecked) {
-      console.log('⏳ Waiting for user or branch assignment check...');
+      console.log('⏳ [REPORTS] Waiting for user or branch assignment check...');
       return;
     }
 
     // Untuk kasir_cabang, cek apakah ada branch assignment
-    // TAPI jangan langsung blok - biarkan service yang handle
     if (user.role === 'kasir_cabang') {
-      console.log('👤 Kasir user detected:', {
+      console.log('👤 [REPORTS] Kasir user detected:', {
         userId: user.id,
         email: user.email,
         userActualBranchId,
@@ -77,17 +76,19 @@ export const useReportsData = (
       });
     }
     
-    // Validasi date range
-    if (!dateRange?.start || !dateRange?.end) {
-      console.warn('⚠️ Invalid date range, skipping fetch:', dateRange);
+    // Validasi date range dengan lebih ketat
+    if (!dateRange?.start || !dateRange?.end || dateRange.start === '' || dateRange.end === '') {
+      console.warn('⚠️ [REPORTS] Invalid or empty date range, skipping fetch:', dateRange);
       setTransactions([]);
       setLoading(false);
       return;
     }
 
-    // Validasi tanggal tidak kosong
-    if (dateRange.start === '' || dateRange.end === '') {
-      console.warn('⚠️ Empty date range values, skipping fetch');
+    // Validasi format tanggal
+    const startDate = new Date(dateRange.start);
+    const endDate = new Date(dateRange.end);
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      console.warn('⚠️ [REPORTS] Invalid date format, skipping fetch');
       setTransactions([]);
       setLoading(false);
       return;
@@ -97,16 +98,20 @@ export const useReportsData = (
       setLoading(true);
       
       try {
-        console.log('📊 Starting reports data fetch:', {
+        console.log('📊 [REPORTS] Starting reports data fetch with timezone info:', {
           userRole: user.role,
           userActualBranchId,
           selectedBranch,
           dateRange,
-          paymentStatusFilter
+          paymentStatusFilter,
+          currentTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          dateRangeISO: {
+            start: new Date(dateRange.start).toISOString(),
+            end: new Date(dateRange.end).toISOString()
+          }
         });
 
         // Panggil service dengan parameter yang tepat
-        // Service akan handle pengecekan branch assignment secara internal
         const rawData = await fetchTransactionsFromDB(
           user.role,
           userActualBranchId,
@@ -115,17 +120,24 @@ export const useReportsData = (
           paymentStatusFilter
         );
 
-        console.log('📊 Raw data received:', {
+        console.log('📊 [REPORTS] Raw data received:', {
           count: Array.isArray(rawData) ? rawData.length : 0,
-          sample: Array.isArray(rawData) ? rawData[0] : null
+          sample: Array.isArray(rawData) && rawData.length > 0 ? {
+            id: rawData[0].id,
+            date: rawData[0].transaction_date,
+            localDate: rawData[0].local_datetime || 'Not available'
+          } : null
         });
 
         const safeRawData = Array.isArray(rawData) ? rawData : [];
         const transformedTransactions = transformTransactionData(safeRawData);
         
-        console.log('📊 Transformed transactions:', {
+        console.log('📊 [REPORTS] Transformed transactions:', {
           count: transformedTransactions.length,
-          sample: transformedTransactions[0]
+          sample: transformedTransactions[0] ? {
+            id: transformedTransactions[0].id,
+            date: transformedTransactions[0].transaction_date
+          } : null
         });
 
         setTransactions(transformedTransactions);
@@ -133,18 +145,19 @@ export const useReportsData = (
         if (transformedTransactions.length > 0) {
           toast({
             title: "Data Berhasil Dimuat",
-            description: `${transformedTransactions.length} transaksi berhasil dimuat.`,
+            description: `${transformedTransactions.length} transaksi berhasil dimuat untuk periode ${dateRange.start} - ${dateRange.end}.`,
           });
         } else {
+          const periodText = `${dateRange.start} - ${dateRange.end}`;
           toast({
             title: "Tidak Ada Transaksi",
-            description: "Tidak ada transaksi ditemukan untuk periode yang dipilih.",
+            description: `Tidak ada transaksi ditemukan untuk periode ${periodText}. Pastikan timezone dan filter sudah benar.`,
             variant: "default",
           });
         }
 
       } catch (error: any) {
-        console.error('❌ Error in fetchData:', error);
+        console.error('❌ [REPORTS] Error in fetchData:', error);
         
         const errorMessage = error.message || 'Gagal memuat data laporan';
         
