@@ -14,6 +14,7 @@ interface PendingTransaction {
   branches?: { name: string } | null;
   payment_method: string;
   branch_id: string;
+  status: string;
 }
 
 export const usePendingTransactions = (branchId?: string, shouldFetch: boolean = true) => {
@@ -28,7 +29,7 @@ export const usePendingTransactions = (branchId?: string, shouldFetch: boolean =
       setLoading(true);
       console.log('🔍 Fetching pending transactions for branch:', branchId);
       
-      // First, fetch transactions without branch relation to avoid relationship issues
+      // First, fetch transactions that are not fully paid (pending or partial payments)
       let query = supabase
         .from('transactions')
         .select(`
@@ -40,9 +41,11 @@ export const usePendingTransactions = (branchId?: string, shouldFetch: boolean =
           payment_status,
           transaction_date,
           payment_method,
-          branch_id
+          branch_id,
+          status
         `)
-        .in('payment_status', ['pending', 'partial'])
+        .in('payment_status', ['pending', 'partial']) // Only show transactions that need payment
+        .eq('status', 'pending') // Only show pending transactions, not completed ones
         .order('transaction_date', { ascending: false });
 
       if (branchId && branchId !== 'all') {
@@ -57,6 +60,7 @@ export const usePendingTransactions = (branchId?: string, shouldFetch: boolean =
       }
 
       console.log('✅ Pending transactions fetched:', transactionData?.length || 0);
+      console.log('📊 Sample pending transaction:', transactionData?.[0]);
 
       if (!transactionData || transactionData.length === 0) {
         setPendingTransactions([]);

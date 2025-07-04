@@ -46,6 +46,7 @@ export const createTransaction = async ({
 
   // Determine payment status and amounts based on payment type
   let payment_status: 'paid' | 'pending' | 'partial' = 'paid';
+  let transaction_status: 'completed' | 'pending' = 'completed';
   let amount_paid = totalAmount;
   let amount_remaining = 0;
   let due_date = null;
@@ -54,12 +55,14 @@ export const createTransaction = async ({
     switch (paymentData.type) {
       case 'deferred':
         payment_status = 'pending';
+        transaction_status = 'pending'; // Important: transaction remains pending
         amount_paid = 0;
         amount_remaining = totalAmount;
         due_date = paymentData.dueDate || null;
         break;
       case 'down_payment':
         payment_status = 'partial';
+        transaction_status = 'pending'; // Important: transaction remains pending
         amount_paid = paymentData.amountPaid || 0;
         amount_remaining = totalAmount - amount_paid;
         due_date = paymentData.dueDate || null;
@@ -67,6 +70,7 @@ export const createTransaction = async ({
       case 'full':
       default:
         payment_status = 'paid';
+        transaction_status = 'completed';
         amount_paid = totalAmount;
         amount_remaining = 0;
         break;
@@ -80,6 +84,7 @@ export const createTransaction = async ({
     total_amount: totalAmount,
     payment_method: paymentData?.paymentMethod || paymentMethod,
     payment_status,
+    status: transaction_status, // Use the determined status
     amount_paid: amount_paid > 0 ? amount_paid : null,
     amount_remaining: amount_remaining > 0 ? amount_remaining : null,
     due_date,
@@ -220,7 +225,9 @@ export const createTransaction = async ({
         amount_paid: amount_paid,
         payment_method: paymentData?.paymentMethod || paymentMethod,
         cashier_id: userId,
-        notes: paymentData?.notes || null
+        notes: paymentData?.type === 'down_payment' 
+          ? `Down Payment: Rp ${amount_paid.toLocaleString('id-ID')} dari total Rp ${totalAmount.toLocaleString('id-ID')}`
+          : paymentData?.notes || null
       });
 
     if (paymentHistoryError) {

@@ -17,6 +17,7 @@ interface PendingTransaction {
   transaction_date: string;
   branches?: { name: string } | null;
   payment_method: string;
+  status: string;
 }
 
 interface PendingPaymentsDialogProps {
@@ -91,24 +92,27 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
         throw new Error('Jumlah pembayaran melebihi sisa tagihan');
       }
 
-      // Determine new payment status
+      // Determine new payment status and transaction status
       const newPaymentStatus = newRemainingAmount <= 0 ? 'paid' : 'partial';
+      const newTransactionStatus = newRemainingAmount <= 0 ? 'completed' : 'pending';
 
       console.log('💰 Payment calculation:', {
         currentPaid,
         amount,
         newTotalPaid,
         newRemainingAmount,
-        newPaymentStatus
+        newPaymentStatus,
+        newTransactionStatus
       });
 
-      // Update transaction payment status first
+      // Update transaction payment status and transaction status
       const { error: updateError } = await supabase
         .from('transactions')
         .update({
           amount_paid: newTotalPaid,
           amount_remaining: newRemainingAmount,
-          payment_status: newPaymentStatus
+          payment_status: newPaymentStatus,
+          status: newTransactionStatus // IMPORTANT: Update transaction status
         })
         .eq('id', selectedTransaction.id);
 
@@ -125,7 +129,9 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
           amount_paid: amount,
           payment_method: paymentMethod,
           cashier_id: user.id,
-          notes: `Pembayaran cicilan sebesar Rp ${amount.toLocaleString('id-ID')}. Total sudah dibayar: Rp ${newTotalPaid.toLocaleString('id-ID')} dari Rp ${selectedTransaction.total_amount.toLocaleString('id-ID')}`
+          notes: newRemainingAmount <= 0 
+            ? `Pelunasan pembayaran sebesar Rp ${amount.toLocaleString('id-ID')}. Transaksi selesai.`
+            : `Pembayaran cicilan sebesar Rp ${amount.toLocaleString('id-ID')}. Total sudah dibayar: Rp ${newTotalPaid.toLocaleString('id-ID')} dari Rp ${selectedTransaction.total_amount.toLocaleString('id-ID')}`
         });
 
       if (paymentError) {
@@ -136,7 +142,7 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
       // Verify the transaction was updated correctly
       const { data: updatedTransaction, error: verifyError } = await supabase
         .from('transactions')
-        .select('amount_paid, amount_remaining, payment_status')
+        .select('amount_paid, amount_remaining, payment_status, status')
         .eq('id', selectedTransaction.id)
         .single();
 
@@ -146,9 +152,13 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
         console.log('✅ Transaction updated correctly:', updatedTransaction);
       }
 
+      const successMessage = newRemainingAmount <= 0 
+        ? `Pembayaran berhasil diselesaikan! Transaksi telah lunas.`
+        : `Pembayaran sebesar Rp ${amount.toLocaleString('id-ID')} berhasil dicatat. Total terbayar: Rp ${newTotalPaid.toLocaleString('id-ID')}`;
+
       toast({
         title: "Pembayaran Berhasil",
-        description: `Pembayaran sebesar Rp ${amount.toLocaleString('id-ID')} berhasil dicatat. Total terbayar: Rp ${newTotalPaid.toLocaleString('id-ID')}`,
+        description: successMessage,
       });
 
       // Refresh the list

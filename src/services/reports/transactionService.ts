@@ -50,11 +50,13 @@ export const fetchTransactionsFromDB = async (
       throw new Error('Rentang tanggal tidak valid');
     }
 
-    // Step 1: Build and execute transaction query
+    // Step 1: Build and execute transaction query - ONLY COMPLETED TRANSACTIONS
     console.log('🚀 Building transaction query...');
     let query = supabase
       .from('transactions')
-      .select('*');
+      .select('*')
+      .eq('payment_status', 'paid') // IMPORTANT: Only show fully paid transactions in reports
+      .eq('status', 'completed'); // IMPORTANT: Only show completed transactions
 
     // Apply role-based filtering with actual branch ID
     if (userRole === 'kasir_cabang' && actualUserBranchId) {
@@ -63,15 +65,6 @@ export const fetchTransactionsFromDB = async (
     } else if (selectedBranch && selectedBranch !== 'all') {
       console.log('🏪 Applying selected branch filter:', selectedBranch);
       query = query.eq('branch_id', selectedBranch);
-    }
-
-    // Apply payment status filter with proper type checking
-    if (paymentStatusFilter && paymentStatusFilter !== 'all') {
-      console.log('💳 Applying payment status filter:', paymentStatusFilter);
-      const validStatuses: ('paid' | 'pending' | 'partial' | 'cancelled')[] = ['paid', 'pending', 'partial', 'cancelled'];
-      if (validStatuses.includes(paymentStatusFilter as 'paid' | 'pending' | 'partial' | 'cancelled')) {
-        query = query.eq('payment_status', paymentStatusFilter as 'paid' | 'pending' | 'partial' | 'cancelled');
-      }
     }
 
     // Apply date range filter with proper timezone handling for Indonesia (WIB = UTC+7)
@@ -125,16 +118,21 @@ export const fetchTransactionsFromDB = async (
       }) : null
     });
 
-    // Step 2: Fetch transaction items separately
+    // Step 2: Fetch transaction items with product details
     const transactionIds = transactionData.map(t => t.id);
     let transactionItems: any[] = [];
     
     if (transactionIds.length > 0) {
-      console.log('📋 Fetching transaction items for', transactionIds.length, 'transactions');
+      console.log('📋 Fetching transaction items with product details for', transactionIds.length, 'transactions');
       const { data: itemsData, error: itemsError } = await supabase
         .from('transaction_items')
         .select(`
-          *,
+          id,
+          transaction_id,
+          product_id,
+          quantity,
+          price_per_item,
+          subtotal,
           products (
             id,
             name,
@@ -148,7 +146,8 @@ export const fetchTransactionsFromDB = async (
         // Don't throw error here - continue without items data
       } else {
         transactionItems = itemsData || [];
-        console.log('📋 Transaction items fetched:', transactionItems.length);
+        console.log('📋 Transaction items with product details fetched:', transactionItems.length);
+        console.log('📋 Sample item with product:', transactionItems[0]);
       }
     }
 
@@ -195,7 +194,8 @@ export const fetchTransactionsFromDB = async (
         id: enrichedTransactions[0].id,
         utc_date: enrichedTransactions[0].transaction_date,
         local_date: enrichedTransactions[0].local_datetime,
-        branch: enrichedTransactions[0].branches?.name
+        branch: enrichedTransactions[0].branches?.name,
+        items_count: enrichedTransactions[0].transaction_items?.length || 0
       } : null,
       actualBranchUsed: actualUserBranchId
     });

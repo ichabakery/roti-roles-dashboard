@@ -20,6 +20,11 @@ interface SalesReceiptProps {
   storeName?: string;
   address?: string;
   phone?: string;
+  // New props for payment status
+  paymentStatus?: 'paid' | 'pending' | 'partial';
+  amountPaid?: number;
+  amountRemaining?: number;
+  dueDate?: string;
 }
 
 export const SalesReceipt: React.FC<SalesReceiptProps> = ({
@@ -32,10 +37,16 @@ export const SalesReceipt: React.FC<SalesReceiptProps> = ({
   change,
   transactionId,
   logoUrl,
-  storeName = "Icha Bakery", // Changed from dummy name
-  address = "Jl. Raya Bakery No. 123", // Keep consistent with business settings
-  phone = "021-12345678"
+  storeName = "Icha Bakery",
+  address = "Jl. Raya Bakery No. 123",
+  phone = "021-12345678",
+  paymentStatus,
+  amountPaid,
+  amountRemaining,
+  dueDate
 }) => {
+  const isPartialPayment = paymentStatus === 'partial' || paymentStatus === 'pending';
+  
   return (
     <div className="w-[320px] p-4 bg-white rounded shadow text-xs text-gray-900 font-mono mx-auto">
       {/* Branding/logo */}
@@ -81,19 +92,58 @@ export const SalesReceipt: React.FC<SalesReceiptProps> = ({
         <span>Total</span>
         <span>Rp {total.toLocaleString("id-ID")}</span>
       </div>
-      {received !== undefined && change !== undefined && (
+
+      {/* Payment Information */}
+      {isPartialPayment ? (
+        // Show Down Payment / Partial Payment Info
         <>
-          <div className="flex justify-between">
-            <span>Bayar</span>
-            <span>Rp {received.toLocaleString("id-ID")}</span>
+          <div className="flex justify-between text-red-600 font-medium">
+            <span>
+              {paymentStatus === 'pending' ? 'Status:' : 'DP Dibayar:'}
+            </span>
+            <span>
+              {paymentStatus === 'pending' 
+                ? 'BELUM LUNAS' 
+                : `Rp ${(amountPaid || 0).toLocaleString("id-ID")}`
+              }
+            </span>
           </div>
-          <div className="flex justify-between">
-            <span>Kembalian</span>
-            <span>Rp {change.toLocaleString("id-ID")}</span>
+          <div className="flex justify-between text-red-600 font-medium">
+            <span>Sisa Bayar:</span>
+            <span>Rp {(amountRemaining || total).toLocaleString("id-ID")}</span>
+          </div>
+          {dueDate && (
+            <div className="flex justify-between text-xs">
+              <span>Jatuh Tempo:</span>
+              <span>{new Date(dueDate).toLocaleDateString('id-ID')}</span>
+            </div>
+          )}
+          <div className="text-center mt-2 text-xs text-red-600 font-bold">
+            *** PEMBAYARAN BELUM LUNAS ***
           </div>
         </>
+      ) : (
+        // Show Full Payment Info (existing logic)
+        received !== undefined && change !== undefined && (
+          <>
+            <div className="flex justify-between">
+              <span>Bayar</span>
+              <span>Rp {received.toLocaleString("id-ID")}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Kembalian</span>
+              <span>Rp {change.toLocaleString("id-ID")}</span>
+            </div>
+          </>
+        )
       )}
-      <div className="text-center mt-4 text-xs">Terima kasih telah berbelanja! 🙏</div>
+      
+      <div className="text-center mt-4 text-xs">
+        {isPartialPayment 
+          ? "Harap selesaikan pembayaran sesuai jadwal 🙏" 
+          : "Terima kasih telah berbelanja! 🙏"
+        }
+      </div>
     </div>
   );
 };
