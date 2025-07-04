@@ -17,7 +17,7 @@ interface PendingTransaction {
   transaction_date: string;
   branches?: { name: string } | null;
   payment_method: string;
-  status: string;
+  status: string; // Added missing status property
 }
 
 interface PendingPaymentsDialogProps {
@@ -42,6 +42,11 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
     loading,
     refetch: fetchPendingTransactions
   } = usePendingTransactions(branchId, open);
+
+  // Create a proper callback function for onSelect
+  const handleSelectTransaction = (transaction: PendingTransaction) => {
+    setSelectedTransaction(transaction);
+  };
 
   const handlePayment = async () => {
     if (!selectedTransaction || !paymentAmount) {
@@ -206,7 +211,7 @@ export const PendingPaymentsDialog: React.FC<PendingPaymentsDialogProps> = ({
                     key={transaction.id}
                     transaction={transaction}
                     isSelected={selectedTransaction?.id === transaction.id}
-                    onSelect={setSelectedTransaction}
+                    onSelect={handleSelectTransaction}
                   />
                 ))}
               </div>

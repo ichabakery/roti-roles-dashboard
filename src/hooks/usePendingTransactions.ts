@@ -14,7 +14,7 @@ interface PendingTransaction {
   branches?: { name: string } | null;
   payment_method: string;
   branch_id: string;
-  status: string;
+  status: string; // Added missing status property
 }
 
 export const usePendingTransactions = (branchId?: string, shouldFetch: boolean = true) => {

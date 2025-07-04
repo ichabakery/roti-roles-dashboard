@@ -13,6 +13,7 @@ interface PendingTransaction {
   transaction_date: string;
   branches?: { name: string } | null;
   payment_method: string;
+  status: string; // Added missing status property
 }
 
 interface PendingTransactionCardProps {
