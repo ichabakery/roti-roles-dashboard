@@ -9,23 +9,10 @@ export const transformTransactionData = (rawData: any[]): Transaction[] => {
     const utcDate = new Date(item.transaction_date);
     const localDate = new Date(utcDate.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
     
-    const transformed = {
+    const transformed: Transaction = {
       id: item.id,
       transaction_date: item.transaction_date, // Keep original UTC for sorting/filtering
-      local_transaction_date: localDate.toISOString(), // Add local date for display
-      display_date: utcDate.toLocaleDateString('id-ID', { 
-        timeZone: 'Asia/Jakarta',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      }),
-      display_time: utcDate.toLocaleTimeString('id-ID', {
-        timeZone: 'Asia/Jakarta',
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
       branch_id: item.branch_id,
-      branch_name: item.branches?.name || 'Unknown Branch',
       cashier_id: item.cashier_id,
       cashier_name: item.cashier_name || 'Unknown Cashier',
       total_amount: parseFloat(item.total_amount || 0),
@@ -33,16 +20,20 @@ export const transformTransactionData = (rawData: any[]): Transaction[] => {
       payment_method: item.payment_method,
       amount_paid: item.amount_paid ? parseFloat(item.amount_paid) : null,
       amount_remaining: item.amount_remaining ? parseFloat(item.amount_remaining) : null,
-      due_date: item.due_date,
-      notes: item.notes,
-      status: item.status,
+      // Required branches object for Transaction type
+      branches: {
+        id: item.branch_id,
+        name: item.branches?.name || 'Unknown Branch'
+      },
       transaction_items: (item.transaction_items || []).map((transItem: any) => ({
         id: transItem.id,
         product_id: transItem.product_id,
-        product_name: transItem.products?.name || 'Unknown Product',
         quantity: transItem.quantity,
         price_per_item: parseFloat(transItem.price_per_item || 0),
-        subtotal: parseFloat(transItem.subtotal || 0)
+        subtotal: parseFloat(transItem.subtotal || 0),
+        products: {
+          name: transItem.products?.name || 'Unknown Product'
+        }
       }))
     };
     
@@ -86,7 +77,7 @@ export const generateSummaries = (transactions: Transaction[]) => {
     // Branch summary
     branchMap.set(branchKey, {
       branch_id: transaction.branch_id,
-      branch_name: transaction.branch_name,
+      branch_name: transaction.branches.name, // Use branches.name from Transaction type
       total_transactions: (existingBranch?.total_transactions || 0) + 1,
       total_revenue: (existingBranch?.total_revenue || 0) + transaction.total_amount,
       paid_amount: (existingBranch?.paid_amount || 0) + (transaction.amount_paid || transaction.total_amount),
@@ -110,7 +101,7 @@ export const generateSummaries = (transactions: Transaction[]) => {
       
       productMap.set(productKey, {
         product_id: item.product_id,
-        product_name: item.product_name,
+        product_name: item.products.name, // Use products.name from TransactionItem type
         total_quantity: (existingProduct?.total_quantity || 0) + item.quantity,
         total_revenue: (existingProduct?.total_revenue || 0) + item.subtotal,
         transaction_count: (existingProduct?.transaction_count || 0) + 1
@@ -118,7 +109,15 @@ export const generateSummaries = (transactions: Transaction[]) => {
     });
   });
 
-  const branchSummary: TransactionSummary[] = Array.from(branchMap.values());
+  // Convert branch summary to TransactionSummary with avg_transaction
+  const branchSummary: TransactionSummary[] = Array.from(branchMap.values()).map(branch => ({
+    branch_id: branch.branch_id,
+    branch_name: branch.branch_name,
+    total_transactions: branch.total_transactions,
+    total_revenue: branch.total_revenue,
+    avg_transaction: branch.total_transactions > 0 ? branch.total_revenue / branch.total_transactions : 0
+  }));
+
   const productSummary: ProductSummary[] = Array.from(productMap.values())
     .sort((a, b) => b.total_revenue - a.total_revenue);
   const paymentSummary: PaymentMethodSummary[] = Array.from(paymentMap.values())
