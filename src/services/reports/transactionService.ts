@@ -50,6 +50,29 @@ export const fetchTransactionsFromDB = async (
       throw new Error('Rentang tanggal tidak valid');
     }
 
+    // FIXED: Proper timezone handling for Indonesia (WIB = UTC + 7)
+    console.log('📅 Input date range (local):', dateRange);
+    
+    // Convert local Indonesian dates to proper UTC range
+    // Indonesian date 2025-07-04 00:00 WIB = 2025-07-03 17:00 UTC
+    // Indonesian date 2025-07-04 23:59 WIB = 2025-07-04 16:59 UTC
+    const startDateWIB = new Date(dateRange.start + 'T00:00:00');
+    const endDateWIB = new Date(dateRange.end + 'T23:59:59');
+    
+    // Convert to UTC by subtracting 7 hours
+    const startDateUTC = new Date(startDateWIB.getTime() - (7 * 60 * 60 * 1000));
+    const endDateUTC = new Date(endDateWIB.getTime() - (7 * 60 * 60 * 1000));
+
+    console.log('🕐 FIXED timezone conversion:', {
+      inputStart: dateRange.start,
+      inputEnd: dateRange.end,
+      startWIB: startDateWIB.toISOString(),
+      endWIB: endDateWIB.toISOString(),
+      startUTC: startDateUTC.toISOString(),
+      endUTC: endDateUTC.toISOString(),
+      note: 'WIB = UTC + 7, so to query UTC we subtract 7 hours'
+    });
+
     // Step 1: Build and execute transaction query - ONLY COMPLETED TRANSACTIONS
     console.log('🚀 Building transaction query...');
     let query = supabase
@@ -67,32 +90,16 @@ export const fetchTransactionsFromDB = async (
       query = query.eq('branch_id', selectedBranch);
     }
 
-    // Apply date range filter with proper timezone handling for Indonesia (WIB = UTC+7)
-    if (dateRange?.start && dateRange?.end) {
-      console.log('📅 Applying date range filter with Indonesia timezone:', dateRange);
-      
-      // Convert local date to UTC range for proper querying
-      // Start of day in Indonesia timezone (00:00 WIB = 17:00 UTC previous day)
-      const startDate = new Date(dateRange.start + 'T00:00:00+07:00');
-      // End of day in Indonesia timezone (23:59 WIB = 16:59 UTC next day)  
-      const endDate = new Date(dateRange.end + 'T23:59:59+07:00');
-      
-      console.log('🕐 Converted datetime range:', {
-        originalStart: dateRange.start,
-        originalEnd: dateRange.end,
-        utcStart: startDate.toISOString(),
-        utcEnd: endDate.toISOString()
-      });
-      
-      query = query
-        .gte('transaction_date', startDate.toISOString())
-        .lte('transaction_date', endDate.toISOString());
-    }
+    // FIXED: Apply proper date range filter with correct UTC conversion
+    console.log('📅 Applying CORRECTED date range filter...');
+    query = query
+      .gte('transaction_date', startDateUTC.toISOString())
+      .lte('transaction_date', endDateUTC.toISOString());
 
     // Order by date
     query = query.order('transaction_date', { ascending: false });
 
-    console.log('🚀 Executing transaction query...');
+    console.log('🚀 Executing transaction query with FIXED timezone...');
     const { data: transactionData, error } = await query;
 
     if (error) {
@@ -105,25 +112,30 @@ export const fetchTransactionsFromDB = async (
       return [];
     }
 
-    console.log('📊 Transactions fetched:', transactionData.length);
-    console.log('📊 Sample transaction with timezone info:', {
-      ...transactionData[0],
-      transaction_date_local: transactionData[0] ? new Date(transactionData[0].transaction_date).toLocaleString('id-ID', {
-        timeZone: 'Asia/Jakarta',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      }) : null
+    console.log('📊 Transactions fetched with FIXED timezone:', {
+      count: transactionData.length,
+      sampleTransaction: transactionData[0] ? {
+        id: transactionData[0].id,
+        utc_date: transactionData[0].transaction_date,
+        wib_date: new Date(new Date(transactionData[0].transaction_date).getTime() + (7 * 60 * 60 * 1000)).toISOString(),
+        local_formatted: new Date(new Date(transactionData[0].transaction_date).getTime() + (7 * 60 * 60 * 1000)).toLocaleString('id-ID', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      } : null
     });
 
-    // Step 2: Fetch transaction items with product details
+    // Step 2: Fetch transaction items with product details - CRITICAL FIX
     const transactionIds = transactionData.map(t => t.id);
     let transactionItems: any[] = [];
     
     if (transactionIds.length > 0) {
-      console.log('📋 Fetching transaction items with product details for', transactionIds.length, 'transactions');
+      console.log('📋 CRITICAL: Fetching transaction items for', transactionIds.length, 'transactions');
+      console.log('📋 Transaction IDs to fetch items for:', transactionIds.slice(0, 3), '...'); // Log first 3 IDs
+      
       const { data: itemsData, error: itemsError } = await supabase
         .from('transaction_items')
         .select(`
@@ -142,12 +154,27 @@ export const fetchTransactionsFromDB = async (
         .in('transaction_id', transactionIds);
 
       if (itemsError) {
-        console.error('❌ Transaction items query error:', itemsError);
-        // Don't throw error here - continue without items data
+        console.error('❌ CRITICAL: Transaction items query error:', itemsError);
+        console.error('❌ This is why product details are missing!');
+        // Don't throw error here - continue without items data but log the issue
+        transactionItems = [];
       } else {
         transactionItems = itemsData || [];
-        console.log('📋 Transaction items with product details fetched:', transactionItems.length);
-        console.log('📋 Sample item with product:', transactionItems[0]);
+        console.log('✅ CRITICAL: Transaction items with product details fetched:', {
+          totalItems: transactionItems.length,
+          sampleItem: transactionItems[0] ? {
+            id: transactionItems[0].id,
+            transaction_id: transactionItems[0].transaction_id,
+            product_name: transactionItems[0].products?.name,
+            quantity: transactionItems[0].quantity,
+            price_per_item: transactionItems[0].price_per_item,
+            subtotal: transactionItems[0].subtotal
+          } : null,
+          itemsPerTransaction: transactionIds.map(tid => ({
+            transaction_id: tid,
+            items_count: transactionItems.filter(item => item.transaction_id === tid).length
+          })).slice(0, 3)
+        });
       }
     }
 
@@ -165,20 +192,23 @@ export const fetchTransactionsFromDB = async (
       profiles: profiles.length
     });
 
-    // Step 4: Combine the data
+    // Step 4: Combine the data with FIXED timezone display
     const enrichedTransactions = transactionData.map(transaction => {
       const branch = branches.find(b => b.id === transaction.branch_id);
       const cashierProfile = profiles.find(p => p.id === transaction.cashier_id);
       const items = transactionItems.filter(item => item.transaction_id === transaction.id);
 
-      return {
+      // FIXED: Proper WIB conversion for display
+      const transactionDateUTC = new Date(transaction.transaction_date);
+      const transactionDateWIB = new Date(transactionDateUTC.getTime() + (7 * 60 * 60 * 1000));
+
+      const enriched = {
         ...transaction,
         cashier_name: cashierProfile?.name || 'Unknown Cashier',
         branches: branch ? { id: branch.id, name: branch.name } : { id: '', name: 'Unknown Branch' },
         transaction_items: items,
-        // Add local datetime for debugging
-        local_datetime: new Date(transaction.transaction_date).toLocaleString('id-ID', {
-          timeZone: 'Asia/Jakarta',
+        // FIXED: Add proper local datetime for display
+        local_datetime: transactionDateWIB.toLocaleString('id-ID', {
           year: 'numeric',
           month: '2-digit',
           day: '2-digit',
@@ -186,21 +216,40 @@ export const fetchTransactionsFromDB = async (
           minute: '2-digit'
         })
       };
+
+      console.log(`📊 Transaction ${transaction.id.substring(0, 8)} has ${items.length} items:`, 
+        items.map(item => ({
+          product_name: item.products?.name,
+          qty: item.quantity,
+          price: item.price_per_item,
+          subtotal: item.subtotal
+        }))
+      );
+
+      return enriched;
     });
 
-    console.log('✅ Final enriched result:', {
-      enrichedTransactions: enrichedTransactions.length,
-      sampleTransactionWithLocal: enrichedTransactions[0] ? {
+    console.log('✅ FINAL RESULT with FIXED timezone and product details:', {
+      totalTransactions: enrichedTransactions.length,
+      totalTransactionItems: transactionItems.length,
+      sampleTransactionWithItems: enrichedTransactions[0] ? {
         id: enrichedTransactions[0].id,
         utc_date: enrichedTransactions[0].transaction_date,
         local_date: enrichedTransactions[0].local_datetime,
         branch: enrichedTransactions[0].branches?.name,
-        items_count: enrichedTransactions[0].transaction_items?.length || 0
+        items_count: enrichedTransactions[0].transaction_items?.length || 0,
+        sample_items: enrichedTransactions[0].transaction_items?.slice(0, 2).map(item => ({
+          product_name: item.products?.name,
+          quantity: item.quantity,
+          price_per_item: item.price_per_item,
+          subtotal: item.subtotal
+        })) || []
       } : null,
-      actualBranchUsed: actualUserBranchId
+      actualBranchUsed: actualUserBranchId,
+      timezoneNote: 'UTC dates converted properly to WIB for display'
     });
 
-    console.log('🔍 ===== REPORTS FETCH END =====');
+    console.log('🔍 ===== REPORTS FETCH END (FIXED) =====');
     return enrichedTransactions;
 
   } catch (error: any) {

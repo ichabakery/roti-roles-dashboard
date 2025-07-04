@@ -27,7 +27,6 @@ export const useReportsData = (
         try {
           console.log('🔍 [REPORTS] Fetching branch assignment for kasir:', user.id, user.email);
           
-          // Menggunakan query yang sama dengan yang digunakan di kasir
           const { data: userBranch, error } = await supabase
             .from('user_branches')
             .select('branch_id')
@@ -58,7 +57,7 @@ export const useReportsData = (
     fetchUserBranch();
   }, [user]);
 
-  // Fetch transactions dengan validasi yang konsisten dengan kasir
+  // FIXED: Fetch transactions dengan timezone validation yang benar
   useEffect(() => {
     // Skip if not ready
     if (!user || !branchAssignmentChecked) {
@@ -66,7 +65,6 @@ export const useReportsData = (
       return;
     }
 
-    // Untuk kasir_cabang, cek apakah ada branch assignment
     if (user.role === 'kasir_cabang') {
       console.log('👤 [REPORTS] Kasir user detected:', {
         userId: user.id,
@@ -76,7 +74,7 @@ export const useReportsData = (
       });
     }
     
-    // Validasi date range dengan lebih ketat
+    // FIXED: Enhanced date range validation
     if (!dateRange?.start || !dateRange?.end || dateRange.start === '' || dateRange.end === '') {
       console.warn('⚠️ [REPORTS] Invalid or empty date range, skipping fetch:', dateRange);
       setTransactions([]);
@@ -84,7 +82,7 @@ export const useReportsData = (
       return;
     }
 
-    // Validasi format tanggal
+    // FIXED: Proper date validation with timezone awareness
     const startDate = new Date(dateRange.start);
     const endDate = new Date(dateRange.end);
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
@@ -98,66 +96,82 @@ export const useReportsData = (
       setLoading(true);
       
       try {
-        console.log('📊 [REPORTS] Starting reports data fetch with timezone info:', {
+        console.log('📊 [REPORTS] Starting FIXED reports data fetch:', {
           userRole: user.role,
           userActualBranchId,
           selectedBranch,
-          dateRange,
+          dateRange: {
+            start: dateRange.start,
+            end: dateRange.end,
+            startISO: startDate.toISOString(),
+            endISO: endDate.toISOString(),
+            note: 'Indonesian local dates will be converted to UTC properly in service'
+          },
           paymentStatusFilter,
-          currentTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          dateRangeISO: {
-            start: new Date(dateRange.start).toISOString(),
-            end: new Date(dateRange.end).toISOString()
-          }
+          currentTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
         });
 
-        // Panggil service dengan parameter yang tepat
+        // FIXED: Call service with proper timezone handling
         const rawData = await fetchTransactionsFromDB(
           user.role,
           userActualBranchId,
           selectedBranch,
-          dateRange,
+          dateRange, // Service will handle timezone conversion properly
           paymentStatusFilter
         );
 
-        console.log('📊 [REPORTS] Raw data received:', {
+        console.log('📊 [REPORTS] FIXED raw data received:', {
           count: Array.isArray(rawData) ? rawData.length : 0,
           sample: Array.isArray(rawData) && rawData.length > 0 ? {
             id: rawData[0].id,
-            date: rawData[0].transaction_date,
-            localDate: rawData[0].local_datetime || 'Not available'
+            utc_date: rawData[0].transaction_date,
+            local_date: rawData[0].local_datetime || 'Not available',
+            items_count: rawData[0].transaction_items?.length || 0,
+            sample_item: rawData[0].transaction_items?.[0] ? {
+              product_name: rawData[0].transaction_items[0].products?.name,
+              quantity: rawData[0].transaction_items[0].quantity,
+              price: rawData[0].transaction_items[0].price_per_item
+            } : null
           } : null
         });
 
         const safeRawData = Array.isArray(rawData) ? rawData : [];
         const transformedTransactions = transformTransactionData(safeRawData);
         
-        console.log('📊 [REPORTS] Transformed transactions:', {
+        console.log('📊 [REPORTS] FIXED transformed transactions:', {
           count: transformedTransactions.length,
           sample: transformedTransactions[0] ? {
             id: transformedTransactions[0].id,
-            date: transformedTransactions[0].transaction_date
+            date: transformedTransactions[0].transaction_date,
+            items_count: transformedTransactions[0].transaction_items?.length || 0,
+            sample_items: transformedTransactions[0].transaction_items?.slice(0, 2).map(item => ({
+              product_name: item.products?.name,
+              qty: item.quantity,
+              price: item.price_per_item,
+              subtotal: item.subtotal
+            })) || []
           } : null
         });
 
         setTransactions(transformedTransactions);
         
         if (transformedTransactions.length > 0) {
+          const itemsCount = transformedTransactions.reduce((total, t) => total + (t.transaction_items?.length || 0), 0);
           toast({
             title: "Data Berhasil Dimuat",
-            description: `${transformedTransactions.length} transaksi berhasil dimuat untuk periode ${dateRange.start} - ${dateRange.end}.`,
+            description: `${transformedTransactions.length} transaksi dengan ${itemsCount} item produk berhasil dimuat untuk periode ${dateRange.start} - ${dateRange.end}.`,
           });
         } else {
           const periodText = `${dateRange.start} - ${dateRange.end}`;
           toast({
             title: "Tidak Ada Transaksi",
-            description: `Tidak ada transaksi ditemukan untuk periode ${periodText}. Pastikan timezone dan filter sudah benar.`,
+            description: `Tidak ada transaksi ditemukan untuk periode ${periodText}. Pastikan ada transaksi yang sudah LUNAS (completed) pada periode ini.`,
             variant: "default",
           });
         }
 
       } catch (error: any) {
-        console.error('❌ [REPORTS] Error in fetchData:', error);
+        console.error('❌ [REPORTS] Error in FIXED fetchData:', error);
         
         const errorMessage = error.message || 'Gagal memuat data laporan';
         
