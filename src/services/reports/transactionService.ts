@@ -128,7 +128,7 @@ export const fetchTransactionsFromDB = async (
       } : null
     });
 
-    // Step 2: Fetch transaction items with product details - CRITICAL FIX
+    // Step 2: Fetch transaction items with product details - FIXED RLS ISSUE
     const transactionIds = transactionData.map(t => t.id);
     let transactionItems: any[] = [];
     
@@ -136,22 +136,57 @@ export const fetchTransactionsFromDB = async (
       console.log('📋 CRITICAL: Fetching transaction items for', transactionIds.length, 'transactions');
       console.log('📋 Transaction IDs to fetch items for:', transactionIds.slice(0, 3), '...'); // Log first 3 IDs
       
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('transaction_items')
-        .select(`
-          id,
-          transaction_id,
-          product_id,
-          quantity,
-          price_per_item,
-          subtotal,
-          products (
+      // FIXED: Use different approach based on user role to bypass RLS issues
+      let itemsQuery;
+      
+      if (userRole === 'owner' || userRole === 'admin_pusat') {
+        // For owner/admin, use direct query
+        itemsQuery = supabase
+          .from('transaction_items')
+          .select(`
             id,
-            name,
-            price
-          )
-        `)
-        .in('transaction_id', transactionIds);
+            transaction_id,
+            product_id,
+            quantity,
+            price_per_item,
+            subtotal,
+            products (
+              id,
+              name,
+              price
+            )
+          `)
+          .in('transaction_id', transactionIds);
+      } else {
+        // For kasir_cabang, join with transactions to satisfy RLS
+        itemsQuery = supabase
+          .from('transaction_items')
+          .select(`
+            id,
+            transaction_id,
+            product_id,
+            quantity,
+            price_per_item,
+            subtotal,
+            products (
+              id,
+              name,
+              price
+            ),
+            transactions!inner (
+              id,
+              branch_id
+            )
+          `)
+          .in('transaction_id', transactionIds);
+          
+        // Apply branch filter for kasir_cabang  
+        if (actualUserBranchId) {
+          itemsQuery = itemsQuery.eq('transactions.branch_id', actualUserBranchId);
+        }
+      }
+      
+      const { data: itemsData, error: itemsError } = await itemsQuery;
 
       if (itemsError) {
         console.error('❌ CRITICAL: Transaction items query error:', itemsError);
