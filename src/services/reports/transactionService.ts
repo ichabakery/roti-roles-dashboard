@@ -128,20 +128,20 @@ export const fetchTransactionsFromDB = async (
       } : null
     });
 
-    // Step 2: Fetch transaction items with product details - FIXED RLS ISSUE
+    // Step 2: Fetch transaction items with product details - ENHANCED DEBUGGING
     const transactionIds = transactionData.map(t => t.id);
     let transactionItems: any[] = [];
     
     if (transactionIds.length > 0) {
-      console.log('📋 CRITICAL: Fetching transaction items for', transactionIds.length, 'transactions');
-      console.log('📋 Transaction IDs to fetch items for:', transactionIds.slice(0, 3), '...'); // Log first 3 IDs
+      console.log('📋 [ITEMS-FETCH] Starting fetch for', transactionIds.length, 'transactions');
+      console.log('📋 [ITEMS-FETCH] Transaction IDs:', transactionIds.slice(0, 5), '...');
+      console.log('📋 [ITEMS-FETCH] User role:', userRole, 'Branch ID:', actualUserBranchId);
       
-      // FIXED: Use different approach based on user role to bypass RLS issues
-      let itemsQuery;
-      
-      if (userRole === 'owner' || userRole === 'admin_pusat') {
-        // For owner/admin, use direct query
-        itemsQuery = supabase
+      try {
+        // SIMPLIFIED: Use one consistent query for all roles to avoid RLS issues
+        console.log('📋 [ITEMS-FETCH] Using simplified query approach...');
+        
+        const itemsQuery = supabase
           .from('transaction_items')
           .select(`
             id,
@@ -150,67 +150,95 @@ export const fetchTransactionsFromDB = async (
             quantity,
             price_per_item,
             subtotal,
-            products (
+            products!inner (
               id,
               name,
               price
             )
           `)
           .in('transaction_id', transactionIds);
-      } else {
-        // For kasir_cabang, join with transactions to satisfy RLS
-        itemsQuery = supabase
-          .from('transaction_items')
-          .select(`
-            id,
-            transaction_id,
-            product_id,
-            quantity,
-            price_per_item,
-            subtotal,
-            products (
-              id,
-              name,
-              price
-            ),
-            transactions!inner (
-              id,
-              branch_id
-            )
-          `)
-          .in('transaction_id', transactionIds);
-          
-        // Apply branch filter for kasir_cabang  
-        if (actualUserBranchId) {
-          itemsQuery = itemsQuery.eq('transactions.branch_id', actualUserBranchId);
-        }
-      }
-      
-      const { data: itemsData, error: itemsError } = await itemsQuery;
+        
+        console.log('📋 [ITEMS-FETCH] Executing query...');
+        const { data: itemsData, error: itemsError } = await itemsQuery;
 
-      if (itemsError) {
-        console.error('❌ CRITICAL: Transaction items query error:', itemsError);
-        console.error('❌ This is why product details are missing!');
-        // Don't throw error here - continue without items data but log the issue
+        if (itemsError) {
+          console.error('❌ [ITEMS-FETCH] Query error:', {
+            error: itemsError,
+            code: itemsError.code,
+            details: itemsError.details,
+            hint: itemsError.hint,
+            message: itemsError.message
+          });
+          
+          // Try alternative approach if first fails
+          console.log('📋 [ITEMS-FETCH] Trying alternative query without join...');
+          const alternativeQuery = supabase
+            .from('transaction_items')
+            .select('*')
+            .in('transaction_id', transactionIds);
+            
+          const { data: altData, error: altError } = await alternativeQuery;
+          
+          if (altError) {
+            console.error('❌ [ITEMS-FETCH] Alternative query also failed:', altError);
+            transactionItems = [];
+          } else {
+            console.log('✅ [ITEMS-FETCH] Alternative query succeeded, fetching products separately...');
+            transactionItems = altData || [];
+            
+            // Fetch product details separately
+            if (transactionItems.length > 0) {
+              const productIds = [...new Set(transactionItems.map(item => item.product_id))];
+              const { data: productsData } = await supabase
+                .from('products')
+                .select('id, name, price')
+                .in('id', productIds);
+              
+              // Merge product data
+              transactionItems = transactionItems.map(item => ({
+                ...item,
+                products: productsData?.find(p => p.id === item.product_id)
+              }));
+            }
+          }
+        } else {
+          transactionItems = itemsData || [];
+          console.log('✅ [ITEMS-FETCH] Query succeeded:', {
+            totalItems: transactionItems.length,
+            hasProductData: transactionItems.some(item => item.products?.name),
+            sampleItem: transactionItems[0] ? {
+              id: transactionItems[0].id,
+              transaction_id: transactionItems[0].transaction_id,
+              product_name: transactionItems[0].products?.name,
+              quantity: transactionItems[0].quantity,
+              price_per_item: transactionItems[0].price_per_item,
+              subtotal: transactionItems[0].subtotal
+            } : null
+          });
+        }
+        
+        // Log items distribution per transaction
+        const itemDistribution = transactionIds.map(tid => ({
+          transaction_id: tid.substring(0, 8),
+          items_count: transactionItems.filter(item => item.transaction_id === tid).length,
+          sample_items: transactionItems
+            .filter(item => item.transaction_id === tid)
+            .slice(0, 2)
+            .map(item => ({
+              product: item.products?.name || 'Unknown',
+              qty: item.quantity,
+              price: item.price_per_item
+            }))
+        }));
+        
+        console.log('📋 [ITEMS-FETCH] Items distribution:', itemDistribution.slice(0, 5));
+        
+      } catch (error) {
+        console.error('❌ [ITEMS-FETCH] Exception occurred:', error);
         transactionItems = [];
-      } else {
-        transactionItems = itemsData || [];
-        console.log('✅ CRITICAL: Transaction items with product details fetched:', {
-          totalItems: transactionItems.length,
-          sampleItem: transactionItems[0] ? {
-            id: transactionItems[0].id,
-            transaction_id: transactionItems[0].transaction_id,
-            product_name: transactionItems[0].products?.name,
-            quantity: transactionItems[0].quantity,
-            price_per_item: transactionItems[0].price_per_item,
-            subtotal: transactionItems[0].subtotal
-          } : null,
-          itemsPerTransaction: transactionIds.map(tid => ({
-            transaction_id: tid,
-            items_count: transactionItems.filter(item => item.transaction_id === tid).length
-          })).slice(0, 3)
-        });
       }
+    } else {
+      console.log('📋 [ITEMS-FETCH] No transactions to fetch items for');
     }
 
     // Step 3: Fetch additional data (branches and profiles)

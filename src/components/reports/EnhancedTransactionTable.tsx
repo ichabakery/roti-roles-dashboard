@@ -59,9 +59,21 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
     );
   }
 
-  console.log('EnhancedTransactionTable rendering with transactions:', transactions.length);
-  transactions.forEach(t => {
-    console.log('Transaction:', t.id, 'Items:', t.transaction_items?.length || 0, 'First item:', t.transaction_items?.[0]);
+  console.log('🔍 [DEBUG] EnhancedTransactionTable rendering with transactions:', transactions.length);
+  transactions.forEach((t, idx) => {
+    console.log(`🔍 [DEBUG] Transaction ${idx + 1}:`, {
+      id: t.id.substring(0, 8),
+      date: t.transaction_date,
+      total: t.total_amount,
+      itemsCount: t.transaction_items?.length || 0,
+      items: t.transaction_items?.map(item => ({
+        id: item.id,
+        product_name: item.products?.name,
+        qty: item.quantity,
+        price: item.price_per_item,
+        subtotal: item.subtotal
+      })) || 'NO ITEMS'
+    });
   });
 
   return (
