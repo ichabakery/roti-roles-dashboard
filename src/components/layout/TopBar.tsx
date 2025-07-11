@@ -1,16 +1,19 @@
 
-import { MapPin } from 'lucide-react';
+import { MapPin, Menu } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { User } from '@/contexts/AuthContext';
 import { menuItems } from './MenuItems';
 import NotificationIcon from '@/components/notifications/NotificationIcon';
+import { Button } from '@/components/ui/button';
 
 interface TopBarProps {
   user: User | null;
   branchDisplayName: string;
+  onToggleSidebar?: () => void;
+  isMobile?: boolean;
 }
 
-export const TopBar = ({ user, branchDisplayName }: TopBarProps) => {
+export const TopBar = ({ user, branchDisplayName, onToggleSidebar, isMobile }: TopBarProps) => {
   const location = useLocation();
 
   const getCurrentPageName = () => {
@@ -18,18 +21,31 @@ export const TopBar = ({ user, branchDisplayName }: TopBarProps) => {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b px-6 py-4">
+    <header className="bg-card border-b border-border px-3 sm:px-6 py-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h2 className="text-lg font-semibold text-gray-800 capitalize">
-            {getCurrentPageName()}
-          </h2>
-          <div className="flex items-center text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-            <MapPin className="h-4 w-4 mr-1" />
-            <span className="font-medium">📍 {branchDisplayName}</span>
+        <div className="flex items-center space-x-3">
+          {isMobile && onToggleSidebar && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={onToggleSidebar}
+              className="lg:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
+          <div>
+            <h2 className="text-lg sm:text-xl font-semibold text-foreground capitalize">
+              {getCurrentPageName()}
+            </h2>
+            <div className="flex items-center text-sm text-muted-foreground">
+              <MapPin className="h-3 w-3 mr-1" />
+              <span className="font-medium">{branchDisplayName}</span>
+            </div>
           </div>
         </div>
-        <div className="flex items-center space-x-4">
+        
+        <div className="flex items-center space-x-2 sm:space-x-4">
           <NotificationIcon unreadCount={0} />
         </div>
       </div>

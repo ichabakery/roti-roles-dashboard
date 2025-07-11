@@ -1,21 +1,31 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserBranch } from '@/hooks/useUserBranch';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  // Set sidebar to always be open for better UX
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const { user, logout } = useAuth();
   const { userBranch } = useUserBranch();
   const navigate = useNavigate();
+
+  // Close sidebar on mobile when screen size changes
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarOpen(false);
+    } else {
+      setSidebarOpen(true);
+    }
+  }, [isMobile]);
 
   const handleLogout = async () => {
     await logout();
@@ -30,25 +40,35 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar - Always expanded for better UX */}
+    <div className="min-h-screen bg-background flex relative">
+      {/* Mobile Overlay */}
+      {isMobile && sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      
+      {/* Sidebar */}
       <Sidebar 
-        sidebarOpen={true}  // Always keep sidebar open
+        sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
         user={user}
         onLogout={handleLogout}
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
         <TopBar 
           user={user}
           branchDisplayName={getBranchDisplayName()}
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          isMobile={isMobile}
         />
 
         {/* Page Content */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-3 sm:p-6">
           {children}
         </main>
       </div>

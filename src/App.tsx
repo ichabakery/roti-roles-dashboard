@@ -18,6 +18,7 @@ import Cashier from "./pages/Cashier";
 import Branches from "./pages/Branches";
 import Reports from "./pages/Reports";
 import Returns from "./pages/Returns";
+import Orders from "./pages/Orders";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -62,6 +63,11 @@ function App() {
               <Route path="/production" element={
                 <AuthGuard allowedRoles={['owner', 'admin_pusat', 'kepala_produksi', 'kasir_cabang']}>
                   <Production />
+                </AuthGuard>
+              } />
+              <Route path="/orders" element={
+                <AuthGuard allowedRoles={['owner', 'admin_pusat', 'kasir_cabang']}>
+                  <Orders />
                 </AuthGuard>
               } />
               <Route path="/cashier" element={

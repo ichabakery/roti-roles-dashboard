@@ -9,7 +9,8 @@ import {
   MapPin, 
   BarChart3, 
   Settings,
-  RotateCcw
+  RotateCcw,
+  ClipboardList
 } from 'lucide-react';
 
 export interface MenuItem {
@@ -49,6 +50,12 @@ export const menuItems: MenuItem[] = [
     href: '/production', 
     icon: Factory,
     roles: ['owner', 'admin_pusat', 'kepala_produksi', 'kasir_cabang']
+  },
+  { 
+    name: 'Pesanan', 
+    href: '/orders', 
+    icon: ClipboardList,
+    roles: ['owner', 'admin_pusat', 'kasir_cabang']
   },
   { 
     name: 'Kasir', 
