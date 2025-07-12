@@ -11,41 +11,16 @@ import { Badge } from '@/components/ui/badge';
 const Orders = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showNewOrderDialog, setShowNewOrderDialog] = useState(false);
 
-  const mockOrders = [
-    {
-      id: '1',
-      orderNumber: 'ORD-2025-001',
-      customerName: 'Ahmad Syahrul',
-      customerPhone: '081234567890',
-      branchName: 'Cabang Utama',
-      pickupBranch: 'Cabang Timur',
-      deliveryDate: '2025-01-15',
-      status: 'pending',
-      totalAmount: 150000,
-      paymentType: 'dp',
-      dpAmount: 50000,
-      items: [
-        { productName: 'Roti Tawar', quantity: 2, unitPrice: 25000 },
-        { productName: 'Kue Tart Coklat', quantity: 1, unitPrice: 100000 }
-      ]
-    },
-    {
-      id: '2',
-      orderNumber: 'ORD-2025-002',
-      customerName: 'Siti Aminah',
-      customerPhone: '082345678901',
-      branchName: 'Cabang Timur',
-      deliveryAddress: 'Jl. Merdeka No. 123',
-      deliveryDate: '2025-01-16',
-      status: 'confirmed',
-      totalAmount: 200000,
-      paymentType: 'cash_on_delivery',
-      items: [
-        { productName: 'Kue Ulang Tahun', quantity: 1, unitPrice: 200000 }
-      ]
-    }
-  ];
+  // Empty orders array - no mock data
+  const orders: any[] = [];
+
+  const handleCreateOrder = () => {
+    setShowNewOrderDialog(true);
+    // TODO: Implement order creation dialog
+    console.log('Create new order clicked');
+  };
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -78,7 +53,7 @@ const Orders = () => {
     });
   };
 
-  const filteredOrders = mockOrders.filter(order => {
+  const filteredOrders = orders.filter(order => {
     const matchesSearch = order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
@@ -94,7 +69,7 @@ const Orders = () => {
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Manajemen Pesanan</h1>
             <p className="text-muted-foreground">Kelola pesanan pelanggan dan jadwal pengiriman</p>
           </div>
-          <Button className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto" onClick={handleCreateOrder}>
             <Plus className="mr-2 h-4 w-4" />
             Buat Pesanan Baru
           </Button>
@@ -144,7 +119,12 @@ const Orders = () => {
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-center py-8">
-                    <p className="text-muted-foreground">Tidak ada pesanan ditemukan</p>
+                    <Plus className="mx-auto h-12 w-12 mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground mb-4">Belum ada pesanan</p>
+                    <Button onClick={handleCreateOrder}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Buat Pesanan Pertama
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -240,7 +220,7 @@ const Orders = () => {
                   <CardTitle className="text-sm font-medium">Total Pesanan</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">24</div>
+                  <div className="text-2xl font-bold">0</div>
                   <p className="text-xs text-muted-foreground">Bulan ini</p>
                 </CardContent>
               </Card>
@@ -249,7 +229,7 @@ const Orders = () => {
                   <CardTitle className="text-sm font-medium">Menunggu Konfirmasi</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">3</div>
+                  <div className="text-2xl font-bold">0</div>
                   <p className="text-xs text-muted-foreground">Perlu tindakan</p>
                 </CardContent>
               </Card>
@@ -258,7 +238,7 @@ const Orders = () => {
                   <CardTitle className="text-sm font-medium">Dalam Produksi</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">5</div>
+                  <div className="text-2xl font-bold">0</div>
                   <p className="text-xs text-muted-foreground">Sedang dikerjakan</p>
                 </CardContent>
               </Card>
@@ -267,7 +247,7 @@ const Orders = () => {
                   <CardTitle className="text-sm font-medium">Total Pendapatan</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(3500000)}</div>
+                  <div className="text-2xl font-bold">{formatCurrency(0)}</div>
                   <p className="text-xs text-muted-foreground">Bulan ini</p>
                 </CardContent>
               </Card>
