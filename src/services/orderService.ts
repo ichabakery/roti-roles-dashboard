@@ -7,29 +7,42 @@ export interface OrderItem {
   unitPrice: number;
 }
 
-export interface Order {
-  id?: string;
-  orderNumber: string;
+export interface OrderFormData {
   customerName: string;
   phoneNumber: string;
   orderDate: string;
   deliveryDate: string;
+  notes?: string;
+  items: OrderItem[];
+}
+
+export interface Order extends OrderFormData {
+  id?: string;
+  orderNumber: string;
   branchId: string;
   branchName: string;
   status: 'pending' | 'confirmed' | 'in_production' | 'ready' | 'completed' | 'cancelled';
-  notes?: string;
-  items: OrderItem[];
   totalAmount: number;
   createdAt?: string;
 }
 
 export const orderService = {
-  async createOrder(orderData: Omit<Order, 'id' | 'orderNumber' | 'status' | 'createdAt'>) {
-    // Generate order number (format: ORD-YYYYMMDD-XXXX)
-    const date = new Date();
-    const dateStr = date.toISOString().split('T')[0].replace(/-/g, '');
-    const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const orderNumber = `ORD-${dateStr}-${randomStr}`;
+  async createOrder(orderData: OrderFormData & { branchId: string, branchName: string }) {
+    try {
+      // Validate items
+      if (!orderData.items || orderData.items.length === 0) {
+        throw new Error('Pesanan harus memiliki minimal 1 item');
+      }
+
+      // Calculate total
+      const totalAmount = orderData.items.reduce((total, item) => 
+        total + (item.quantity * item.unitPrice), 0);
+
+      // Generate order number (format: ORD-YYYYMMDD-XXXX)
+      const date = new Date();
+      const dateStr = date.toISOString().split('T')[0].replace(/-/g, '');
+      const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const orderNumber = `ORD-${dateStr}-${randomStr}`;
 
     const newOrder = {
       ...orderData,
