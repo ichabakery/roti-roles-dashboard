@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { CreateOrderDialog } from '@/components/orders/CreateOrderDialog';
 import { useUserBranch } from '@/hooks/useUserBranch';
 import { useToast } from '@/hooks/use-toast';
+import { orderService, type Order } from '@/services/orderService';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -17,9 +18,32 @@ const Orders = () => {
   const [showNewOrderDialog, setShowNewOrderDialog] = useState(false);
   const { userBranch, loading: branchLoading } = useUserBranch();
   const { toast } = useToast();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Empty orders array - no mock data
-  const orders: any[] = [];
+  // Fetch orders when branch changes
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (!userBranch.branchId) return;
+      
+      try {
+        setLoading(true);
+        const data = await orderService.getOrders(userBranch.branchId);
+        setOrders(data);
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        toast({
+          title: "Gagal memuat pesanan",
+          description: "Terjadi kesalahan saat memuat daftar pesanan",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [userBranch.branchId, toast]);
 
   const handleCreateOrder = () => {
     // Check if user has branch access
@@ -44,15 +68,20 @@ const Orders = () => {
       const orderWithBranch = {
         ...orderData,
         branchId: userBranch.branchId,
-        branchName: userBranch.branchName
+        branchName: userBranch.branchName,
+        totalAmount: orderData.items.reduce((total: number, item: any) => 
+          total + (item.quantity * item.unitPrice), 0)
       };
 
-      // TODO: Implement order creation API call
-      console.log('Submitting order:', orderWithBranch);
+      // Save order to database
+      const savedOrder = await orderService.createOrder(orderWithBranch);
+      
+      // Update orders list
+      setOrders(prevOrders => [savedOrder, ...prevOrders]);
       
       toast({
         title: "Pesanan berhasil dibuat",
-        description: "Pesanan baru telah berhasil dibuat dan disimpan"
+        description: `Pesanan ${savedOrder.orderNumber} telah berhasil dibuat dan disimpan`
       });
 
       // Reset dialog
@@ -167,7 +196,16 @@ const Orders = () => {
           </TabsList>
 
           <TabsContent value="list" className="space-y-4">
-            {filteredOrders.length === 0 ? (
+            {loading ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto"></div>
+                    <p className="text-muted-foreground mt-4">Memuat pesanan...</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : filteredOrders.length === 0 ? (
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-center py-8">
