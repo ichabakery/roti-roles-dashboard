@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Search, Calendar, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { CreateOrderDialog } from '@/components/orders/CreateOrderDialog';
+import { useUserBranch } from '@/hooks/useUserBranch';
+import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -12,14 +15,56 @@ const Orders = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showNewOrderDialog, setShowNewOrderDialog] = useState(false);
+  const { userBranch, loading: branchLoading } = useUserBranch();
+  const { toast } = useToast();
 
   // Empty orders array - no mock data
   const orders: any[] = [];
 
   const handleCreateOrder = () => {
+    // Check if user has branch access
+    if (!userBranch.branchId) {
+      toast({
+        title: "Tidak bisa membuat pesanan",
+        description: "Akun Anda belum dikaitkan dengan cabang manapun. Silakan hubungi admin.",
+        variant: "destructive"
+      });
+      return;
+    }
     setShowNewOrderDialog(true);
-    // TODO: Implement order creation dialog
-    console.log('Create new order clicked');
+  };
+
+  const handleSubmitOrder = async (orderData: any) => {
+    try {
+      if (!userBranch.branchId) {
+        throw new Error('Tidak ada akses cabang');
+      }
+
+      // Add branch data to order
+      const orderWithBranch = {
+        ...orderData,
+        branchId: userBranch.branchId,
+        branchName: userBranch.branchName
+      };
+
+      // TODO: Implement order creation API call
+      console.log('Submitting order:', orderWithBranch);
+      
+      toast({
+        title: "Pesanan berhasil dibuat",
+        description: "Pesanan baru telah berhasil dibuat dan disimpan"
+      });
+
+      // Reset dialog
+      setShowNewOrderDialog(false);
+    } catch (error) {
+      console.error('Error creating order:', error);
+      toast({
+        title: "Gagal membuat pesanan",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan saat membuat pesanan",
+        variant: "destructive"
+      });
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -74,6 +119,13 @@ const Orders = () => {
             Buat Pesanan Baru
           </Button>
         </div>
+
+        {/* Create Order Dialog */}
+        <CreateOrderDialog
+          open={showNewOrderDialog}
+          onClose={() => setShowNewOrderDialog(false)}
+          onSubmit={handleSubmitOrder}
+        />
 
         {/* Filters */}
         <Card>
