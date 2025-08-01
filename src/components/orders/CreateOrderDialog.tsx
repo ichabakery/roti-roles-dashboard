@@ -16,10 +16,10 @@ interface CreateOrderDialogProps {
 export function CreateOrderDialog({ open, onClose, onSubmit }: CreateOrderDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<OrderFormData>({
-    customerName: '',
-    phoneNumber: '',
-    orderDate: new Date().toISOString().split('T')[0],
-    deliveryDate: '',
+    customer_name: '',
+    customer_phone: '',
+    order_date: new Date().toISOString().split('T')[0],
+    delivery_date: '',
     notes: '',
     items: []
   });
@@ -54,8 +54,8 @@ export function CreateOrderDialog({ open, onClose, onSubmit }: CreateOrderDialog
             <Label htmlFor="customerName">Nama Pelanggan</Label>
             <Input
               id="customerName"
-              value={formData.customerName}
-              onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
+              value={formData.customer_name}
+              onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
               required
             />
           </div>
@@ -63,8 +63,8 @@ export function CreateOrderDialog({ open, onClose, onSubmit }: CreateOrderDialog
             <Label htmlFor="phoneNumber">Nomor Telepon</Label>
             <Input
               id="phoneNumber"
-              value={formData.phoneNumber}
-              onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+              value={formData.customer_phone}
+              onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
               required
             />
           </div>
@@ -73,8 +73,8 @@ export function CreateOrderDialog({ open, onClose, onSubmit }: CreateOrderDialog
             <Input
               id="orderDate"
               type="date"
-              value={formData.orderDate}
-              onChange={(e) => setFormData({ ...formData, orderDate: e.target.value })}
+              value={formData.order_date}
+              onChange={(e) => setFormData({ ...formData, order_date: e.target.value })}
               required
             />
           </div>
@@ -83,8 +83,8 @@ export function CreateOrderDialog({ open, onClose, onSubmit }: CreateOrderDialog
             <Input
               id="deliveryDate"
               type="date"
-              value={formData.deliveryDate}
-              onChange={(e) => setFormData({ ...formData, deliveryDate: e.target.value })}
+              value={formData.delivery_date}
+              onChange={(e) => setFormData({ ...formData, delivery_date: e.target.value })}
               required
             />
           </div>

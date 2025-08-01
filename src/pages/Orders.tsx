@@ -11,6 +11,7 @@ import { orderService, type Order } from '@/services/orderService';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
 
 const Orders = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -64,24 +65,27 @@ const Orders = () => {
         throw new Error('Tidak ada akses cabang');
       }
 
+      const currentUser = await supabase.auth.getUser();
+      if (!currentUser.data.user) {
+        throw new Error('User tidak terautentikasi');
+      }
+
       // Add branch data to order
       const orderWithBranch = {
         ...orderData,
-        branchId: userBranch.branchId,
-        branchName: userBranch.branchName,
-        totalAmount: orderData.items.reduce((total: number, item: any) => 
-          total + (item.quantity * item.unitPrice), 0)
+        branch_id: userBranch.branchId,
+        created_by: currentUser.data.user.id,
       };
 
       // Save order to database
       const savedOrder = await orderService.createOrder(orderWithBranch);
       
-      // Update orders list
-      setOrders(prevOrders => [savedOrder, ...prevOrders]);
+      // Update orders list with proper type casting
+      setOrders(prevOrders => [savedOrder as Order, ...prevOrders]);
       
       toast({
         title: "Pesanan berhasil dibuat",
-        description: `Pesanan ${savedOrder.orderNumber} telah berhasil dibuat dan disimpan`
+        description: `Pesanan ${savedOrder.order_number} telah berhasil dibuat dan disimpan`
       });
 
       // Reset dialog
@@ -128,8 +132,8 @@ const Orders = () => {
   };
 
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         order.order_number.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -224,10 +228,10 @@ const Orders = () => {
                   <Card key={order.id} className="hover:shadow-md transition-shadow">
                     <CardHeader>
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                        <div>
-                          <CardTitle className="text-lg">{order.orderNumber}</CardTitle>
-                          <CardDescription>{order.customerName} • {order.customerPhone}</CardDescription>
-                        </div>
+                         <div>
+                           <CardTitle className="text-lg">{order.order_number}</CardTitle>
+                           <CardDescription>{order.customer_name} • {order.customer_phone}</CardDescription>
+                         </div>
                         <div className="flex items-center gap-2">
                           {getStatusBadge(order.status)}
                           <Button variant="outline" size="sm">
@@ -238,31 +242,20 @@ const Orders = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <p className="font-medium text-foreground">Cabang Pemesan</p>
-                          <p className="text-muted-foreground">{order.branchName}</p>
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">Pengambilan/Pengiriman</p>
-                          <p className="text-muted-foreground">
-                            {order.pickupBranch || order.deliveryAddress || 'Delivery'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">Tanggal Pengiriman</p>
-                          <p className="text-muted-foreground">{formatDate(order.deliveryDate)}</p>
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">Total Pembayaran</p>
-                          <p className="text-muted-foreground">
-                            {formatCurrency(order.totalAmount)}
-                            {order.paymentType === 'dp' && order.dpAmount && (
-                              <span className="block text-xs text-orange-600">
-                                DP: {formatCurrency(order.dpAmount)}
-                              </span>
-                            )}
-                          </p>
-                        </div>
+                         <div>
+                           <p className="font-medium text-foreground">Cabang Pemesan</p>
+                           <p className="text-muted-foreground">{order.branch_name || userBranch.branchName}</p>
+                         </div>
+                         <div>
+                           <p className="font-medium text-foreground">Tanggal Pengiriman</p>
+                           <p className="text-muted-foreground">{formatDate(order.delivery_date)}</p>
+                         </div>
+                         <div>
+                           <p className="font-medium text-foreground">Total Pembayaran</p>
+                           <p className="text-muted-foreground">
+                             {formatCurrency(order.total_amount)}
+                           </p>
+                         </div>
                       </div>
                       
                       {/* Order Items */}
