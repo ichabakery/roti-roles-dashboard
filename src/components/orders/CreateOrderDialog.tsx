@@ -105,17 +105,18 @@ export function CreateOrderDialog({ open, onClose, onSubmit }: CreateOrderDialog
                       placeholder="Nama Produk"
                     />
                   </div>
-                  <Input 
-                    type="number"
-                    className="w-20"
-                    value={item.quantity}
-                    onChange={(e) => {
-                      const newItems = [...formData.items];
-                      newItems[index] = { ...item, quantity: parseInt(e.target.value) || 0 };
-                      setFormData({ ...formData, items: newItems });
-                    }}
-                    min="1"
-                  />
+                   <Input 
+                     type="number"
+                     className="w-20"
+                     value={item.quantity}
+                     onChange={(e) => {
+                       const newItems = [...formData.items];
+                       newItems[index] = { ...item, quantity: parseInt(e.target.value) || 0 };
+                       setFormData({ ...formData, items: newItems });
+                     }}
+                     min="1"
+                     placeholder="Qty"
+                   />
                   <Input 
                     type="number"
                     className="w-32"
@@ -157,7 +158,7 @@ export function CreateOrderDialog({ open, onClose, onSubmit }: CreateOrderDialog
                 value={newItem.quantity}
                 onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })}
                 min="1"
-                placeholder="Jumlah"
+                placeholder="Qty"
               />
               <Input 
                 type="number"
