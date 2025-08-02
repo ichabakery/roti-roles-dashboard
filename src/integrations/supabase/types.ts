@@ -191,6 +191,7 @@ export type Database = {
       orders: {
         Row: {
           branch_id: string
+          branch_name: string | null
           created_at: string
           created_by: string
           customer_name: string
@@ -199,10 +200,12 @@ export type Database = {
           delivery_date: string
           dp_amount: number | null
           id: string
+          items: Json | null
           notes: string | null
           order_date: string
           order_number: string
           payment_type: string
+          phone_number: string | null
           pickup_branch_id: string | null
           remaining_amount: number | null
           status: string
@@ -211,6 +214,7 @@ export type Database = {
         }
         Insert: {
           branch_id: string
+          branch_name?: string | null
           created_at?: string
           created_by: string
           customer_name: string
@@ -219,10 +223,12 @@ export type Database = {
           delivery_date: string
           dp_amount?: number | null
           id?: string
+          items?: Json | null
           notes?: string | null
           order_date?: string
           order_number: string
           payment_type?: string
+          phone_number?: string | null
           pickup_branch_id?: string | null
           remaining_amount?: number | null
           status?: string
@@ -231,6 +237,7 @@ export type Database = {
         }
         Update: {
           branch_id?: string
+          branch_name?: string | null
           created_at?: string
           created_by?: string
           customer_name?: string
@@ -239,10 +246,12 @@ export type Database = {
           delivery_date?: string
           dp_amount?: number | null
           id?: string
+          items?: Json | null
           notes?: string | null
           order_date?: string
           order_number?: string
           payment_type?: string
+          phone_number?: string | null
           pickup_branch_id?: string | null
           remaining_amount?: number | null
           status?: string
