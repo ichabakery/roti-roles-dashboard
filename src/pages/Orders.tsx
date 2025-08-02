@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Search, Calendar, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { CreateOrderDialog } from '@/components/orders/CreateOrderDialog';
+import { EnhancedCreateOrderDialog } from '@/components/orders/EnhancedCreateOrderDialog';
 import { useUserBranch } from '@/hooks/useUserBranch';
 import { useToast } from '@/hooks/use-toast';
 import { orderService, type Order } from '@/services/orderService';
@@ -154,10 +154,11 @@ const Orders = () => {
         </div>
 
         {/* Create Order Dialog */}
-        <CreateOrderDialog
+        <EnhancedCreateOrderDialog
           open={showNewOrderDialog}
           onClose={() => setShowNewOrderDialog(false)}
           onSubmit={handleSubmitOrder}
+          currentBranchId={userBranch.branchId || ''}
         />
 
         {/* Filters */}
