@@ -188,6 +188,44 @@ export type Database = {
           },
         ]
       }
+      order_status_history: {
+        Row: {
+          changed_at: string | null
+          changed_by: string
+          id: string
+          new_status: string
+          notes: string | null
+          old_status: string | null
+          order_id: string
+        }
+        Insert: {
+          changed_at?: string | null
+          changed_by: string
+          id?: string
+          new_status: string
+          notes?: string | null
+          old_status?: string | null
+          order_id: string
+        }
+        Update: {
+          changed_at?: string | null
+          changed_by?: string
+          id?: string
+          new_status?: string
+          notes?: string | null
+          old_status?: string | null
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_status_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           branch_id: string
@@ -997,6 +1035,25 @@ export type Database = {
           quantity: number
           expiry_date: string
           days_until_expiry: number
+        }[]
+      }
+      get_orders_for_user: {
+        Args: { p_branch_id?: string }
+        Returns: {
+          id: string
+          order_number: string
+          branch_id: string
+          branch_name: string
+          customer_name: string
+          customer_phone: string
+          order_date: string
+          delivery_date: string
+          status: string
+          total_amount: number
+          notes: string
+          items: Json
+          created_at: string
+          created_by: string
         }[]
       }
       update_inventory: {

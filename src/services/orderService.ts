@@ -34,7 +34,7 @@ export interface Order {
 }
 
 export const orderService = {
-  async createOrder(orderData: OrderFormData & { branch_id: string, created_by: string }) {
+  async createOrder(orderData: OrderFormData & { branch_id: string, created_by: string, allowZeroStock?: boolean }) {
     try {
       // Validate items
       if (!orderData.items || orderData.items.length === 0) {
@@ -62,7 +62,10 @@ export const orderService = {
 
       const { data, error } = await supabase
         .from('orders')
-        .insert(newOrder)
+        .insert({
+          ...newOrder,
+          items: JSON.stringify(newOrder.items)
+        })
         .select()
         .single();
 
@@ -74,26 +77,102 @@ export const orderService = {
     }
   },
 
-  async getOrders(branch_id: string) {
+  async getOrders(branch_id?: string) {
+    try {
+      // Use the enhanced function for better owner access
+      const { data, error } = await supabase
+        .rpc('get_orders_for_user', { p_branch_id: branch_id || null });
+
+      if (error) throw error;
+      return data as Order[];
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      throw error;
+    }
+  },
+
+  async getOrderById(orderId: string) {
     const { data, error } = await supabase
       .from('orders')
       .select('*')
-      .eq('branch_id', branch_id)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data as Order[];
-  },
-
-  async updateOrderStatus(orderId: string, status: Order['status']) {
-    const { data, error } = await supabase
-      .from('orders')
-      .update({ status })
       .eq('id', orderId)
-      .select()
       .single();
 
     if (error) throw error;
+    
+    // Get branch name separately
+    const { data: branchData } = await supabase
+      .from('branches')
+      .select('name')
+      .eq('id', data.branch_id)
+      .single();
+    
+    return {
+      ...data,
+      branch_name: branchData?.name
+    } as Order;
+  },
+
+  async getOrderStatusHistory(orderId: string) {
+    const { data, error } = await supabase
+      .from('order_status_history')
+      .select('*')
+      .eq('order_id', orderId)
+      .order('changed_at', { ascending: false });
+
+    if (error) throw error;
     return data;
+  },
+
+  async updateOrderStatus(orderId: string, status: Order['status'], notes?: string) {
+    const { data, error } = await supabase
+      .from('orders')
+      .update({ 
+        status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', orderId)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    
+    // Get branch name separately  
+    const { data: branchData } = await supabase
+      .from('branches')
+      .select('name')
+      .eq('id', data.branch_id)
+      .single();
+    
+    return {
+      ...data,
+      branch_name: branchData?.name
+    } as Order;
+  },
+
+  async createProductionRequest(orderId: string, productId: string, quantity: number, branchId: string) {
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase
+        .from('production_requests')
+        .insert({
+          product_id: productId,
+          branch_id: branchId,
+          quantity_requested: quantity,
+          production_date: new Date().toISOString().split('T')[0],
+          notes: `Permintaan produksi dari pesanan ${orderId}`,
+          requested_by: user.user.id
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating production request:', error);
+      throw error;
+    }
   }
 };

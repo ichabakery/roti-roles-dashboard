@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Search, Calendar, Filter } from 'lucide-react';
+import { Plus, Search, Calendar, Filter, Eye } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { EnhancedCreateOrderDialog } from '@/components/orders/EnhancedCreateOrderDialog';
+import { OrderDetailDialog } from '@/components/orders/OrderDetailDialog';
 import { useUserBranch } from '@/hooks/useUserBranch';
 import { useToast } from '@/hooks/use-toast';
 import { orderService, type Order } from '@/services/orderService';
@@ -12,12 +13,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Orders = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showNewOrderDialog, setShowNewOrderDialog] = useState(false);
+  const [showOrderDetail, setShowOrderDetail] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const { userBranch, loading: branchLoading } = useUserBranch();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,11 +30,11 @@ const Orders = () => {
   // Fetch orders when branch changes
   useEffect(() => {
     const fetchOrders = async () => {
-      if (!userBranch.branchId) return;
-      
       try {
         setLoading(true);
-        const data = await orderService.getOrders(userBranch.branchId);
+        // Owner and admin can see all orders, kasir only their branch
+        const branchId = user?.role === 'owner' || user?.role === 'admin_pusat' ? undefined : userBranch.branchId;
+        const data = await orderService.getOrders(branchId);
         setOrders(data);
       } catch (error) {
         console.error('Error fetching orders:', error);
@@ -43,12 +48,14 @@ const Orders = () => {
       }
     };
 
-    fetchOrders();
-  }, [userBranch.branchId, toast]);
+    if (user) {
+      fetchOrders();
+    }
+  }, [userBranch.branchId, user?.role, user, toast]);
 
   const handleCreateOrder = () => {
-    // Check if user has branch access
-    if (!userBranch.branchId) {
+    // Check if user has branch access (except for owner who can create for any branch)
+    if (user?.role !== 'owner' && !userBranch.branchId) {
       toast({
         title: "Tidak bisa membuat pesanan",
         description: "Akun Anda belum dikaitkan dengan cabang manapun. Silakan hubungi admin.",
@@ -57,6 +64,19 @@ const Orders = () => {
       return;
     }
     setShowNewOrderDialog(true);
+  };
+
+  const handleViewOrderDetail = (orderId: string) => {
+    setSelectedOrderId(orderId);
+    setShowOrderDetail(true);
+  };
+
+  const handleOrderUpdate = (updatedOrder: Order) => {
+    setOrders(prevOrders => 
+      prevOrders.map(order => 
+        order.id === updatedOrder.id ? updatedOrder : order
+      )
+    );
   };
 
   const handleSubmitOrder = async (orderData: any) => {
@@ -161,6 +181,14 @@ const Orders = () => {
           currentBranchId={userBranch.branchId || ''}
         />
 
+        {/* Order Detail Dialog */}
+        <OrderDetailDialog
+          open={showOrderDetail}
+          onClose={() => setShowOrderDetail(false)}
+          orderId={selectedOrderId}
+          onOrderUpdate={handleOrderUpdate}
+        />
+
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
@@ -233,12 +261,17 @@ const Orders = () => {
                            <CardTitle className="text-lg">{order.order_number}</CardTitle>
                            <CardDescription>{order.customer_name} • {order.customer_phone}</CardDescription>
                          </div>
-                        <div className="flex items-center gap-2">
-                          {getStatusBadge(order.status)}
-                          <Button variant="outline" size="sm">
-                            Detail
-                          </Button>
-                        </div>
+                         <div className="flex items-center gap-2">
+                           {getStatusBadge(order.status)}
+                           <Button 
+                             variant="outline" 
+                             size="sm"
+                             onClick={() => handleViewOrderDetail(order.id!)}
+                           >
+                             <Eye className="h-4 w-4 mr-1" />
+                             Detail
+                           </Button>
+                         </div>
                       </div>
                     </CardHeader>
                     <CardContent>
