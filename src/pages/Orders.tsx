@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Search, Calendar, Filter, Eye } from 'lucide-react';
+import { Plus, Search, Calendar, Filter, Eye, BarChart3, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { EnhancedCreateOrderDialog } from '@/components/orders/EnhancedCreateOrderDialog';
 import { OrderDetailDialog } from '@/components/orders/OrderDetailDialog';
@@ -14,6 +14,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrderStatistics } from '@/hooks/useOrderStatistics';
+import OrderCalendar from '@/components/orders/OrderCalendar';
+import { BulkOrderActions } from '@/components/orders/BulkOrderActions';
+import { OrderExport } from '@/components/orders/OrderExport';
 
 const Orders = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -26,6 +30,12 @@ const Orders = () => {
   const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [showExport, setShowExport] = useState(false);
+  
+  // Get statistics for current branch and date range
+  const branchId = user?.role === 'owner' || user?.role === 'admin_pusat' ? undefined : userBranch.branchId;
+  const { statistics, loading: statsLoading } = useOrderStatistics(branchId);
 
   // Fetch orders when branch changes
   useEffect(() => {
@@ -167,10 +177,20 @@ const Orders = () => {
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Manajemen Pesanan</h1>
             <p className="text-muted-foreground">Kelola pesanan pelanggan dan jadwal pengiriman</p>
           </div>
-          <Button className="w-full sm:w-auto" onClick={handleCreateOrder}>
-            <Plus className="mr-2 h-4 w-4" />
-            Buat Pesanan Baru
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setShowBulkActions(!showBulkActions)}>
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Aksi Massal
+            </Button>
+            <Button variant="outline" onClick={() => setShowExport(!showExport)}>
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+            <Button className="w-full sm:w-auto" onClick={handleCreateOrder}>
+              <Plus className="mr-2 h-4 w-4" />
+              Buat Pesanan Baru
+            </Button>
+          </div>
         </div>
 
         {/* Create Order Dialog */}
@@ -219,6 +239,24 @@ const Orders = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Bulk Actions */}
+        {showBulkActions && (
+          <BulkOrderActions
+            orders={filteredOrders}
+            onOrdersUpdate={(updatedOrders) => {
+              setOrders(prevOrders => {
+                const orderMap = new Map(updatedOrders.map(o => [o.id!, o]));
+                return prevOrders.map(order => orderMap.get(order.id!) || order);
+              });
+            }}
+          />
+        )}
+
+        {/* Export Panel */}
+        {showExport && (
+          <OrderExport orders={filteredOrders} />
+        )}
 
         {/* Order Tabs */}
         <Tabs defaultValue="list" className="space-y-4">
@@ -316,59 +354,92 @@ const Orders = () => {
           </TabsContent>
 
           <TabsContent value="calendar">
-            <Card>
-              <CardHeader>
-                <CardTitle>Kalender Pesanan</CardTitle>
-                <CardDescription>View pesanan berdasarkan tanggal pengiriman</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <Calendar className="mx-auto h-12 w-12 mb-4" />
-                  <p>Kalender view akan segera hadir</p>
-                </div>
-              </CardContent>
-            </Card>
+            <OrderCalendar />
           </TabsContent>
 
           <TabsContent value="stats">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Total Pesanan</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">0</div>
-                  <p className="text-xs text-muted-foreground">Bulan ini</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Menunggu Konfirmasi</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">0</div>
-                  <p className="text-xs text-muted-foreground">Perlu tindakan</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Dalam Produksi</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">0</div>
-                  <p className="text-xs text-muted-foreground">Sedang dikerjakan</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Total Pendapatan</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(0)}</div>
-                  <p className="text-xs text-muted-foreground">Bulan ini</p>
-                </CardContent>
-              </Card>
-            </div>
+            {statsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Total Pesanan</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{statistics?.total_orders || 0}</div>
+                    <p className="text-xs text-muted-foreground">Semua waktu</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Menunggu Konfirmasi</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{statistics?.pending_orders || 0}</div>
+                    <p className="text-xs text-muted-foreground">Perlu tindakan</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Dalam Produksi</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{statistics?.in_production_orders || 0}</div>
+                    <p className="text-xs text-muted-foreground">Sedang dikerjakan</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Total Pendapatan</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{formatCurrency(statistics?.total_revenue || 0)}</div>
+                    <p className="text-xs text-muted-foreground">Pesanan selesai</p>
+                  </CardContent>
+                </Card>
+                
+                {/* Additional Stats Row */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Dikonfirmasi</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{statistics?.confirmed_orders || 0}</div>
+                    <p className="text-xs text-muted-foreground">Menunggu produksi</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Siap Diambil</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{statistics?.ready_orders || 0}</div>
+                    <p className="text-xs text-muted-foreground">Menunggu pickup</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Selesai</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{statistics?.completed_orders || 0}</div>
+                    <p className="text-xs text-muted-foreground">Berhasil diselesaikan</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Rata-rata Nilai</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{formatCurrency(statistics?.average_order_value || 0)}</div>
+                    <p className="text-xs text-muted-foreground">Per pesanan</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

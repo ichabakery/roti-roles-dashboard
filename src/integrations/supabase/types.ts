@@ -1018,6 +1018,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bulk_update_order_status: {
+        Args: { order_ids: string[]; new_status: string; notes?: string }
+        Returns: number
+      }
       generate_order_number: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1035,6 +1039,33 @@ export type Database = {
           quantity: number
           expiry_date: string
           days_until_expiry: number
+        }[]
+      }
+      get_order_calendar_data: {
+        Args: { p_year?: number; p_month?: number; p_branch_id?: string }
+        Returns: {
+          delivery_date: string
+          order_count: number
+          total_amount: number
+          status_breakdown: Json
+        }[]
+      }
+      get_order_statistics: {
+        Args: {
+          p_branch_id?: string
+          p_start_date?: string
+          p_end_date?: string
+        }
+        Returns: {
+          total_orders: number
+          pending_orders: number
+          confirmed_orders: number
+          in_production_orders: number
+          ready_orders: number
+          completed_orders: number
+          cancelled_orders: number
+          total_revenue: number
+          average_order_value: number
         }[]
       }
       get_orders_for_user: {
