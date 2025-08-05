@@ -84,7 +84,14 @@ export const orderService = {
         .rpc('get_orders_for_user', { p_branch_id: branch_id || null });
 
       if (error) throw error;
-      return data as Order[];
+      
+      // Parse items back to array if they're stringified
+      const parsedData = data.map((order: any) => ({
+        ...order,
+        items: typeof order.items === 'string' ? JSON.parse(order.items) : order.items
+      }));
+      
+      return parsedData as Order[];
     } catch (error) {
       console.error('Error fetching orders:', error);
       throw error;
@@ -107,8 +114,12 @@ export const orderService = {
       .eq('id', data.branch_id)
       .single();
     
+    // Parse items back to array if they're stringified
+    const parsedItems = typeof data.items === 'string' ? JSON.parse(data.items) : data.items;
+    
     return {
       ...data,
+      items: parsedItems,
       branch_name: branchData?.name
     } as Order;
   },
