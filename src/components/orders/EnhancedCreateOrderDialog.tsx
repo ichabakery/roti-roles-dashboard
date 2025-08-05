@@ -72,7 +72,7 @@ export function EnhancedCreateOrderDialog({
       setItems([...items, item]);
     }
 
-    // Check for stock issues
+    // Track stock issues for display but don't block orders
     if (item.quantity > item.availableStock) {
       setStockAlerts(prev => [
         ...prev.filter(alert => alert.productName !== item.productName),
@@ -124,9 +124,10 @@ export function EnhancedCreateOrderDialog({
       return;
     }
 
+    // Show confirmation for zero stock items but don't block
     if (stockAlerts.length > 0) {
       const confirm = window.confirm(
-        'Ada produk dengan stok tidak mencukupi. Lanjutkan dengan pesanan parsial?'
+        'Ada produk dengan stok tidak mencukupi. Sistem akan otomatis membuat permintaan produksi. Lanjutkan?'
       );
       if (!confirm) return;
     }
@@ -325,7 +326,7 @@ export function EnhancedCreateOrderDialog({
                         value={item.quantity}
                         onChange={(e) => updateItemQuantity(index, parseInt(e.target.value) || 1)}
                         min="1"
-                        max={item.availableStock}
+                        // Remove max limit to allow ordering more than available stock
                       />
                       <div className="text-right min-w-[100px]">
                         <div className="font-medium">

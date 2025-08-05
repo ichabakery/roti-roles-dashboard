@@ -147,7 +147,9 @@ export type Database = {
           notes: string | null
           order_id: string
           product_id: string
+          production_needed: boolean | null
           quantity: number
+          stock_status: string | null
           subtotal: number
           unit_price: number
         }
@@ -157,7 +159,9 @@ export type Database = {
           notes?: string | null
           order_id: string
           product_id: string
+          production_needed?: boolean | null
           quantity: number
+          stock_status?: string | null
           subtotal: number
           unit_price: number
         }
@@ -167,7 +171,9 @@ export type Database = {
           notes?: string | null
           order_id?: string
           product_id?: string
+          production_needed?: boolean | null
           quantity?: number
+          stock_status?: string | null
           subtotal?: number
           unit_price?: number
         }
@@ -239,9 +245,11 @@ export type Database = {
           dp_amount: number | null
           id: string
           items: Json | null
+          linked_transaction_id: string | null
           notes: string | null
           order_date: string
           order_number: string
+          payment_status: string | null
           payment_type: string
           phone_number: string | null
           pickup_branch_id: string | null
@@ -262,9 +270,11 @@ export type Database = {
           dp_amount?: number | null
           id?: string
           items?: Json | null
+          linked_transaction_id?: string | null
           notes?: string | null
           order_date?: string
           order_number: string
+          payment_status?: string | null
           payment_type?: string
           phone_number?: string | null
           pickup_branch_id?: string | null
@@ -285,9 +295,11 @@ export type Database = {
           dp_amount?: number | null
           id?: string
           items?: Json | null
+          linked_transaction_id?: string | null
           notes?: string | null
           order_date?: string
           order_number?: string
+          payment_status?: string | null
           payment_type?: string
           phone_number?: string | null
           pickup_branch_id?: string | null
@@ -297,6 +309,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_orders_linked_transaction"
+            columns: ["linked_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_branch_id_fkey"
             columns: ["branch_id"]

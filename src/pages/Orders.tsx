@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Search, Calendar, Filter, Eye, BarChart3, Download } from 'lucide-react';
+import { Plus, Search, Calendar, Filter, Eye, BarChart3, Download, Receipt } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { EnhancedCreateOrderDialog } from '@/components/orders/EnhancedCreateOrderDialog';
 import { OrderDetailDialog } from '@/components/orders/OrderDetailDialog';
@@ -18,6 +18,7 @@ import { useOrderStatistics } from '@/hooks/useOrderStatistics';
 import OrderCalendar from '@/components/orders/OrderCalendar';
 import { BulkOrderActions } from '@/components/orders/BulkOrderActions';
 import { OrderExport } from '@/components/orders/OrderExport';
+import { OrderReceiptDialog } from '@/components/orders/OrderReceiptDialog';
 
 const Orders = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,6 +33,8 @@ const Orders = () => {
   const [loading, setLoading] = useState(true);
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [showExport, setShowExport] = useState(false);
+  const [showReceiptDialog, setShowReceiptDialog] = useState(false);
+  const [selectedOrderForReceipt, setSelectedOrderForReceipt] = useState<Order | null>(null);
   
   // Get statistics for current branch and date range
   const branchId = user?.role === 'owner' || user?.role === 'admin_pusat' ? undefined : userBranch.branchId;
@@ -81,6 +84,11 @@ const Orders = () => {
     setShowOrderDetail(true);
   };
 
+  const handleShowReceipt = (order: Order) => {
+    setSelectedOrderForReceipt(order);
+    setShowReceiptDialog(true);
+  };
+
   const handleOrderUpdate = (updatedOrder: Order) => {
     setOrders(prevOrders => 
       prevOrders.map(order => 
@@ -118,8 +126,12 @@ const Orders = () => {
         description: `Pesanan ${savedOrder.order_number} telah berhasil dibuat dan disimpan`
       });
 
-      // Reset dialog
+      // Reset dialog and show receipt
       setShowNewOrderDialog(false);
+      
+      // Show receipt dialog for the newly created order
+      setSelectedOrderForReceipt(savedOrder as Order);
+      setShowReceiptDialog(true);
     } catch (error) {
       console.error('Error creating order:', error);
       toast({
@@ -207,6 +219,13 @@ const Orders = () => {
           onClose={() => setShowOrderDetail(false)}
           orderId={selectedOrderId}
           onOrderUpdate={handleOrderUpdate}
+        />
+
+        {/* Order Receipt Dialog */}
+        <OrderReceiptDialog
+          open={showReceiptDialog}
+          onClose={() => setShowReceiptDialog(false)}
+          order={selectedOrderForReceipt}
         />
 
         {/* Filters */}
@@ -301,14 +320,23 @@ const Orders = () => {
                          </div>
                          <div className="flex items-center gap-2">
                            {getStatusBadge(order.status)}
-                           <Button 
-                             variant="outline" 
-                             size="sm"
-                             onClick={() => handleViewOrderDetail(order.id!)}
-                           >
-                             <Eye className="h-4 w-4 mr-1" />
-                             Detail
-                           </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleShowReceipt(order)}
+                              className="mr-2"
+                            >
+                              <Receipt className="h-4 w-4 mr-1" />
+                              Bukti
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleViewOrderDetail(order.id!)}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Detail
+                            </Button>
                          </div>
                       </div>
                     </CardHeader>
