@@ -48,26 +48,26 @@ export const SalesReceipt: React.FC<SalesReceiptProps> = ({
   const isPartialPayment = paymentStatus === 'partial' || paymentStatus === 'pending';
   
   return (
-    <div className="w-[320px] p-4 bg-white rounded shadow text-xs text-gray-900 font-mono mx-auto">
+    <div className="w-[220px] p-2 bg-white rounded shadow text-xs text-gray-900 font-mono mx-auto" style={{ maxWidth: '58mm' }}>
       {/* Branding/logo */}
       {logoUrl && (
         <div className="flex justify-center mb-1">
           <img src={logoUrl} alt="Logo Toko" className="h-6 object-contain" />
         </div>
       )}
-      <div className="text-center font-bold text-base mb-1">{storeName}</div>
+      <div className="text-center font-bold text-sm mb-1">{storeName}</div>
       {address && (
-        <div className="text-center text-xs">{address}</div>
+        <div className="text-center text-xs mb-1">{address}</div>
       )}
       {phone && (
-        <div className="text-center text-xs">Telp: {phone}</div>
+        <div className="text-center text-xs mb-1">Telp: {phone}</div>
       )}
-      <div className="text-center text-xs mb-1">{branchName}</div>
-      <div className="flex justify-between text-xs">
-        <span>Kasir: {cashierName}</span>
-        <span>{new Date(transactionDate).toLocaleString("id-ID")}</span>
-      </div>
-      <div className="mb-2 text-xs">ID: {(transactionId || "").substring(0, 8)}</div>
+      <div className="text-center text-xs mb-2">{branchName}</div>
+      <div className="text-xs mb-1">Kasir: {cashierName}</div>
+      <div className="text-xs mb-1">{new Date(transactionDate).toLocaleString("id-ID")}</div>
+      {transactionId && (
+        <div className="mb-2 text-xs">ID: {transactionId.substring(0, 8)}</div>
+      )}
       <hr className="my-2 border-gray-300" />
       <table className="w-full mb-2">
         <thead>

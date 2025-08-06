@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Check, Printer, Download, Copy } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { SalesReceipt } from '../receipts/SalesReceipt';
+import { UnifiedThermalReceipt } from '../receipts/UnifiedThermalReceipt';
 import { salesReceiptToWhatsapp } from '@/utils/receiptWhatsapp';
 import { generateSalesReceiptPDF } from '@/utils/pdfService';
 
@@ -206,41 +207,31 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
           />
         </div>
         
-        <DialogFooter className="flex gap-2 flex-col sm:flex-row">
-          <div className="flex gap-2 w-full">
-            <Button 
-              variant="outline" 
-              onClick={() => onOpenChange(false)}
-              className="flex-1"
-            >
-              Tutup
-            </Button>
-            <Button 
-              onClick={handlePrint}
-              className="flex-1"
-              variant="outline"
-            >
-              <Printer className="mr-2 h-4 w-4" />
-              Cetak
-            </Button>
-            <Button 
-              onClick={handleDownloadPDF}
-              className="flex-1"
-              variant="outline"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              PDF
-            </Button>
-            <Button
-              onClick={handleCopyWA}
-              className="flex-1"
-              variant="outline"
-            >
-              <Copy className="mr-2 h-4 w-4" />
-              WA
-            </Button>
-          </div>
-        </DialogFooter>
+        <div className="space-y-3">
+          <UnifiedThermalReceipt
+            receiptData={{
+              type: 'transaction',
+              branchName,
+              cashierName,
+              transactionDate,
+              products: validatedProducts,
+              total,
+              received,
+              change,
+              transactionId
+            }}
+            showWhatsApp={true}
+            showPDF={true}
+          />
+          
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            className="w-full"
+          >
+            Tutup
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

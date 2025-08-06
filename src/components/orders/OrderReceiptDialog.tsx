@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Receipt, Phone, Printer, Download } from 'lucide-react';
 import { OrderReceiptWhatsApp } from './OrderReceiptWhatsApp';
 import { OrderReceiptPrinter } from './OrderReceiptPrinter';
+import { UnifiedThermalReceipt } from '../receipts/UnifiedThermalReceipt';
 import type { Order } from '@/services/orderService';
 
 interface OrderReceiptDialogProps {
@@ -172,9 +173,31 @@ export const OrderReceiptDialog: React.FC<OrderReceiptDialogProps> = ({
           )}
 
           {/* Actions */}
-          <div className="flex flex-col gap-2">
-            <OrderReceiptWhatsApp order={order} />
-            <OrderReceiptPrinter order={order} />
+          <div className="space-y-3">
+            <UnifiedThermalReceipt
+              receiptData={{
+                type: 'order',
+                branchName: order.branch_name || '',
+                cashierName: 'Sistem',
+                transactionDate: order.order_date,
+                products: order.items?.map((item: any) => ({
+                  name: item.productName,
+                  quantity: item.quantity,
+                  price: item.quantity * item.unitPrice
+                })) || [],
+                total: order.total_amount,
+                orderNumber: order.order_number,
+                customerName: order.customer_name,
+                customerPhone: order.customer_phone,
+                deliveryDate: order.delivery_date,
+                status: order.status,
+                paymentType: order.payment_type,
+                notes: order.notes
+              }}
+              showWhatsApp={true}
+              showPDF={true}
+            />
+            
             <Button variant="outline" onClick={onClose} className="w-full">
               Tutup
             </Button>

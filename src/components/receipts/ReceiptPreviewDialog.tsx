@@ -3,6 +3,7 @@ import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { SalesReceipt } from "./SalesReceipt";
 import { ThermalReceiptPrinter } from "./ThermalReceiptPrinter";
+import { UnifiedThermalReceipt } from "./UnifiedThermalReceipt";
 import { Button } from "@/components/ui/button";
 
 interface ReceiptProduct {
@@ -42,11 +43,14 @@ export const ReceiptPreviewDialog: React.FC<ReceiptPreviewDialogProps> = ({ open
           received={receipt.received}
           change={receipt.change}
           transactionId={receipt.id}
-          storeName="Toko Roti Makmur"
+          storeName="Icha Bakery"
+          address="Jl. Raya Bakery No. 123, Jakarta"
+          phone="021-12345678"
         />
-        <DialogFooter className="gap-2">
-          <ThermalReceiptPrinter
+        <DialogFooter className="gap-2 flex-col">
+          <UnifiedThermalReceipt
             receiptData={{
+              type: 'transaction',
               branchName: receipt.branch,
               cashierName: receipt.cashier,
               transactionDate: receipt.date,
@@ -54,13 +58,13 @@ export const ReceiptPreviewDialog: React.FC<ReceiptPreviewDialogProps> = ({ open
               total: receipt.total,
               received: receipt.received,
               change: receipt.change,
-              transactionId: receipt.id,
-              branding: {
-                storeName: "Toko Roti Makmur"
-              }
+              transactionId: receipt.id
             }}
+            showWhatsApp={true}
+            showPDF={true}
+            className="w-full"
           />
-          <Button onClick={() => onOpenChange(false)}>Tutup</Button>
+          <Button onClick={() => onOpenChange(false)} className="w-full">Tutup</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
