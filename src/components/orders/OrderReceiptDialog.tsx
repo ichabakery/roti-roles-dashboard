@@ -69,7 +69,9 @@ export const OrderReceiptDialog: React.FC<OrderReceiptDialogProps> = ({
           {/* Header Info */}
           <Card>
             <CardContent className="p-4 text-center">
-              <h2 className="text-lg font-bold">Toko Roti Makmur</h2>
+              <h2 className="text-lg font-bold">Icha Bakery</h2>
+              <p className="text-sm text-muted-foreground">Jl. Raya Bakery No. 123, Jakarta</p>
+              <p className="text-sm text-muted-foreground">Telp: 021-12345678</p>
               <p className="text-sm text-muted-foreground">{order.branch_name}</p>
               <p className="text-xs text-muted-foreground mt-1">
                 {new Date().toLocaleString('id-ID')}

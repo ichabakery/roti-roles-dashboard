@@ -53,7 +53,7 @@ export const ThermalReceiptPrinter: React.FC<ThermalReceiptPrinterProps> = ({
       // Store name/branding
       thermalPdf.setFontSize(12);
       thermalPdf.setFont("helvetica", "bold");
-      const storeName = receiptData.branding?.storeName || "Toko Roti Makmur";
+      const storeName = receiptData.branding?.storeName || "Icha Bakery";
       thermalPdf.text(storeName, thermalWidth/2, y, { align: 'center' });
       y += 6;
       

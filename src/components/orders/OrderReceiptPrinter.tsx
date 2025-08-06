@@ -73,7 +73,9 @@ export const OrderReceiptPrinter: React.FC<OrderReceiptPrinterProps> = ({ order 
       };
 
       // Header
-      addText('TOKO ROTI MAKMUR', 10, 'center', true);
+      addText('ICHA BAKERY', 10, 'center', true);
+      addText('Jl. Raya Bakery No. 123, Jakarta', 8, 'center');
+      addText('Telp: 021-12345678', 7, 'center');
       addText(order.branch_name || '', 8, 'center');
       addText(new Date().toLocaleString('id-ID'), 7, 'center');
       currentY += 2;
@@ -108,8 +110,8 @@ export const OrderReceiptPrinter: React.FC<OrderReceiptPrinterProps> = ({ order 
 
       order.items?.forEach((item: any) => {
         addText(`${item.productName}`, 8);
-        addText(`${item.quantity} x ${item.unitPrice.toLocaleString('id-ID')}`, 7);
-        addText(`= ${(item.quantity * item.unitPrice).toLocaleString('id-ID')}`, 7);
+        addText(`${item.quantity} x Rp ${item.unitPrice.toLocaleString('id-ID')}`, 7);
+        addText(`= Rp ${(item.quantity * item.unitPrice).toLocaleString('id-ID')}`, 7);
         currentY += 1;
       });
 
