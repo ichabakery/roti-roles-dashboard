@@ -110,7 +110,6 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
             value={quantity}
             onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
             min="1"
-            max={availableStock || undefined}
             placeholder="Qty"
           />
         </div>
@@ -118,7 +117,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
         <div className="flex items-end">
           <Button 
             onClick={handleAddItem}
-            disabled={!selectedProduct || quantity <= 0 || !isStockSufficient}
+            disabled={!selectedProduct || quantity <= 0}
             className="w-full"
           >
             Tambah
@@ -137,7 +136,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Produk ini sedang habis di cabang ini. Silakan pilih produk lain atau buat permintaan produksi.
+                Produk ini habis di cabang ini. Anda tetap bisa menambahkannya ke pesanan; sistem akan membuat permintaan produksi otomatis.
               </AlertDescription>
             </Alert>
           )}
@@ -146,7 +145,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Stok tidak mencukupi. Tersedia: {availableStock}, diminta: {quantity}
+                Stok tidak mencukupi. Tersedia: {availableStock}, diminta: {quantity}. Pesanan tetap bisa dilanjutkan; sistem akan membuat permintaan produksi otomatis.
               </AlertDescription>
             </Alert>
           )}

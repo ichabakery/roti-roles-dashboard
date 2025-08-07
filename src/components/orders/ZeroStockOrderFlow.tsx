@@ -193,8 +193,7 @@ export const ZeroStockOrderFlow: React.FC<ZeroStockOrderFlowProps> = ({
           {/* Information */}
           <Alert>
             <AlertDescription className="text-sm">
-              <strong>Catatan:</strong> Pesanan akan dibuat dengan status "pending" dan perlu dikonfirmasi
-              setelah stok tersedia. Pelanggan akan mendapat notifikasi update status pesanan.
+              <strong>Catatan:</strong> Pesanan akan dibuat dengan status "Menunggu Produksi" bila ada item perlu diproduksi (status sistem: in_production). Sistem otomatis membuat permintaan produksi untuk item yang kurang/habis.
             </AlertDescription>
           </Alert>
         </div>

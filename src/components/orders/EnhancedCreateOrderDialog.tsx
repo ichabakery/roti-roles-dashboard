@@ -134,18 +134,22 @@ export function EnhancedCreateOrderDialog({
 
     setIsSubmitting(true);
     try {
-      const orderData: OrderFormData & { 
-        pickup_branch_id: string;
-        payment_type: string;
-        dp_amount: number;
-        delivery_address: string;
-      } = {
+      const productionNotes = stockAlerts.length > 0
+        ? `Perlu diproduksi: ` + stockAlerts.map(a => `${a.productName} x ${Math.max(0, a.requested - a.available)}`).join(', ')
+        : '';
+
+      const orderData: any = {
         ...formData,
+        notes: formData.notes || productionNotes ? `${formData.notes}${formData.notes ? '\n' : ''}${productionNotes}` : formData.notes,
+        allowZeroStock: true,
         items: items.map(item => ({
           productId: item.productId,
           productName: item.productName,
           quantity: item.quantity,
-          unitPrice: item.unitPrice
+          unitPrice: item.unitPrice,
+          availableStock: item.availableStock,
+          productionNeeded: item.quantity > item.availableStock,
+          productionQuantity: Math.max(0, item.quantity - item.availableStock)
         }))
       };
 
