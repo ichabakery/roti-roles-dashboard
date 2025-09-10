@@ -94,7 +94,8 @@ export const orderService = {
         created_by: orderData.created_by
       };
 
-      const { data, error } = await supabase
+      // Create the order first
+      const { data: orderResult, error: orderError } = await supabase
         .from('orders')
         .insert({
           ...newOrder,
@@ -103,11 +104,51 @@ export const orderService = {
         .select()
         .single();
 
-      if (error) throw error;
-      return data;
-    } catch (error) {
+      if (orderError) {
+        console.error('Error creating order:', orderError);
+        throw new Error(`Gagal membuat pesanan: ${orderError.message}`);
+      }
+
+      // Create order items in normalized table for better data management
+      if (Array.isArray(orderData.items) && orderData.items.length > 0) {
+        const orderItems = orderData.items.map((item: any) => {
+          const availableStock = typeof item.availableStock === 'number' ? item.availableStock : 0;
+          const needsProduction = item.quantity > availableStock;
+          
+          let stockStatus = 'available';
+          if (availableStock === 0) {
+            stockStatus = 'out_of_stock';
+          } else if (item.quantity > availableStock) {
+            stockStatus = 'low_stock';
+          }
+
+          return {
+            order_id: orderResult.id,
+            product_id: item.productId,
+            quantity: item.quantity,
+            unit_price: item.unitPrice,
+            subtotal: item.quantity * item.unitPrice,
+            production_needed: needsProduction,
+            stock_status: stockStatus,
+            notes: needsProduction ? `Perlu produksi: ${item.quantity - availableStock} unit` : null
+          };
+        });
+
+        const { error: itemsError } = await supabase
+          .from('order_items')
+          .insert(orderItems);
+
+        if (itemsError) {
+          console.error('Error creating order items:', itemsError);
+          // Don't fail the entire order if order items fail, but log the error
+          console.warn('Order created but order items failed to create:', itemsError.message);
+        }
+      }
+
+      return orderResult;
+    } catch (error: any) {
       console.error('Error creating order:', error);
-      throw error;
+      throw new Error(error.message || 'Gagal membuat pesanan. Silakan coba lagi.');
     }
   },
 

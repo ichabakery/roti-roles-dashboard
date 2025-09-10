@@ -11,6 +11,7 @@ import { Loader2, X, MapPin, Package, CreditCard } from 'lucide-react';
 import { ProductSelector } from './ProductSelector';
 import { StockManagementAlert } from './StockManagementAlert';
 import { useBranches } from '@/hooks/useBranches';
+import { toast } from '@/hooks/use-toast';
 import type { OrderFormData } from '@/services/orderService';
 
 interface EnhancedOrderItem {
@@ -155,6 +156,15 @@ export function EnhancedCreateOrderDialog({
 
       await onSubmit(orderData);
       
+      // Show success message
+      toast({
+        variant: "default",
+        title: "Pesanan Berhasil Dibuat!",
+        description: stockAlerts.length > 0 
+          ? `Sistem otomatis membuat permintaan produksi untuk ${stockAlerts.length} item yang kurang stok.`
+          : "Pesanan berhasil disimpan.",
+      });
+      
       // Reset form
       setItems([]);
       setStockAlerts([]);
@@ -171,8 +181,13 @@ export function EnhancedCreateOrderDialog({
       });
       
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting order:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Gagal membuat pesanan. Silakan coba lagi.",
+      });
     } finally {
       setIsSubmitting(false);
     }
