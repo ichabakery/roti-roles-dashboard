@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -1038,7 +1038,7 @@ export type Database = {
     }
     Functions: {
       bulk_update_order_status: {
-        Args: { order_ids: string[]; new_status: string; notes?: string }
+        Args: { new_status: string; notes?: string; order_ids: string[] }
         Returns: number
       }
       generate_order_number: {
@@ -1052,69 +1052,69 @@ export type Database = {
       get_expiring_products: {
         Args: { days_ahead?: number }
         Returns: {
-          product_name: string
-          branch_name: string
           batch_number: string
-          quantity: number
-          expiry_date: string
+          branch_name: string
           days_until_expiry: number
+          expiry_date: string
+          product_name: string
+          quantity: number
         }[]
       }
       get_order_calendar_data: {
-        Args: { p_year?: number; p_month?: number; p_branch_id?: string }
+        Args: { p_branch_id?: string; p_month?: number; p_year?: number }
         Returns: {
           delivery_date: string
           order_count: number
-          total_amount: number
           status_breakdown: Json
+          total_amount: number
         }[]
       }
       get_order_statistics: {
         Args: {
           p_branch_id?: string
-          p_start_date?: string
           p_end_date?: string
+          p_start_date?: string
         }
         Returns: {
-          total_orders: number
-          pending_orders: number
+          average_order_value: number
+          cancelled_orders: number
+          completed_orders: number
           confirmed_orders: number
           in_production_orders: number
+          pending_orders: number
           ready_orders: number
-          completed_orders: number
-          cancelled_orders: number
+          total_orders: number
           total_revenue: number
-          average_order_value: number
         }[]
       }
       get_orders_for_user: {
         Args: { p_branch_id?: string }
         Returns: {
-          id: string
-          order_number: string
           branch_id: string
           branch_name: string
-          customer_name: string
-          customer_phone: string
-          order_date: string
-          delivery_date: string
-          status: string
-          total_amount: number
-          notes: string
-          items: Json
           created_at: string
           created_by: string
+          customer_name: string
+          customer_phone: string
+          delivery_date: string
+          id: string
+          items: Json
+          notes: string
+          order_date: string
+          order_number: string
+          status: string
+          total_amount: number
         }[]
       }
       update_inventory: {
         Args: {
-          p_product_id: string
           p_branch_id: string
-          p_quantity_change: number
           p_movement_type: string
+          p_performed_by: string
+          p_product_id: string
+          p_quantity_change: number
           p_reference_id: string
           p_reference_type: string
-          p_performed_by: string
         }
         Returns: undefined
       }
