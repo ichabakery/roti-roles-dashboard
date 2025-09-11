@@ -66,8 +66,9 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
         return (
           <Card 
             key={product.id}
-            onClick={() => product.stock !== 0 && onAddToCart(product)}
-            className={`relative cursor-pointer hover:shadow-md transition-shadow ${product.stock === 0 ? 'opacity-50 pointer-events-none' : ''}`}
+            onClick={() => onAddToCart(product)}
+            className={`relative cursor-pointer hover:shadow-md transition-shadow ${product.stock === 0 ? 'opacity-75 border-orange-200' : ''}`}
+            title={product.stock === 0 ? "Stok habis - Akan dibuat permintaan produksi" : "Tambah ke keranjang"}
           >
             <CardHeader className="p-4 pb-0">
               <div className="text-4xl mb-2 flex justify-center">

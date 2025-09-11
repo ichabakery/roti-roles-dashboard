@@ -80,9 +80,8 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                 </td>
                 <td className="py-2 px-4 text-right">
                   <button
-                    className="inline-flex items-center gap-1 px-3 py-1 rounded font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
-                    disabled={stock === 0}
-                    title="Tambah ke Keranjang"
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded font-medium bg-primary text-primary-foreground hover:bg-primary/90"
+                    title={stock === 0 ? "Tambah ke Keranjang (Stok Habis)" : "Tambah ke Keranjang"}
                     onClick={() => onAddToCart(product)}
                   >
                     <PlusCircle size={18} /> Tambah
