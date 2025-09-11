@@ -134,32 +134,22 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
             <span className="font-semibold">Rp {selectedProduct.price.toLocaleString()}</span>
           </div>
           
-          {availableStock === 0 && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Produk ini habis di cabang ini. Anda tetap bisa menambahkannya ke pesanan; sistem akan membuat permintaan produksi otomatis.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {availableStock > 0 && !isStockSufficient && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Stok tidak mencukupi. Tersedia: {availableStock}, diminta: {quantity}. Pesanan tetap bisa dilanjutkan; sistem akan membuat permintaan produksi otomatis.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {isStockSufficient && availableStock > 0 && (
-            <Alert>
-              <CheckCircle className="h-4 w-4" />
-              <AlertDescription>
-                Total: Rp {(selectedProduct.price * quantity).toLocaleString()}
-              </AlertDescription>
-            </Alert>
-          )}
+          <Alert>
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
+              Total: Rp {(selectedProduct.price * quantity).toLocaleString()}
+              {availableStock === 0 && (
+                <div className="mt-2 text-sm text-orange-600">
+                  ⚠️ Stok habis - akan otomatis dibuatkan permintaan produksi
+                </div>
+              )}
+              {availableStock > 0 && !isStockSufficient && (
+                <div className="mt-2 text-sm text-orange-600">
+                  ⚠️ Stok kurang ({availableStock} tersedia) - sisanya akan dibuatkan permintaan produksi
+                </div>
+              )}
+            </AlertDescription>
+          </Alert>
         </div>
       )}
     </div>
