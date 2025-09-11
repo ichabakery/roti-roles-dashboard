@@ -49,6 +49,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   const handleAddItem = () => {
     if (!selectedProduct || quantity <= 0) return;
 
+    // Always allow adding items regardless of stock - let the backend handle production requests
     onAddItem({
       productId: selectedProduct.id,
       productName: selectedProduct.name,
@@ -119,6 +120,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
             onClick={handleAddItem}
             disabled={!selectedProduct || quantity <= 0}
             className="w-full"
+            title={selectedProduct && availableStock === 0 ? "Tambah ke pesanan (akan membuat permintaan produksi)" : "Tambah ke pesanan"}
           >
             Tambah
           </Button>
