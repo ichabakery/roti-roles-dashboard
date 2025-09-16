@@ -143,6 +143,7 @@ export type Database = {
       order_items: {
         Row: {
           created_at: string
+          from_stock: number | null
           id: string
           notes: string | null
           order_id: string
@@ -151,10 +152,12 @@ export type Database = {
           quantity: number
           stock_status: string | null
           subtotal: number
+          to_produce: number | null
           unit_price: number
         }
         Insert: {
           created_at?: string
+          from_stock?: number | null
           id?: string
           notes?: string | null
           order_id: string
@@ -163,10 +166,12 @@ export type Database = {
           quantity: number
           stock_status?: string | null
           subtotal: number
+          to_produce?: number | null
           unit_price: number
         }
         Update: {
           created_at?: string
+          from_stock?: number | null
           id?: string
           notes?: string | null
           order_id?: string
@@ -175,6 +180,7 @@ export type Database = {
           quantity?: number
           stock_status?: string | null
           subtotal?: number
+          to_produce?: number | null
           unit_price?: number
         }
         Relationships: [
@@ -244,6 +250,7 @@ export type Database = {
           delivery_date: string
           dp_amount: number | null
           id: string
+          is_preorder: boolean | null
           items: Json | null
           linked_transaction_id: string | null
           notes: string | null
@@ -269,6 +276,7 @@ export type Database = {
           delivery_date: string
           dp_amount?: number | null
           id?: string
+          is_preorder?: boolean | null
           items?: Json | null
           linked_transaction_id?: string | null
           notes?: string | null
@@ -294,6 +302,7 @@ export type Database = {
           delivery_date?: string
           dp_amount?: number | null
           id?: string
+          is_preorder?: boolean | null
           items?: Json | null
           linked_transaction_id?: string | null
           notes?: string | null
@@ -537,6 +546,7 @@ export type Database = {
           created_at: string
           id: string
           notes: string | null
+          order_id: string | null
           produced_by: string | null
           product_id: string
           production_date: string
@@ -551,6 +561,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
+          order_id?: string | null
           produced_by?: string | null
           product_id: string
           production_date: string
@@ -565,6 +576,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
+          order_id?: string | null
           produced_by?: string | null
           product_id?: string
           production_date?: string
@@ -608,6 +620,13 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
           {

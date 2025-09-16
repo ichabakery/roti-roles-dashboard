@@ -331,40 +331,57 @@ export function EnhancedCreateOrderDialog({
               <CardContent className="p-4">
                 <h3 className="font-semibold mb-4">Item Pesanan</h3>
                 <div className="space-y-3">
-                  {items.map((item, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
-                      <div className="flex-1">
-                        <div className="font-medium">{item.productName}</div>
-                        <div className="text-sm text-muted-foreground">
-                          Stok tersedia: {item.availableStock}
-                        </div>
-                      </div>
-                      <Input
-                        type="number"
-                        className="w-20"
-                        value={item.quantity}
-                        onChange={(e) => updateItemQuantity(index, parseInt(e.target.value) || 1)}
-                        min="1"
-                        // Remove max limit to allow ordering more than available stock
-                      />
-                      <div className="text-right min-w-[100px]">
-                        <div className="font-medium">
-                          Rp {item.unitPrice.toLocaleString()}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          = Rp {(item.quantity * item.unitPrice).toLocaleString()}
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => removeItem(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+                  {items.map((item, index) => {
+                    const fromStock = Math.min(item.quantity, item.availableStock);
+                    const toProduce = Math.max(0, item.quantity - item.availableStock);
+                    
+                     return (
+                       <div key={index} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                         <div className="flex-1">
+                           <div className="font-medium">{item.productName}</div>
+                           <div className="flex flex-wrap gap-2 mt-2">
+                             {fromStock > 0 && (
+                               <Badge variant="secondary" className="text-xs">
+                                 Dari Stok: {fromStock}
+                               </Badge>
+                             )}
+                             {toProduce > 0 && (
+                               <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
+                                 Perlu Produksi: {toProduce}
+                               </Badge>
+                             )}
+                           </div>
+                           <div className="text-sm text-muted-foreground mt-1">
+                             Stok tersedia: {item.availableStock}
+                           </div>
+                         </div>
+                       <Input
+                         type="number"
+                         className="w-20"
+                         value={item.quantity}
+                         onChange={(e) => updateItemQuantity(index, parseInt(e.target.value) || 1)}
+                         min="1"
+                         // Remove max limit to allow ordering more than available stock
+                       />
+                       <div className="text-right min-w-[100px]">
+                         <div className="font-medium">
+                           Rp {item.unitPrice.toLocaleString()}
+                         </div>
+                         <div className="text-sm text-muted-foreground">
+                           = Rp {(item.quantity * item.unitPrice).toLocaleString()}
+                         </div>
+                       </div>
+                       <Button
+                         type="button"
+                         variant="destructive"
+                         size="icon"
+                         onClick={() => removeItem(index)}
+                       >
+                         <X className="h-4 w-4" />
+                       </Button>
+                     </div>
+                     );
+                   })}
                 </div>
                 
                 <div className="border-t pt-4 mt-4">
