@@ -147,7 +147,7 @@ export const ReturnsList: React.FC<ReturnsListProps> = ({ canApprove, userRole }
                     <div className="flex items-center gap-1">
                       <MapPin className="h-3 w-3 text-muted-foreground" />
                       <span className="text-sm">
-                        {(returnItem as any).branch?.name || 'Unknown'}
+                        {(returnItem as any).branches?.name || 'Unknown'}
                       </span>
                     </div>
                   </TableCell>
