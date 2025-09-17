@@ -20,13 +20,18 @@ export const ReturnStats = () => {
 
   const loadStats = async () => {
     try {
+      console.log('Loading return stats...');
       const returns = await fetchReturns();
+      console.log('Returns loaded for stats:', returns);
+      
       const statsData = {
         total: returns.length,
         pending: returns.filter(r => r.status === 'pending').length,
         approved: returns.filter(r => r.status === 'approved').length,
         rejected: returns.filter(r => r.status === 'rejected').length
       };
+      
+      console.log('Calculated stats:', statsData);
       setStats(statsData);
     } catch (error) {
       console.error('Error loading return stats:', error);

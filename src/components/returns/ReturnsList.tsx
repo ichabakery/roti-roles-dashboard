@@ -33,9 +33,14 @@ export const ReturnsList: React.FC<ReturnsListProps> = ({ canApprove, userRole }
   const loadReturns = async () => {
     try {
       setLoading(true);
+      console.log('Loading returns with userRole:', userRole, 'branchId:', userBranch.branchId);
+      
       // For kasir_cabang, only load returns from their branch
       const branchFilter = userRole === 'kasir_cabang' ? userBranch.branchId : undefined;
+      console.log('Using branch filter:', branchFilter);
+      
       const data = await fetchReturns(branchFilter);
+      console.log('Returns loaded:', data);
       setReturns(data);
     } catch (error) {
       console.error('Error loading returns:', error);

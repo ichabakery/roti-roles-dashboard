@@ -49,86 +49,71 @@ export function ProductionPanel() {
       case 'cancelled':
         return 'Dibatalkan';
       default:
-        return status.charAt(0).toUpperCase() + status.slice(1);
+        return status;
     }
   };
 
   const handleStatusChange = async (requestId: string, newStatus: string, quantityProduced?: number) => {
     try {
-      // Map new status values to existing ones for now
-      let mappedStatus = newStatus;
-      if (newStatus === 'siap') mappedStatus = 'completed';
-      if (newStatus === 'dikirim') mappedStatus = 'completed';
-      
-      await updateProductionRequestStatus(requestId, mappedStatus as any, quantityProduced);
-      
-      if (newStatus === 'siap') {
-        toast({
-          title: "Status Diperbarui",
-          description: "Notifikasi telah dikirim ke cabang bahwa produk sudah siap.",
-        });
-      } else if (newStatus === 'dikirim') {
-        toast({
-          title: "Status Diperbarui", 
-          description: "Produk telah dikirim ke cabang.",
-        });
-      }
-    } catch (error) {
+      await updateProductionRequestStatus(requestId, newStatus as any, quantityProduced);
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Gagal mengubah status produksi.",
+        title: 'Status Berhasil Diperbarui',
+        description: `Status permintaan produksi telah diubah menjadi ${getStatusLabel(newStatus)}`,
+      });
+    } catch (error) {
+      console.error('Error updating production request status:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal memperbarui status permintaan produksi',
+        variant: 'destructive',
       });
     }
   };
 
-  // Filter requests by branch and date
-  const filteredRequests = productionRequests.filter(request => {
-    const matchesBranch = !selectedBranch || request.branch_id === selectedBranch;
-    const matchesDate = !selectedDate || request.production_date === selectedDate;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
+  const filteredRequests = productionRequests.filter(req => {
+    const matchesBranch = selectedBranch ? req.branch_id === selectedBranch : true;
+    const matchesDate = selectedDate ? req.production_date === selectedDate : true;
     return matchesBranch && matchesDate;
   });
 
-  // Group by due date
-  const groupedRequests = filteredRequests.reduce((acc, request) => {
-    const date = request.production_date;
+  const groupedRequests = filteredRequests.reduce((acc, req) => {
+    const date = req.production_date;
     if (!acc[date]) {
       acc[date] = [];
     }
-    acc[date].push(request);
+    acc[date].push(req);
     return acc;
-  }, {} as Record<string, typeof productionRequests>);
-
-  if (loading) {
-    return <div className="text-center py-8">Memuat data produksi...</div>;
-  }
+  }, {} as Record<string, any[]>);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-4">
-        <Card className="flex-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Factory className="h-5 w-5" />
-              Panel Kepala Produksi
-            </CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
-
-      {/* Filters */}
+    <div className="space-y-4 md:space-y-6">
+      {/* Filter Controls */}
       <Card>
-        <CardContent className="p-4">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
+            <Factory className="h-5 w-5" />
+            Panel Produksi
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label>Filter Cabang</Label>
+              <Label htmlFor="branch-filter" className="text-sm">Filter Cabang</Label>
               <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Semua cabang" />
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Semua Cabang" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Semua cabang</SelectItem>
-                  {branches.map(branch => (
+                  <SelectItem value="">Semua Cabang</SelectItem>
+                  {branches.map((branch) => (
                     <SelectItem key={branch.id} value={branch.id}>
                       {branch.name}
                     </SelectItem>
@@ -137,11 +122,13 @@ export function ProductionPanel() {
               </Select>
             </div>
             <div>
-              <Label>Filter Tanggal Produksi</Label>
+              <Label htmlFor="date-filter" className="text-sm">Filter Tanggal</Label>
               <Input
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
+                placeholder="Pilih tanggal"
+                className="w-full"
               />
             </div>
           </div>
@@ -151,109 +138,95 @@ export function ProductionPanel() {
       {/* Production Requests */}
       {Object.keys(groupedRequests).length === 0 ? (
         <Card>
-          <CardContent className="p-8 text-center">
-            <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Tidak Ada Permintaan Produksi</h3>
-            <p className="text-muted-foreground">
-              Belum ada permintaan produksi yang perlu diproses.
+          <CardContent className="p-6 md:p-8 text-center">
+            <AlertCircle className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-base md:text-lg font-medium text-muted-foreground">
+              Tidak Ada Permintaan Produksi
+            </h3>
+            <p className="text-xs md:text-sm text-muted-foreground mt-2">
+              Belum ada permintaan produksi untuk filter yang dipilih
             </p>
           </CardContent>
         </Card>
       ) : (
-        Object.entries(groupedRequests)
-          .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
-          .map(([date, requests]) => (
-            <Card key={date}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  {format(new Date(date), 'EEEE, dd MMMM yyyy', { locale: id })}
-                  <Badge variant="secondary" className="ml-2">
-                    {requests.length} item
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+        Object.entries(groupedRequests).map(([date, requests]) => (
+          <Card key={date}>
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                <Calendar className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="text-sm md:text-base">
+                  Produksi {format(new Date(date), 'EEEE, dd MMMM yyyy', { locale: id })}
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 md:space-y-4">
                 {requests.map((request) => (
-                  <div key={request.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="font-semibold">{request.productName}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Cabang: {request.branchName} • Qty: {request.quantity_requested} unit
-                        </p>
-                        {request.notes && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {request.notes}
-                          </p>
-                        )}
+                  <div
+                    key={request.id}
+                    className="border rounded-lg p-3 md:p-4 bg-card"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex flex-col space-y-2">
+                        <div className="flex items-start gap-2">
+                          <Package className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                              <span className="font-medium text-sm md:text-base truncate">
+                                {request.productName || 'Unknown Product'}
+                              </span>
+                              <Badge className={`${getStatusColor(request.status)} text-xs self-start`}>
+                                {getStatusLabel(request.status)}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-xs md:text-sm text-muted-foreground space-y-1 ml-6">
+                          <p>Cabang: {request.branchName || 'Unknown Branch'}</p>
+                          <p>Jumlah: {request.quantity_requested} unit</p>
+                          {request.notes && <p>Catatan: {request.notes}</p>}
+                        </div>
                       </div>
-                      <Badge className={getStatusColor(request.status)}>
-                        {getStatusLabel(request.status)}
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {request.status === 'pending' && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleStatusChange(request.id, 'in_progress')}
-                        >
-                          Mulai Produksi
-                        </Button>
-                      )}
                       
-                      {request.status === 'in_progress' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleStatusChange(request.id, 'completed', request.quantity_requested)}
-                        >
-                          Tandai Selesai
-                        </Button>
-                      )}
-                      
-                      {request.status === 'completed' && (
-                        <>
+                      <div className="flex flex-col gap-2 pt-2">
+                        {request.status === 'pending' && (
                           <Button
                             size="sm"
-                            variant="secondary"
-                            onClick={() => handleStatusChange(request.id, 'siap')}
+                            onClick={() => handleStatusChange(request.id, 'in_progress')}
+                            className="w-full text-xs md:text-sm"
+                          >
+                            Mulai Produksi
+                          </Button>
+                        )}
+                        
+                        {request.status === 'in_progress' && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleStatusChange(request.id, 'completed')}
+                            className="w-full text-xs md:text-sm"
+                          >
+                            Tandai Selesai
+                          </Button>
+                        )}
+                        
+                        {request.status === 'completed' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleStatusChange(request.id, 'ready')}
+                            className="w-full text-xs md:text-sm"
                           >
                             Siap Dikirim
                           </Button>
-                          <span className="text-sm text-muted-foreground">
-                            Diproduksi: {request.quantity_produced || request.quantity_requested} unit
-                          </span>
-                        </>
-                      )}
-
-                      {(request.status === 'completed') && (
-                        <Button
-                          size="sm"
-                          variant="default"
-                          onClick={() => handleStatusChange(request.id, 'completed')}
-                        >
-                          Kirim ke Cabang
-                        </Button>
-                      )}
-                    </div>
-
-                    {request.status === 'completed' && (
-                      <div className="bg-green-50 border border-green-200 rounded p-3">
-                        <div className="flex items-center gap-2 text-green-800">
-                          <AlertCircle className="h-4 w-4" />
-                          <span className="text-sm font-medium">
-                            Produk siap untuk dikirim ke cabang
-                          </span>
-                        </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
-          ))
+              </div>
+            </CardContent>
+          </Card>
+        ))
       )}
     </div>
   );

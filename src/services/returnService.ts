@@ -53,6 +53,8 @@ export const createReturn = async (returnData: {
 };
 
 export const fetchReturns = async (branchId?: string): Promise<Return[]> => {
+  console.log('Fetching returns with branchId:', branchId);
+  
   let query = supabase
     .from('returns')
     .select(`
@@ -65,7 +67,7 @@ export const fetchReturns = async (branchId?: string): Promise<Return[]> => {
       status,
       notes,
       created_at,
-      branches!fk_returns_branch_id (
+      branches (
         id,
         name
       )
@@ -77,13 +79,18 @@ export const fetchReturns = async (branchId?: string): Promise<Return[]> => {
   }
 
   const { data, error } = await query;
-  if (error) throw error;
+  console.log('Returns query result:', { data, error });
   
-  // Type assertion to ensure correct typing with branch data
+  if (error) {
+    console.error('Error fetching returns:', error);
+    throw error;
+  }
+  
+  // Transform data properly
   return (data || []).map(returnItem => ({
     ...returnItem,
     status: returnItem.status as 'pending' | 'approved' | 'rejected',
-    branch: returnItem.branches
+    branches: returnItem.branches // Keep the foreign key relation properly
   })) as Return[];
 };
 
