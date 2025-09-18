@@ -31,7 +31,7 @@ export const useInventory = () => {
             .eq('user_id', user.id)
             .maybeSingle();
           
-          if (error) {
+          if (error && error.code !== 'PGRST116') {
             console.error('❌ [Inventory] Error fetching user branch:', error);
             setUserActualBranchId(null);
             return;
@@ -48,6 +48,9 @@ export const useInventory = () => {
           console.error('❌ [Inventory] Failed to fetch user branch:', error);
           setUserActualBranchId(null);
         }
+      } else {
+        // For non-kasir_cabang roles, clear branch data
+        setUserActualBranchId(null);
       }
     };
 

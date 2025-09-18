@@ -14,8 +14,16 @@ export const useUserBranch = () => {
   const [loading, setLoading] = useState(false);
 
   const fetchUserBranch = async () => {
-    if (!user?.id || user.role !== 'kasir_cabang') {
+    if (!user?.id) {
       setUserBranch({});
+      setLoading(false);
+      return;
+    }
+
+    // Only fetch branch data for kasir_cabang role
+    if (user.role !== 'kasir_cabang') {
+      setUserBranch({});
+      setLoading(false);
       return;
     }
 
@@ -33,10 +41,13 @@ export const useUserBranch = () => {
           )
         `)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        console.error('Error fetching user branch:', error);
+        // Don't log error as critical if user simply doesn't have branch assignment
+        if (error.code !== 'PGRST116') {
+          console.error('Error fetching user branch:', error);
+        }
         setUserBranch({});
         return;
       }

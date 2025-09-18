@@ -30,7 +30,7 @@ export const useCashierAuth = () => {
             .eq('user_id', user.id)
             .maybeSingle();
           
-          if (error) {
+          if (error && error.code !== 'PGRST116') {
             console.error('❌ [KASIR] Error fetching user branch:', error);
             setUserActualBranchId(null);
             return;
@@ -47,6 +47,9 @@ export const useCashierAuth = () => {
           console.error('❌ [KASIR] Failed to fetch user branch:', error);
           setUserActualBranchId(null);
         }
+      } else {
+        // For non-kasir_cabang roles, clear branch data
+        setUserActualBranchId(null);
       }
     };
 

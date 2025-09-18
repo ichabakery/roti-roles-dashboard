@@ -6,6 +6,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +19,7 @@ import { format, parseISO } from 'date-fns';
 import { Check, Clock, MoreVertical, Play, X } from 'lucide-react';
 import { ProductionRequest } from '@/hooks/useProduction';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ProductionRequestListProps {
   requests: ProductionRequest[];
@@ -44,6 +46,7 @@ const ProductionRequestList: React.FC<ProductionRequestListProps> = ({
   onViewDetails,
   userRole
 }) => {
+  const isMobile = useIsMobile();
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
@@ -86,92 +89,192 @@ const ProductionRequestList: React.FC<ProductionRequestListProps> = ({
     );
   }
 
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Produk</TableHead>
-          <TableHead>Cabang</TableHead>
-          <TableHead>Jumlah</TableHead>
-          <TableHead>Tanggal Produksi</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Aksi</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+  if (isMobile) {
+    return (
+      <div className="space-y-4">
         {requests.map((request) => (
-          <TableRow key={request.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onViewDetails(request)}>
-            <TableCell className="font-medium">{request.productName || 'Produk tidak diketahui'}</TableCell>
-            <TableCell>{request.branchName || 'Cabang tidak diketahui'}</TableCell>
-            <TableCell>{request.quantity_requested}</TableCell>
-            <TableCell>{formatDate(request.production_date)}</TableCell>
-            <TableCell>{getStatusBadge(request.status)}</TableCell>
-            <TableCell className="text-right">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" className="h-8 w-8 p-0">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={(e) => {
-                    e.stopPropagation();
-                    onViewDetails(request);
-                  }}>
-                    Lihat Detail
-                  </DropdownMenuItem>
+          <Card key={request.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onViewDetails(request)}>
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-start">
+                <CardTitle className="text-base font-medium">
+                  {request.productName || 'Produk tidak diketahui'}
+                </CardTitle>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
+                      onViewDetails(request);
+                    }}>
+                      Lihat Detail
+                    </DropdownMenuItem>
 
-                  {userRole === 'kepala_produksi' || userRole === 'owner' ? (
-                    <>
-                      {request.status === 'pending' && (
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation();
-                          onStatusChange(request.id, 'in_progress');
-                        }}>
-                          <Play className="mr-2 h-4 w-4" />
-                          Mulai Produksi
-                        </DropdownMenuItem>
-                      )}
-                      
-                      {request.status === 'in_progress' && (
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation();
-                          onStatusChange(request.id, 'completed', request.quantity_requested);
-                        }}>
-                          <Check className="mr-2 h-4 w-4" />
-                          Selesaikan Produksi
-                        </DropdownMenuItem>
-                      )}
-                      
-                      {(request.status === 'pending' || request.status === 'in_progress') && (
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation();
-                          onStatusChange(request.id, 'cancelled');
-                        }} className="text-destructive">
-                          <X className="mr-2 h-4 w-4" />
-                          Batalkan
-                        </DropdownMenuItem>
-                      )}
+                    {userRole === 'kepala_produksi' || userRole === 'owner' ? (
+                      <>
+                        {request.status === 'pending' && (
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            onStatusChange(request.id, 'in_progress');
+                          }}>
+                            <Play className="mr-2 h-4 w-4" />
+                            Mulai Produksi
+                          </DropdownMenuItem>
+                        )}
+                        
+                        {request.status === 'in_progress' && (
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            onStatusChange(request.id, 'completed', request.quantity_requested);
+                          }}>
+                            <Check className="mr-2 h-4 w-4" />
+                            Selesaikan Produksi
+                          </DropdownMenuItem>
+                        )}
+                        
+                        {(request.status === 'pending' || request.status === 'in_progress') && (
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            onStatusChange(request.id, 'cancelled');
+                          }} className="text-destructive">
+                            <X className="mr-2 h-4 w-4" />
+                            Batalkan
+                          </DropdownMenuItem>
+                        )}
 
-                      {userRole === 'owner' && (
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete(request.id);
-                        }} className="text-destructive">
-                          Hapus
-                        </DropdownMenuItem>
-                      )}
-                    </>
-                  ) : null}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </TableCell>
-          </TableRow>
+                        {userRole === 'owner' && (
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(request.id);
+                          }} className="text-destructive">
+                            Hapus
+                          </DropdownMenuItem>
+                        )}
+                      </>
+                    ) : null}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Cabang:</span>
+                  <span>{request.branchName || 'Cabang tidak diketahui'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Jumlah:</span>
+                  <span>{request.quantity_requested}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tanggal:</span>
+                  <span>{formatDate(request.production_date)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Status:</span>
+                  {getStatusBadge(request.status)}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         ))}
-      </TableBody>
-    </Table>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Produk</TableHead>
+            <TableHead>Cabang</TableHead>
+            <TableHead>Jumlah</TableHead>
+            <TableHead>Tanggal Produksi</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Aksi</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {requests.map((request) => (
+            <TableRow key={request.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onViewDetails(request)}>
+              <TableCell className="font-medium">{request.productName || 'Produk tidak diketahui'}</TableCell>
+              <TableCell>{request.branchName || 'Cabang tidak diketahui'}</TableCell>
+              <TableCell>{request.quantity_requested}</TableCell>
+              <TableCell>{formatDate(request.production_date)}</TableCell>
+              <TableCell>{getStatusBadge(request.status)}</TableCell>
+              <TableCell className="text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
+                      onViewDetails(request);
+                    }}>
+                      Lihat Detail
+                    </DropdownMenuItem>
+
+                    {userRole === 'kepala_produksi' || userRole === 'owner' ? (
+                      <>
+                        {request.status === 'pending' && (
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            onStatusChange(request.id, 'in_progress');
+                          }}>
+                            <Play className="mr-2 h-4 w-4" />
+                            Mulai Produksi
+                          </DropdownMenuItem>
+                        )}
+                        
+                        {request.status === 'in_progress' && (
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            onStatusChange(request.id, 'completed', request.quantity_requested);
+                          }}>
+                            <Check className="mr-2 h-4 w-4" />
+                            Selesaikan Produksi
+                          </DropdownMenuItem>
+                        )}
+                        
+                        {(request.status === 'pending' || request.status === 'in_progress') && (
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            onStatusChange(request.id, 'cancelled');
+                          }} className="text-destructive">
+                            <X className="mr-2 h-4 w-4" />
+                            Batalkan
+                          </DropdownMenuItem>
+                        )}
+
+                        {userRole === 'owner' && (
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(request.id);
+                          }} className="text-destructive">
+                            Hapus
+                          </DropdownMenuItem>
+                        )}
+                      </>
+                    ) : null}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
 
