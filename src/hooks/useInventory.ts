@@ -60,8 +60,8 @@ export const useInventory = () => {
   // Fetch branches based on user role
   const fetchBranches = useCallback(async () => {
     try {
-      // Gunakan userActualBranchId untuk kasir_cabang, bukan user.branchId
-      const effectiveBranchId = user?.role === 'kasir_cabang' ? userActualBranchId : user?.branchId;
+      // Only kasir_cabang needs userActualBranchId
+      const effectiveBranchId = user?.role === 'kasir_cabang' ? userActualBranchId : null;
       const branchData = await fetchBranchesForUser(user?.role || '', effectiveBranchId);
       setBranches(branchData);
       
@@ -116,8 +116,8 @@ export const useInventory = () => {
 
     setLoading(true);
     try {
-      // Gunakan userActualBranchId untuk kasir_cabang
-      const effectiveBranchId = user.role === 'kasir_cabang' ? userActualBranchId : user.branchId;
+      // Only kasir_cabang needs userActualBranchId
+      const effectiveBranchId = user.role === 'kasir_cabang' ? userActualBranchId : null;
       const inventoryData = await fetchInventoryData(user.role, effectiveBranchId, selectedBranch);
       setInventory(inventoryData);
     } catch (error: any) {
@@ -177,16 +177,20 @@ export const useInventory = () => {
   // Setup real-time updates
   useInventoryRealtime(user, fetchInventory);
 
-  // Initialize data - tunggu userActualBranchId untuk kasir_cabang
+  // Initialize data - hanya tunggu userActualBranchId untuk kasir_cabang
   useEffect(() => {
-    if (user && user.role !== 'kasir_cabang') {
-      // Untuk non-kasir, langsung fetch
-      fetchBranches();
-      fetchProducts();
-    } else if (user && user.role === 'kasir_cabang' && userActualBranchId !== null) {
-      // Untuk kasir, tunggu sampai userActualBranchId tersedia
-      fetchBranches();
-      fetchProducts();
+    if (user) {
+      if (user.role === 'kasir_cabang') {
+        // Untuk kasir, tunggu sampai userActualBranchId tersedia
+        if (userActualBranchId !== null) {
+          fetchBranches();
+          fetchProducts();
+        }
+      } else {
+        // Untuk role lain, langsung fetch
+        fetchBranches();
+        fetchProducts();
+      }
     }
   }, [user, userActualBranchId, fetchBranches, fetchProducts]);
 

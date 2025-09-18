@@ -29,7 +29,7 @@ export const useUserBranch = () => {
 
     try {
       setLoading(true);
-      console.log('Fetching branch data for user:', user.id);
+      console.log('🔍 [UserBranch] Fetching branch data for kasir_cabang:', user.id);
 
       const { data, error } = await supabase
         .from('user_branches')
@@ -46,7 +46,7 @@ export const useUserBranch = () => {
       if (error) {
         // Don't log error as critical if user simply doesn't have branch assignment
         if (error.code !== 'PGRST116') {
-          console.error('Error fetching user branch:', error);
+          console.error('❌ [UserBranch] Error fetching user branch:', error);
         }
         setUserBranch({});
         return;
@@ -57,12 +57,12 @@ export const useUserBranch = () => {
           branchId: data.branches.id,
           branchName: data.branches.name
         });
-        console.log('User branch data:', data.branches);
+        console.log('✅ [UserBranch] User branch data:', data.branches);
       } else {
         setUserBranch({});
       }
     } catch (error) {
-      console.error('Error in fetchUserBranch:', error);
+      console.error('❌ [UserBranch] Error in fetchUserBranch:', error);
       setUserBranch({});
     } finally {
       setLoading(false);

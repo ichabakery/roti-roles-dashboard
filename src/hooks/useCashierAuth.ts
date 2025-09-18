@@ -70,15 +70,23 @@ export const useCashierAuth = () => {
         setHasAccess(false);
       }
       setIsCheckingAccess(false);
-    } else if (user?.role) {
-      // Other roles have access by default
+    } else if (user?.role && ['owner', 'admin_pusat'].includes(user.role)) {
+      // Owner and admin_pusat have full access without branch restrictions
+      console.log('✅ [KASIR] Non-kasir user has full access:', user.role);
       setHasAccess(true);
+      setIsCheckingAccess(false);
+      setBranchError(null);
+    } else if (user?.role) {
+      // Other roles don't have kasir access
+      console.log('❌ [KASIR] Role not allowed for kasir:', user.role);
+      setBranchError('Role Anda tidak memiliki akses ke fitur kasir.');
+      setHasAccess(false);
       setIsCheckingAccess(false);
     }
   }, [user, userActualBranchId]);
 
   useEffect(() => {
-    if (user) {
+    if (user && ['owner', 'admin_pusat', 'kasir_cabang'].includes(user.role)) {
       fetchBranches();
     }
   }, [user]);
@@ -155,7 +163,7 @@ export const useCashierAuth = () => {
           setBranchError('Akun Anda belum dikaitkan dengan cabang manapun. Silakan hubungi administrator.');
           setHasAccess(false);
         }
-      } else {
+      } else if (['owner', 'admin_pusat'].includes(user.role)) {
         // For owner and admin_pusat, get all branches
         const { data, error } = await supabase
           .from('branches')
@@ -165,7 +173,6 @@ export const useCashierAuth = () => {
         if (error) {
           console.error('❌ [KASIR] Error fetching all branches:', error);
           setBranchError('Gagal memuat data cabang');
-          setHasAccess(false);
           return;
         }
 
@@ -173,13 +180,15 @@ export const useCashierAuth = () => {
         
         if (data && data.length > 0 && !selectedBranch) {
           setSelectedBranch(data[0].id);
-          setHasAccess(true);
         }
+      } else {
+        // Other roles don't have access to kasir
+        console.log('⚠️ [KASIR] Role not allowed:', user.role);
+        setBranches([]);
       }
     } catch (error: any) {
       console.error('❌ [KASIR] Error fetching branches:', error);
       setBranchError(`Gagal memuat data cabang: ${error.message}`);
-      setHasAccess(false);
     }
   };
 
