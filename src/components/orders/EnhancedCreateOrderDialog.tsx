@@ -180,6 +180,7 @@ export function EnhancedCreateOrderDialog({
         notes: ''
       });
       
+      console.log('Order submitted successfully, dialog will close');
       onClose();
     } catch (error: any) {
       console.error('Error submitting order:', error);

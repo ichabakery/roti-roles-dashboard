@@ -103,6 +103,11 @@ export const orderService = {
         availableStock: typeof i?.availableStock === 'number' ? i.availableStock : null
       }));
 
+      console.log('Creating order with data:', { ...newOrder, items: itemsPayload });
+      
+      // Add debugging logs
+      console.log('Creating order with data:', { ...newOrder, items: itemsPayload });
+      
       // Create the order first
       const { data: orderResult, error: orderError } = await supabase
         .from('orders')
@@ -112,6 +117,8 @@ export const orderService = {
         } as any)
         .select()
         .single();
+        
+      console.log('Order creation result:', { orderResult, orderError });
 
       if (orderError) {
         console.error('Error creating order:', orderError);

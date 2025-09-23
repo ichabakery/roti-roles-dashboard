@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -159,19 +159,12 @@ const ProductionDetailDialog: React.FC<ProductionDetailDialogProps> = ({
               )}
               
               {request.status === 'in_progress' && onCompleteRequest && (
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="number" 
-                    min="1"
-                    value={quantityProduced || request.quantity_requested}
-                    onChange={(e) => setQuantityProduced(Number(e.target.value))}
-                    className="w-20 px-2 py-1 border rounded text-sm"
-                    placeholder="Qty"
-                  />
-                  <Button onClick={() => onCompleteRequest(request.id, quantityProduced || request.quantity_requested)}>
-                    Selesaikan
-                  </Button>
-                </div>
+                <Button 
+                  onClick={() => onCompleteRequest(request.id, quantityProduced || request.quantity_requested)}
+                  disabled={!quantityProduced || quantityProduced <= 0}
+                >
+                  Selesaikan Produksi
+                </Button>
               )}
               
               {(request.status === 'pending' || request.status === 'in_progress') && onCancelRequest && (
