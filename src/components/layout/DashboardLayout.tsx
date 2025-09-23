@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserBranch } from '@/hooks/useUserBranch';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -13,6 +13,7 @@ interface DashboardLayoutProps {
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const isMobile = useIsMobile();
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const { user, logout } = useAuth();
   const { userBranch } = useUserBranch();
@@ -26,6 +27,13 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       setSidebarOpen(true);
     }
   }, [isMobile]);
+
+  // Close sidebar on mobile when route changes
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  }, [location.pathname, isMobile]);
 
   const handleLogout = async () => {
     await logout();

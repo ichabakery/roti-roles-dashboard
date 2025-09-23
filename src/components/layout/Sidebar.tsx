@@ -69,8 +69,14 @@ export const Sidebar = ({ sidebarOpen, setSidebarOpen, user, onLogout }: Sidebar
               <button
                 key={item.name}
                 onClick={() => {
-                  navigate(item.href);
-                  if (isMobile) setSidebarOpen(false);
+                  // For mobile, close sidebar immediately then navigate
+                  if (isMobile) {
+                    setSidebarOpen(false);
+                    // Small delay to ensure sidebar closes before navigation
+                    setTimeout(() => navigate(item.href), 100);
+                  } else {
+                    navigate(item.href);
+                  }
                 }}
                 className={cn(
                   "w-full flex items-center px-3 py-2 rounded-lg transition-colors text-left",
