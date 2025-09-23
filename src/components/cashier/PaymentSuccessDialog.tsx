@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Check, Printer, Download, Copy } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { SalesReceipt } from '../receipts/SalesReceipt';
-import { UnifiedThermalReceipt } from '../receipts/UnifiedThermalReceipt';
+import { ImprovedReceiptPrinter } from '../receipts/ImprovedReceiptPrinter';
 import { salesReceiptToWhatsapp } from '@/utils/receiptWhatsapp';
 import { generateSalesReceiptPDF } from '@/utils/pdfService';
 
@@ -16,6 +16,10 @@ interface Transaction {
   transaction_date: string;
   total_amount: number;
   payment_method: string;
+  payment_status: 'paid' | 'pending' | 'partial' | 'cancelled';
+  amount_paid: number | null;
+  amount_remaining: number | null;
+  due_date: string | null;
   notes: string | null;
   status: string;
   products?: {
@@ -208,9 +212,8 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
         </div>
         
         <div className="space-y-3">
-          <UnifiedThermalReceipt
+          <ImprovedReceiptPrinter
             receiptData={{
-              type: 'transaction',
               branchName,
               cashierName,
               transactionDate,
@@ -218,10 +221,12 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
               total,
               received,
               change,
-              transactionId
+              transactionId,
+              paymentStatus: transaction?.payment_status,
+              amountPaid: transaction?.amount_paid || undefined,
+              amountRemaining: transaction?.amount_remaining || undefined,
+              dueDate: transaction?.due_date || undefined
             }}
-            showWhatsApp={true}
-            showPDF={true}
           />
           
           <Button 

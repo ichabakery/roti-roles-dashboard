@@ -21,7 +21,7 @@ interface SalesReceiptProps {
   address?: string;
   phone?: string;
   // New props for payment status
-  paymentStatus?: 'paid' | 'pending' | 'partial';
+  paymentStatus?: 'paid' | 'pending' | 'partial' | 'cancelled';
   amountPaid?: number;
   amountRemaining?: number;
   dueDate?: string;
