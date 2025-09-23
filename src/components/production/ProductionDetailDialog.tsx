@@ -17,7 +17,7 @@ interface ProductionDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   request: ProductionRequest | null;
-  onCompleteRequest?: (id: string) => void;
+  onCompleteRequest?: (id: string, quantityProduced: number) => void;
   onCancelRequest?: (id: string) => void;
   onStartRequest?: (id: string) => void;
   userRole: string;
@@ -32,6 +32,7 @@ const ProductionDetailDialog: React.FC<ProductionDetailDialogProps> = ({
   onStartRequest,
   userRole
 }) => {
+  const [quantityProduced, setQuantityProduced] = useState<number>(0);
   if (!request) return null;
 
   const formatDate = (dateString: string) => {

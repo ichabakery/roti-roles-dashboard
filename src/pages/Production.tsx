@@ -98,7 +98,7 @@ const Production = () => {
         onOpenChange={setDetailDialogOpen}
         request={selectedRequest}
         onStartRequest={(id) => handleStatusChange(id, 'in_progress')}
-        onCompleteRequest={(id) => handleStatusChange(id, 'completed', selectedRequest?.quantity_requested)}
+        onCompleteRequest={(id, quantity) => handleStatusChange(id, 'completed', quantity)}
         onCancelRequest={(id) => handleStatusChange(id, 'cancelled')}
         userRole={user?.role || ''}
       />

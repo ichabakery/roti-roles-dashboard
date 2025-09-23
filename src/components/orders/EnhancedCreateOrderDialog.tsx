@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, X, MapPin, Package, CreditCard } from 'lucide-react';
-import { ProductSelector } from './ProductSelector';
+import { EnhancedProductSelector } from './EnhancedProductSelector';
 import { StockManagementAlert } from './StockManagementAlert';
 import { useBranches } from '@/hooks/useBranches';
 import { toast } from '@/hooks/use-toast';
@@ -320,7 +320,7 @@ export function EnhancedCreateOrderDialog({
           </Card>
 
           {/* Product Selection */}
-          <ProductSelector 
+          <EnhancedProductSelector 
             branchId={currentBranchId}
             onAddItem={handleAddItem}
           />

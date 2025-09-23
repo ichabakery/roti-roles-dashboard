@@ -73,7 +73,7 @@ export const useProduction = () => {
   const updateProductionRequestStatus = async (
     id: string, 
     status: 'pending' | 'in_progress' | 'completed' | 'cancelled',
-    quantity_produced?: number
+    quantity_produced: number = 0
   ) => {
     if (!user) {
       toast({
