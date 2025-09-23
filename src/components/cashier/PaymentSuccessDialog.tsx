@@ -69,7 +69,10 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
     products,
     total,
     cashierName,
-    branchName
+    branchName,
+    paymentStatus: transaction?.payment_status,
+    received,
+    change
   });
 
   const validatedProducts = products.map(product => ({

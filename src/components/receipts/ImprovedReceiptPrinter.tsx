@@ -38,6 +38,18 @@ export const ImprovedReceiptPrinter: React.FC<ImprovedReceiptPrinterProps> = ({
 }) => {
   const { toast } = useToast();
 
+  // Debug logging
+  console.log('🧾 ImprovedReceiptPrinter received data:', {
+    hasReceiptData: !!receiptData,
+    productsCount: receiptData?.products?.length || 0,
+    products: receiptData?.products,
+    total: receiptData?.total,
+    branchName: receiptData?.branchName,
+    cashierName: receiptData?.cashierName,
+    transactionId: receiptData?.transactionId,
+    paymentStatus: receiptData?.paymentStatus
+  });
+
   const generateOptimizedThermalPDF = async () => {
     try {
       const pdf = new jsPDF({
@@ -170,31 +182,271 @@ export const ImprovedReceiptPrinter: React.FC<ImprovedReceiptPrinterProps> = ({
     }
   };
 
+  const generateHTMLReceipt = () => {
+    console.log('🖨️ Generating HTML receipt with data:', receiptData);
+    
+    const formatCurrency = (amount: number) => {
+      return `Rp ${amount.toLocaleString('id-ID')}`;
+    };
+
+    const items = receiptData.products.map((product, index) => {
+      const unitPrice = product.price / product.quantity;
+      return `
+        <div class="item">
+          <div class="item-name">${index + 1}. ${product.name}</div>
+          <div class="item-detail">${product.quantity} x ${formatCurrency(unitPrice)} = ${formatCurrency(product.price)}</div>
+        </div>
+      `;
+    }).join('');
+
+    let paymentInfo = '';
+    if (receiptData.paymentStatus === 'partial' || receiptData.paymentStatus === 'pending') {
+      if (receiptData.amountPaid && receiptData.amountPaid > 0) {
+        paymentInfo += `<div class="payment-line">DP: ${formatCurrency(receiptData.amountPaid)}</div>`;
+      }
+      paymentInfo += `<div class="payment-line">SISA: ${formatCurrency(receiptData.amountRemaining || receiptData.total)}</div>`;
+      if (receiptData.dueDate) {
+        paymentInfo += `<div class="payment-line">Jatuh Tempo: ${new Date(receiptData.dueDate).toLocaleDateString('id-ID')}</div>`;
+      }
+      paymentInfo += `<div class="status-warning">*** BELUM LUNAS ***</div>`;
+    } else if (receiptData.received !== undefined && receiptData.change !== undefined) {
+      paymentInfo += `<div class="payment-line">Bayar: ${formatCurrency(receiptData.received)}</div>`;
+      paymentInfo += `<div class="payment-line">Kembalian: ${formatCurrency(receiptData.change)}</div>`;
+    }
+
+    const footerText = receiptData.paymentStatus === 'partial' || receiptData.paymentStatus === 'pending'
+      ? 'Terima kasih!<br>Harap lunasi pembayaran sesuai jadwal 🙏'
+      : 'Terima kasih!<br>Sampai jumpa lagi 🙏';
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Struk - ${receiptData.transactionId?.substring(0, 8)}</title>
+        <style>
+          @page {
+            size: 58mm auto;
+            margin: 2mm;
+          }
+          
+          body {
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            line-height: 1.2;
+            margin: 0;
+            padding: 0;
+            width: 54mm;
+            color: #000;
+            background: #fff;
+          }
+          
+          .receipt {
+            width: 100%;
+            text-align: center;
+          }
+          
+          .header {
+            border-bottom: 1px dashed #000;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+          }
+          
+          .store-name {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 2px;
+          }
+          
+          .store-info {
+            font-size: 8px;
+            margin-bottom: 1px;
+          }
+          
+          .branch-name {
+            font-size: 10px;
+            font-weight: bold;
+            margin-top: 3px;
+          }
+          
+          .transaction-info {
+            text-align: left;
+            font-size: 8px;
+            margin: 5px 0;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 5px;
+          }
+          
+          .receipt-title {
+            font-size: 12px;
+            font-weight: bold;
+            margin: 5px 0;
+          }
+          
+          .items {
+            text-align: left;
+            margin: 5px 0;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 5px;
+          }
+          
+          .items-title {
+            font-weight: bold;
+            font-size: 9px;
+            margin-bottom: 3px;
+          }
+          
+          .item {
+            margin-bottom: 2px;
+          }
+          
+          .item-name {
+            font-size: 9px;
+            font-weight: bold;
+          }
+          
+          .item-detail {
+            font-size: 8px;
+            margin-left: 5px;
+            color: #333;
+          }
+          
+          .total {
+            font-size: 12px;
+            font-weight: bold;
+            margin: 5px 0;
+            text-align: center;
+          }
+          
+          .payment-info {
+            font-size: 9px;
+            text-align: center;
+            margin: 3px 0;
+          }
+          
+          .payment-line {
+            margin: 2px 0;
+          }
+          
+          .status-warning {
+            font-weight: bold;
+            margin: 3px 0;
+          }
+          
+          .footer {
+            text-align: center;
+            font-size: 9px;
+            font-weight: bold;
+            margin-top: 8px;
+            border-top: 1px dashed #000;
+            padding-top: 5px;
+          }
+          
+          @media print {
+            body { 
+              -webkit-print-color-adjust: exact;
+              color-adjust: exact;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="receipt">
+          <div class="header">
+            <div class="store-name">ICHA BAKERY</div>
+            <div class="store-info">Jl. Raya Bakery No. 123</div>
+            <div class="store-info">Jakarta</div>
+            <div class="store-info">Telp: 021-12345678</div>
+            <div class="branch-name">${receiptData.branchName}</div>
+          </div>
+          
+          <div class="receipt-title">NOTA PENJUALAN</div>
+          
+          <div class="transaction-info">
+            <div>Kasir: ${receiptData.cashierName}</div>
+            <div>${new Date(receiptData.transactionDate).toLocaleString('id-ID')}</div>
+            ${receiptData.transactionId ? `<div>ID: ${receiptData.transactionId.substring(0, 8)}</div>` : ''}
+          </div>
+          
+          <div class="items">
+            <div class="items-title">DETAIL PEMBELIAN:</div>
+            ${items}
+          </div>
+          
+          <div class="total">TOTAL: ${formatCurrency(receiptData.total)}</div>
+          
+          <div class="payment-info">
+            ${paymentInfo}
+          </div>
+          
+          <div class="footer">
+            ${footerText}
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  };
+
   const handlePrint = async () => {
     try {
-      const pdf = await generateOptimizedThermalPDF();
+      console.log('🖨️ Starting print process with data:', receiptData);
       
-      // Open in new window for printing with thermal printer settings
-      const pdfBlob = pdf.output('blob');
-      const pdfUrl = URL.createObjectURL(pdfBlob);
+      // Validate receipt data
+      if (!receiptData || !receiptData.products || receiptData.products.length === 0) {
+        console.error('❌ Invalid receipt data:', receiptData);
+        toast({
+          title: "Error",
+          description: "Data struk tidak lengkap",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const htmlContent = generateHTMLReceipt();
+      console.log('📄 Generated HTML content length:', htmlContent.length);
       
-      const printWindow = window.open(pdfUrl, '_blank');
-      if (printWindow) {
-        printWindow.onload = () => {
+      // Create print window
+      const printWindow = window.open('', '_blank', 'width=300,height=600');
+      
+      if (!printWindow) {
+        console.error('❌ Could not open print window - popup blocked?');
+        toast({
+          title: "Error", 
+          description: "Popup diblokir browser. Mohon izinkan popup untuk mencetak.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Write content to print window
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      
+      // Wait for content to load then print
+      printWindow.onload = () => {
+        console.log('🖨️ Print window loaded, starting print...');
+        setTimeout(() => {
           printWindow.focus();
           printWindow.print();
-        };
-      }
+          
+          // Close window after printing (optional)
+          printWindow.onafterprint = () => {
+            printWindow.close();
+          };
+        }, 500);
+      };
       
       toast({
         title: "Berhasil",
-        description: "Struk thermal siap dicetak",
+        description: "Struk siap dicetak",
       });
+      
     } catch (error) {
-      console.error('Print error:', error);
+      console.error('❌ Print error:', error);
       toast({
         title: "Error",
-        description: "Gagal mencetak struk",
+        description: `Gagal mencetak struk: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive"
       });
     }
@@ -202,17 +454,33 @@ export const ImprovedReceiptPrinter: React.FC<ImprovedReceiptPrinterProps> = ({
 
   const handleDownloadPDF = async () => {
     try {
-      const pdf = await generateOptimizedThermalPDF();
-      pdf.save(`struk-${receiptData.transactionId?.substring(0, 8) || Date.now()}.pdf`);
+      console.log('📥 Downloading PDF with data:', receiptData);
       
+      // Validate receipt data
+      if (!receiptData || !receiptData.products || receiptData.products.length === 0) {
+        console.error('❌ Invalid receipt data for PDF:', receiptData);
+        toast({
+          title: "Error",
+          description: "Data struk tidak lengkap untuk PDF",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const pdf = await generateOptimizedThermalPDF();
+      const filename = `struk-${receiptData.transactionId?.substring(0, 8) || Date.now()}.pdf`;
+      pdf.save(filename);
+      
+      console.log('📄 PDF saved:', filename);
       toast({
         title: "Berhasil",
         description: "PDF struk berhasil diunduh",
       });
     } catch (error) {
+      console.error('❌ PDF download error:', error);
       toast({
         title: "Error", 
-        description: "Gagal mengunduh PDF",
+        description: `Gagal mengunduh PDF: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive"
       });
     }
