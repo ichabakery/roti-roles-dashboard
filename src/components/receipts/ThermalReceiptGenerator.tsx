@@ -97,12 +97,12 @@ export const ThermalReceiptGenerator: React.FC<ThermalReceiptGeneratorProps> = (
           
           body {
             font-family: 'Courier New', 'Consolas', 'Monaco', monospace !important;
-            font-size: 9px !important;
-            line-height: 1.1 !important;
+            font-size: 11px !important;
+            line-height: 1.3 !important;
             width: 58mm !important;
             max-width: 58mm !important;
             margin: 0 !important;
-            padding: 1mm !important;
+            padding: 2mm 3mm !important;
             background: white !important;
             color: black !important;
             -webkit-print-color-adjust: exact !important;
@@ -111,8 +111,9 @@ export const ThermalReceiptGenerator: React.FC<ThermalReceiptGeneratorProps> = (
           
           .thermal-receipt {
             width: 100% !important;
-            max-width: 56mm !important;
-            font-size: 9px !important;
+            max-width: 52mm !important;
+            font-size: 11px !important;
+            margin: 0 auto !important;
           }
           
           .center { text-align: center !important; }
@@ -121,99 +122,103 @@ export const ThermalReceiptGenerator: React.FC<ThermalReceiptGeneratorProps> = (
           
           .store-header {
             text-align: center !important;
-            margin-bottom: 2mm !important;
+            margin-bottom: 3mm !important;
             border-bottom: 1px dashed black !important;
-            padding-bottom: 1mm !important;
+            padding-bottom: 2mm !important;
           }
           
           .store-name {
-            font-size: 11px !important;
+            font-size: 14px !important;
             font-weight: bold !important;
-            margin-bottom: 0.5mm !important;
+            margin-bottom: 1mm !important;
           }
           
           .store-info {
-            font-size: 7px !important;
-            line-height: 1.0 !important;
+            font-size: 9px !important;
+            line-height: 1.2 !important;
+            margin-bottom: 0.5mm !important;
           }
           
           .branch-name {
-            font-size: 9px !important;
+            font-size: 11px !important;
             font-weight: bold !important;
-            margin-top: 1mm !important;
+            margin-top: 2mm !important;
           }
           
           .receipt-title {
             text-align: center !important;
-            font-size: 10px !important;
+            font-size: 12px !important;
             font-weight: bold !important;
-            margin: 1mm 0 !important;
+            margin: 2mm 0 !important;
           }
           
           .transaction-info {
-            font-size: 7px !important;
-            margin: 1mm 0 !important;
+            font-size: 9px !important;
+            margin: 2mm 0 !important;
             border-bottom: 1px dashed black !important;
-            padding-bottom: 1mm !important;
+            padding-bottom: 2mm !important;
+            line-height: 1.3 !important;
           }
           
           .items-section {
-            margin: 1mm 0 !important;
+            margin: 2mm 0 !important;
             border-bottom: 1px dashed black !important;
-            padding-bottom: 1mm !important;
+            padding-bottom: 2mm !important;
           }
           
           .items-title {
-            font-size: 8px !important;
+            font-size: 10px !important;
             font-weight: bold !important;
-            margin-bottom: 1mm !important;
+            margin-bottom: 2mm !important;
           }
           
           .item {
-            margin-bottom: 1mm !important;
+            margin-bottom: 1.5mm !important;
           }
           
           .item-name {
-            font-size: 8px !important;
+            font-size: 10px !important;
             font-weight: bold !important;
             word-wrap: break-word !important;
+            margin-bottom: 0.5mm !important;
           }
           
           .item-detail {
-            font-size: 7px !important;
-            margin-left: 2mm !important;
+            font-size: 9px !important;
+            margin-left: 3mm !important;
           }
           
           .total-section {
             text-align: center !important;
-            font-size: 10px !important;
+            font-size: 12px !important;
             font-weight: bold !important;
-            margin: 1mm 0 !important;
+            margin: 2mm 0 !important;
           }
           
           .payment-section {
             text-align: center !important;
-            font-size: 8px !important;
-            margin: 1mm 0 !important;
+            font-size: 10px !important;
+            margin: 2mm 0 !important;
           }
           
           .payment-line {
-            margin: 0.5mm 0 !important;
+            margin: 1mm 0 !important;
           }
           
           .status-warning {
             font-weight: bold !important;
-            font-size: 9px !important;
-            margin: 1mm 0 !important;
+            font-size: 11px !important;
+            margin: 2mm 0 !important;
           }
           
           .footer {
             text-align: center !important;
-            font-size: 8px !important;
+            font-size: 10px !important;
             font-weight: bold !important;
-            margin-top: 2mm !important;
+            margin-top: 3mm !important;
             border-top: 1px dashed black !important;
-            padding-top: 1mm !important;
+            padding-top: 2mm !important;
+            line-height: 1.3 !important;
           }
           
           /* Hide elements for thermal printing */
@@ -340,31 +345,31 @@ export const ThermalReceiptGenerator: React.FC<ThermalReceiptGeneratorProps> = (
   };
 
   const PreviewContent = () => (
-    <div className="max-w-[58mm] mx-auto bg-white p-2 font-mono text-xs leading-tight">
-      <div className="text-center border-b border-dashed border-gray-400 pb-2 mb-2">
-        <div className="font-bold text-sm">ICHA BAKERY</div>
-        <div className="text-xs">Jl. Raya Bakery No. 123</div>
-        <div className="text-xs">Jakarta</div>
-        <div className="text-xs">Telp: 021-12345678</div>
-        <div className="font-bold text-xs mt-1">{receiptData.branchName}</div>
+    <div className="max-w-[52mm] mx-auto bg-white p-2 font-mono text-sm leading-normal border border-gray-300">
+      <div className="text-center border-b border-dashed border-gray-400 pb-2 mb-3">
+        <div className="font-bold text-lg mb-1">ICHA BAKERY</div>
+        <div className="text-xs mb-0.5">Jl. Raya Bakery No. 123</div>
+        <div className="text-xs mb-0.5">Jakarta</div>
+        <div className="text-xs mb-0.5">Telp: 021-12345678</div>
+        <div className="font-bold text-sm mt-2">{receiptData.branchName}</div>
       </div>
       
-      <div className="text-center font-bold text-sm mb-2">NOTA PENJUALAN</div>
+      <div className="text-center font-bold text-base mb-2">NOTA PENJUALAN</div>
       
-      <div className="text-xs mb-2 border-b border-dashed border-gray-400 pb-2">
-        <div>Kasir: {receiptData.cashierName}</div>
-        <div>{new Date(receiptData.transactionDate).toLocaleString('id-ID')}</div>
+      <div className="text-xs mb-2 border-b border-dashed border-gray-400 pb-2 leading-relaxed">
+        <div className="mb-1">Kasir: {receiptData.cashierName}</div>
+        <div className="mb-1">{new Date(receiptData.transactionDate).toLocaleString('id-ID')}</div>
         {receiptData.transactionId && <div>ID: {receiptData.transactionId.substring(0, 8)}</div>}
       </div>
       
       <div className="mb-2 border-b border-dashed border-gray-400 pb-2">
-        <div className="font-bold text-xs mb-1">DETAIL PEMBELIAN:</div>
+        <div className="font-bold text-sm mb-2">DETAIL PEMBELIAN:</div>
         {receiptData.products.map((product, index) => {
           const unitPrice = product.price / product.quantity;
           return (
-            <div key={index} className="mb-1">
-              <div className="font-bold text-xs">{index + 1}. {product.name}</div>
-              <div className="text-xs ml-2">
+            <div key={index} className="mb-1.5">
+              <div className="font-bold text-sm mb-0.5">{index + 1}. {product.name}</div>
+              <div className="text-xs ml-3">
                 {product.quantity}x{unitPrice.toLocaleString('id-ID')}={product.price.toLocaleString('id-ID')}
               </div>
             </div>
@@ -372,29 +377,29 @@ export const ThermalReceiptGenerator: React.FC<ThermalReceiptGeneratorProps> = (
         })}
       </div>
       
-      <div className="text-center font-bold text-sm mb-2">
+      <div className="text-center font-bold text-base mb-2">
         TOTAL: Rp {receiptData.total.toLocaleString('id-ID')}
       </div>
       
       {(receiptData.paymentStatus === 'partial' || receiptData.paymentStatus === 'pending') ? (
-        <div className="text-center text-xs mb-2">
+        <div className="text-center text-sm mb-2">
           {receiptData.amountPaid && receiptData.amountPaid > 0 && (
-            <div>DP: Rp {receiptData.amountPaid.toLocaleString('id-ID')}</div>
+            <div className="mb-1">DP: Rp {receiptData.amountPaid.toLocaleString('id-ID')}</div>
           )}
-          <div>SISA: Rp {(receiptData.amountRemaining || receiptData.total).toLocaleString('id-ID')}</div>
+          <div className="mb-1">SISA: Rp {(receiptData.amountRemaining || receiptData.total).toLocaleString('id-ID')}</div>
           {receiptData.dueDate && (
-            <div>Tempo: {new Date(receiptData.dueDate).toLocaleDateString('id-ID')}</div>
+            <div className="mb-1">Tempo: {new Date(receiptData.dueDate).toLocaleDateString('id-ID')}</div>
           )}
-          <div className="font-bold mt-1">*** BELUM LUNAS ***</div>
+          <div className="font-bold text-sm mt-2">*** BELUM LUNAS ***</div>
         </div>
       ) : receiptData.received !== undefined && receiptData.change !== undefined && (
-        <div className="text-center text-xs mb-2">
-          <div>Bayar: Rp {receiptData.received.toLocaleString('id-ID')}</div>
+        <div className="text-center text-sm mb-2">
+          <div className="mb-1">Bayar: Rp {receiptData.received.toLocaleString('id-ID')}</div>
           <div>Kembali: Rp {receiptData.change.toLocaleString('id-ID')}</div>
         </div>
       )}
       
-      <div className="text-center text-xs font-bold mt-3 border-t border-dashed border-gray-400 pt-2">
+      <div className="text-center text-sm font-bold mt-4 border-t border-dashed border-gray-400 pt-2 leading-relaxed">
         {receiptData.paymentStatus === 'partial' || receiptData.paymentStatus === 'pending' ? (
           <>Terima kasih!<br />Mohon lunasi sesuai jadwal</>
         ) : (
