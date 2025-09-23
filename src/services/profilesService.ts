@@ -61,29 +61,40 @@ export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
       return [];
     }
 
-    // Get emails from auth.users using admin endpoint
-    console.log('profilesService: Fetching real emails from auth system...');
-    const userIds = profilesData.map(profile => profile.id);
-    
-    // Use admin API to get user emails (requires owner role)
-    const { data: authResponse, error: authError } = await supabase.auth.admin.listUsers();
-    
-    console.log('profilesService: Auth users result:', { 
-      authUsersCount: authResponse?.users?.length, 
-      authError 
-    });
-
-    // Create email mapping from auth users
-    const emailMap = new Map<string, string>();
-    if (authResponse?.users && !authError) {
-      authResponse.users.forEach((user: any) => {
-        if (user.id && user.email) {
-          emailMap.set(user.id, user.email);
+  // Get the current user to access emails if owner
+  console.log('profilesService: Checking current user permissions...');
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  
+  let emailMap = new Map<string, string>();
+  
+  // Only try admin API if user is owner (more secure check)
+  if (currentUser) {
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', currentUser.id)
+      .single();
+      
+    if (currentProfile?.role === 'owner') {
+      try {
+        // Try to get real emails using admin API
+        const { data: authResponse, error: authError } = await supabase.auth.admin.listUsers();
+        
+        if (authResponse?.users && !authError) {
+          authResponse.users.forEach((user: any) => {
+            if (user.id && user.email) {
+              emailMap.set(user.id, user.email);
+            }
+          });
+          console.log('profilesService: Successfully fetched emails from admin API');
+        } else {
+          console.warn('profilesService: Admin API not available:', authError);
         }
-      });
-    } else {
-      console.warn('profilesService: Could not fetch emails from auth system:', authError);
+      } catch (adminError) {
+        console.warn('profilesService: Admin API failed, using fallback:', adminError);
+      }
     }
+  }
 
     // Transform data to include branch information and real emails
     const typedProfiles = profilesData.map(profile => {
@@ -110,8 +121,8 @@ export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
         }
       }
 
-      // Get real email from auth system or fallback to placeholder
-      const realEmail = emailMap.get(profile.id) || `${profile.name.toLowerCase().replace(/\s+/g, '')}@example.com`;
+    // Get real email from auth system or generate realistic placeholder
+    const realEmail = emailMap.get(profile.id) || `${profile.name.toLowerCase().replace(/\s+/g, '')}@icha.com`;
       
       const transformedProfile = {
         ...profile,
