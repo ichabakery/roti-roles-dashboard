@@ -12,6 +12,13 @@ export interface Product {
   product_type: ProductType;
   has_expiry: boolean;
   default_expiry_days: number | null;
+  // Simple Inventory V1 fields (nullable, additive)
+  sku?: string | null;
+  uom?: string | null;
+  reorder_point?: number | null;
+  lead_time_days?: number | null;
+  shelf_life_days?: number | null;
+  cost_per_unit?: number | null;
 }
 
 export interface ProductPackage {
@@ -51,6 +58,47 @@ export interface StockMovement {
   performed_by: string | null;
   movement_date: string;
   created_at: string;
+}
+
+// Simple Inventory V1 Types
+export type StockAdjustmentType = 
+  | 'init' 
+  | 'adjust_in' 
+  | 'adjust_out' 
+  | 'production' 
+  | 'return' 
+  | 'transfer_in' 
+  | 'transfer_out' 
+  | 'sale';
+
+export interface StockAdjustment {
+  id: string;
+  product_id: string;
+  branch_id: string;
+  adjustment_type: StockAdjustmentType;
+  quantity_change: number;
+  reason: string | null;
+  reference_id: string | null;
+  reference_type: string | null;
+  performed_by: string | null;
+  adjustment_date: string;
+  created_at: string;
+}
+
+export type StockStatus = 'high' | 'medium' | 'low';
+
+export interface InventoryKPI {
+  activeSKUs: number;
+  totalUnits: number;
+  lowStockSKUs: number;
+  expiringItems: number;
+}
+
+export interface ProductWithInventoryInfo extends Product {
+  current_stock?: number;
+  stock_status?: StockStatus;
+  expiry_date_nearest?: string | null;
+  days_until_expiry?: number | null;
 }
 
 export interface Return {
