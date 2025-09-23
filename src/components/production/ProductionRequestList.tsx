@@ -50,13 +50,13 @@ const ProductionRequestList: React.FC<ProductionRequestListProps> = ({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Menunggu</Badge>;
+        return <Badge variant="secondary">Menunggu</Badge>;
       case 'in_progress':
-        return <Badge variant="outline" className="bg-blue-100 text-blue-800">Sedang Diproses</Badge>;
+        return <Badge variant="default">Sedang Diproses</Badge>;
       case 'completed':
-        return <Badge variant="outline" className="bg-green-100 text-green-800">Selesai</Badge>;
+        return <Badge variant="outline" className="bg-accent/50 text-accent-foreground border-accent">Selesai</Badge>;
       case 'cancelled':
-        return <Badge variant="outline" className="bg-red-100 text-red-800">Dibatalkan</Badge>;
+        return <Badge variant="destructive">Dibatalkan</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -91,17 +91,17 @@ const ProductionRequestList: React.FC<ProductionRequestListProps> = ({
 
   if (isMobile) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {requests.map((request) => (
-          <Card key={request.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onViewDetails(request)}>
-            <CardHeader className="pb-2">
+          <Card key={request.id} className="w-full cursor-pointer hover:bg-muted/50" onClick={() => onViewDetails(request)}>
+            <CardHeader className="pb-2 px-4 pt-4">
               <div className="flex justify-between items-start">
-                <CardTitle className="text-base font-medium">
+                <CardTitle className="text-base font-medium leading-tight pr-2">
                   {request.productName || 'Produk tidak diketahui'}
                 </CardTitle>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
+                    <Button variant="ghost" className="h-8 w-8 p-0 flex-shrink-0">
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -161,23 +161,25 @@ const ProductionRequestList: React.FC<ProductionRequestListProps> = ({
                 </DropdownMenu>
               </div>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 px-4 pb-4">
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Cabang:</span>
-                  <span>{request.branchName || 'Cabang tidak diketahui'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Jumlah:</span>
-                  <span>{request.quantity_requested}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Tanggal:</span>
-                  <span>{formatDate(request.production_date)}</span>
+                  <span className="text-right truncate ml-2">{request.branchName || 'Cabang tidak diketahui'}</span>
                 </div>
                 <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Jumlah:</span>
+                  <span className="text-right">{request.quantity_requested}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Tanggal:</span>
+                  <span className="text-right">{formatDate(request.production_date)}</span>
+                </div>
+                <div className="flex justify-between items-center pt-1">
                   <span className="text-muted-foreground">Status:</span>
-                  {getStatusBadge(request.status)}
+                  <div className="flex-shrink-0">
+                    {getStatusBadge(request.status)}
+                  </div>
                 </div>
               </div>
             </CardContent>

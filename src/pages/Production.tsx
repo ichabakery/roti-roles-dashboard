@@ -55,18 +55,19 @@ const Production = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Manajemen Produksi</h2>
-            <p className="text-muted-foreground">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Manajemen Produksi</h2>
+            <p className="text-muted-foreground text-sm sm:text-base">
               Kelola permintaan dan produksi roti
             </p>
           </div>
           
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setHistorySheetOpen(true)}>
+          <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
+            <Button variant="outline" onClick={() => setHistorySheetOpen(true)} className="w-full sm:w-auto">
               <Clock className="mr-2 h-4 w-4" />
-              Riwayat Produksi
+              <span className="hidden sm:inline">Riwayat Produksi</span>
+              <span className="sm:hidden">Riwayat</span>
             </Button>
             <NewProductionDialog 
               products={products}

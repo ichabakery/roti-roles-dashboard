@@ -52,15 +52,16 @@ const NewProductionDialog: React.FC<NewProductionDialogProps> = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button className="w-full sm:w-auto">
           <Coffee className="mr-2 h-4 w-4" />
-          Mulai Produksi Baru
+          <span className="hidden sm:inline">Mulai Produksi Baru</span>
+          <span className="sm:hidden">Produksi Baru</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] mx-4 w-[calc(100vw-2rem)] sm:w-full">
         <DialogHeader>
-          <DialogTitle>Permintaan Produksi Baru</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-lg sm:text-xl">Permintaan Produksi Baru</DialogTitle>
+          <DialogDescription className="text-sm">
             Isi detail permintaan produksi. Klik Simpan ketika selesai.
           </DialogDescription>
         </DialogHeader>
@@ -75,18 +76,19 @@ const NewProductionDialog: React.FC<NewProductionDialogProps> = ({
           onFieldChange={handleChange}
         />
 
-        <DialogFooter>
+        <DialogFooter className="flex flex-col sm:flex-row gap-2">
           <Button 
             variant="outline" 
             onClick={() => setOpen(false)}
             disabled={loading}
+            className="w-full sm:w-auto order-2 sm:order-1"
           >
             Batal
           </Button>
           <Button 
             onClick={handleSubmit} 
             disabled={!isFormValid() || loading}
-            className={loading ? "opacity-50 cursor-not-allowed" : ""}
+            className={`w-full sm:w-auto order-1 sm:order-2 ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             {loading ? "Menyimpan..." : "Simpan"}
           </Button>
