@@ -10,6 +10,7 @@ import { EnhancedInventoryTable } from '@/components/inventory/EnhancedInventory
 import { InventoryKPICards } from '@/components/inventory/InventoryKPICards';
 import { AddStockDialog } from '@/components/inventory/AddStockDialog';
 import { StockMonitoring } from '@/components/inventory/StockMonitoring';
+import { StockConsistencyChecker } from '@/components/inventory/StockConsistencyChecker';
 import { isInventoryV1Enabled, isDemoModeEnabled } from '@/utils/featureFlags';
 import { getInventoryKPIs } from '@/services/inventoryV1Service';
 import { resetDemoData } from '@/services/demoDataService';
@@ -142,6 +143,9 @@ const Inventory = () => {
         {showMonitoring && (
           <StockMonitoring />
         )}
+
+        {/* Stock Consistency Checker for Inventory V1 */}
+        {isInventoryV1Enabled() && <StockConsistencyChecker />}
         
         {/* Show KPI Cards for Inventory V1 or regular stats */}
         {isInventoryV1Enabled() ? (
