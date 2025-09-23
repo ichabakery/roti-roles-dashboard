@@ -345,61 +345,68 @@ export const ThermalReceiptGenerator: React.FC<ThermalReceiptGeneratorProps> = (
   };
 
   const PreviewContent = () => (
-    <div className="max-w-[52mm] mx-auto bg-white p-2 font-mono text-sm leading-normal border border-gray-300">
-      <div className="text-center border-b border-dashed border-gray-400 pb-2 mb-3">
-        <div className="font-bold text-lg mb-1">ICHA BAKERY</div>
-        <div className="text-xs mb-0.5">Jl. Raya Bakery No. 123</div>
-        <div className="text-xs mb-0.5">Jakarta</div>
-        <div className="text-xs mb-0.5">Telp: 021-12345678</div>
-        <div className="font-bold text-sm mt-2">{receiptData.branchName}</div>
+    <div className="max-w-[58mm] mx-auto bg-white font-mono text-[9px] leading-tight border border-gray-300" style={{ padding: '2mm 3mm', width: '58mm' }}>
+      {/* Store Header */}
+      <div className="text-center mb-2 pb-1" style={{ borderBottom: '1px dashed #000' }}>
+        <div className="font-bold text-sm mb-1">ICHA BAKERY</div>
+        <div className="text-[7px] leading-tight">Jl. Raya Bakery No. 123</div>
+        <div className="text-[7px] leading-tight">Jakarta</div>
+        <div className="text-[7px] leading-tight">Telp: 021-12345678</div>
+        <div className="font-bold text-[9px] mt-1">{receiptData.branchName}</div>
       </div>
       
-      <div className="text-center font-bold text-base mb-2">NOTA PENJUALAN</div>
+      {/* Receipt Title */}
+      <div className="text-center font-bold text-[10px] my-1">NOTA PENJUALAN</div>
       
-      <div className="text-xs mb-2 border-b border-dashed border-gray-400 pb-2 leading-relaxed">
-        <div className="mb-1">Kasir: {receiptData.cashierName}</div>
-        <div className="mb-1">{new Date(receiptData.transactionDate).toLocaleString('id-ID')}</div>
+      {/* Transaction Info */}
+      <div className="text-[7px] my-1 pb-1" style={{ borderBottom: '1px dashed #000' }}>
+        <div>Kasir: {receiptData.cashierName}</div>
+        <div>{new Date(receiptData.transactionDate).toLocaleString('id-ID')}</div>  
         {receiptData.transactionId && <div>ID: {receiptData.transactionId.substring(0, 8)}</div>}
       </div>
       
-      <div className="mb-2 border-b border-dashed border-gray-400 pb-2">
-        <div className="font-bold text-sm mb-2">DETAIL PEMBELIAN:</div>
+      {/* Items */}
+      <div className="my-1 pb-1" style={{ borderBottom: '1px dashed #000' }}>
+        <div className="font-bold text-[8px] mb-1">DETAIL PEMBELIAN:</div>
         {receiptData.products.map((product, index) => {
           const unitPrice = product.price / product.quantity;
           return (
-            <div key={index} className="mb-1.5">
-              <div className="font-bold text-sm mb-0.5">{index + 1}. {product.name}</div>
-              <div className="text-xs ml-3">
-                {product.quantity}x{unitPrice.toLocaleString('id-ID')}={product.price.toLocaleString('id-ID')}
+            <div key={index} className="mb-1">
+              <div className="font-bold text-[8px]">{index + 1}. {product.name}</div>
+              <div className="text-[7px] ml-2">
+                  {product.quantity}x{formatCurrency(unitPrice)}={formatCurrency(product.price)}
               </div>
             </div>
           );
         })}
       </div>
       
-      <div className="text-center font-bold text-base mb-2">
-        TOTAL: Rp {receiptData.total.toLocaleString('id-ID')}
+      {/* Total */}
+      <div className="text-center font-bold text-[10px] my-1">
+        TOTAL: {formatCurrency(receiptData.total)}
       </div>
       
+      {/* Payment Info */}
       {(receiptData.paymentStatus === 'partial' || receiptData.paymentStatus === 'pending') ? (
-        <div className="text-center text-sm mb-2">
+        <div className="text-center text-[8px] my-1">
           {receiptData.amountPaid && receiptData.amountPaid > 0 && (
-            <div className="mb-1">DP: Rp {receiptData.amountPaid.toLocaleString('id-ID')}</div>
+            <div>DP: {formatCurrency(receiptData.amountPaid)}</div>
           )}
-          <div className="mb-1">SISA: Rp {(receiptData.amountRemaining || receiptData.total).toLocaleString('id-ID')}</div>
+          <div>SISA: {formatCurrency(receiptData.amountRemaining || receiptData.total)}</div>
           {receiptData.dueDate && (
-            <div className="mb-1">Tempo: {new Date(receiptData.dueDate).toLocaleDateString('id-ID')}</div>
+            <div>Tempo: {new Date(receiptData.dueDate).toLocaleDateString('id-ID')}</div>
           )}
-          <div className="font-bold text-sm mt-2">*** BELUM LUNAS ***</div>
+          <div className="font-bold text-[9px] my-1">*** BELUM LUNAS ***</div>
         </div>
       ) : receiptData.received !== undefined && receiptData.change !== undefined && (
-        <div className="text-center text-sm mb-2">
-          <div className="mb-1">Bayar: Rp {receiptData.received.toLocaleString('id-ID')}</div>
-          <div>Kembali: Rp {receiptData.change.toLocaleString('id-ID')}</div>
+        <div className="text-center text-[8px] my-1">
+          <div>Bayar: {formatCurrency(receiptData.received)}</div>
+          <div>Kembali: {formatCurrency(receiptData.change)}</div>
         </div>
       )}
       
-      <div className="text-center text-sm font-bold mt-4 border-t border-dashed border-gray-400 pt-2 leading-relaxed">
+      {/* Footer */}
+      <div className="text-center text-[8px] font-bold mt-2 pt-1" style={{ borderTop: '1px dashed #000' }}>
         {receiptData.paymentStatus === 'partial' || receiptData.paymentStatus === 'pending' ? (
           <>Terima kasih!<br />Mohon lunasi sesuai jadwal</>
         ) : (
@@ -408,6 +415,10 @@ export const ThermalReceiptGenerator: React.FC<ThermalReceiptGeneratorProps> = (
       </div>
     </div>
   );
+
+  const formatCurrency = (amount: number) => {
+    return `Rp ${amount.toLocaleString('id-ID')}`;
+  };
 
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
