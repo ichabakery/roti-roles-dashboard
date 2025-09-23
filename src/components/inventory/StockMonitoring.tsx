@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
-import { reconcileStockData, fixStockDiscrepancies } from '@/utils/stockReconciliation';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle, RefreshCw, CheckCircle, XCircle, Shield, AlertCircle } from 'lucide-react';
+import { reconcileStockData, fixStockDiscrepancies, createCorrectiveAdjustment } from '@/utils/stockReconciliation';
 import { toast } from '@/hooks/use-toast';
 
 interface StockDiscrepancy {
@@ -15,6 +16,8 @@ interface StockDiscrepancy {
   current_stock: number;
   calculated_stock: number;
   difference: number;
+  has_initial_data: boolean;
+  confidence_level: 'high' | 'medium' | 'low';
 }
 
 export const StockMonitoring: React.FC = () => {
@@ -44,6 +47,18 @@ export const StockMonitoring: React.FC = () => {
   const fixAllDiscrepancies = async () => {
     if (discrepancies.length === 0) return;
     
+    // Check if there are low confidence discrepancies
+    const lowConfidenceCount = discrepancies.filter(d => d.confidence_level === 'low').length;
+    
+    if (lowConfidenceCount > 0) {
+      toast({
+        variant: "destructive",
+        title: "Peringatan",
+        description: `${lowConfidenceCount} item memiliki tingkat kepercayaan rendah. Periksa data referensi terlebih dahulu.`,
+      });
+      return;
+    }
+    
     setLoading(true);
     try {
       const success = await fixStockDiscrepancies(discrepancies);
@@ -53,6 +68,37 @@ export const StockMonitoring: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fixing discrepancies:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fixBolusatikKecil = async () => {
+    setLoading(true);
+    try {
+      // Hardcoded fix for the corrupted Bolu Batik Kecil at Singgahan
+      // Based on your report: was 68, sold 8, should be 60, but showed 77
+      await createCorrectiveAdjustment(
+        'd5966283-2e44-4186-84cf-cc2dbc12a34a', // Bolu batik kecil product ID
+        '6b5d9383-7c46-4134-8d62-988e74ff42c6', // Singgahan branch ID
+        60, // Correct stock should be 60
+        'Fix corrupted stock from reconciliation bug (68 - 8 sales = 60)'
+      );
+      
+      toast({
+        title: "Koreksi Berhasil",
+        description: "Stok Bolu Batik Kecil telah diperbaiki menjadi 60 pcs",
+      });
+      
+      // Re-run reconciliation
+      await runReconciliation();
+    } catch (error) {
+      console.error('Error fixing Bolu Batik Kecil:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Gagal memperbaiki stok Bolu Batik Kecil",
+      });
     } finally {
       setLoading(false);
     }
@@ -75,6 +121,19 @@ export const StockMonitoring: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Emergency Fix Button */}
+        <Alert className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="flex items-center justify-between">
+              <span>Deteksi bug reconciliation pada Bolu Batik Kecil - klik untuk perbaiki ke stok yang benar (60 pcs)</span>
+              <Button size="sm" onClick={fixBolusatikKecil} disabled={loading} variant="outline">
+                Fix Bolu Batik Kecil
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Button onClick={runReconciliation} disabled={loading}>
@@ -83,6 +142,7 @@ export const StockMonitoring: React.FC = () => {
             </Button>
             {discrepancies.length > 0 && (
               <Button onClick={fixAllDiscrepancies} disabled={loading} variant="outline">
+                <Shield className="mr-2 h-4 w-4" />
                 Perbaiki Semua
               </Button>
             )}
@@ -144,15 +204,37 @@ export const StockMonitoring: React.FC = () => {
         {discrepancies.length > 0 && (
           <div className="space-y-2">
             <h4 className="font-medium">Discrepancy Terdeteksi:</h4>
+            
+            {/* Warning for low confidence items */}
+            {discrepancies.some(d => d.confidence_level === 'low') && (
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Beberapa item memiliki tingkat kepercayaan rendah karena kurangnya data referensi awal. 
+                  Pastikan untuk membuat stock adjustment initial untuk produk-produk ini.
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <div className="max-h-60 overflow-y-auto space-y-2">
               {discrepancies.map((item, index) => (
                 <div key={index} className="p-3 border rounded-lg">
                   <div className="flex items-center justify-between">
-                    <div>
+                    <div className="flex items-center gap-2">
                       <span className="font-medium">{item.product_name}</span>
-                      <span className="text-sm text-muted-foreground ml-2">
+                      <span className="text-sm text-muted-foreground">
                         di {item.branch_name}
                       </span>
+                      <Badge 
+                        variant={
+                          item.confidence_level === 'high' ? 'default' : 
+                          item.confidence_level === 'medium' ? 'secondary' : 'destructive'
+                        }
+                        className="text-xs"
+                      >
+                        {item.confidence_level === 'high' ? 'Tinggi' : 
+                         item.confidence_level === 'medium' ? 'Sedang' : 'Rendah'}
+                      </Badge>
                     </div>
                     <Badge variant="destructive">
                       {item.difference > 0 ? '+' : ''}{item.difference}
@@ -160,6 +242,9 @@ export const StockMonitoring: React.FC = () => {
                   </div>
                   <div className="text-sm text-muted-foreground mt-1">
                     Current: {item.current_stock} | Expected: {item.calculated_stock}
+                    {!item.has_initial_data && (
+                      <span className="text-orange-600 ml-2">⚠️ Tidak ada data stok awal</span>
+                    )}
                   </div>
                 </div>
               ))}
