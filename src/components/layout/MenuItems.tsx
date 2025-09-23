@@ -23,7 +23,7 @@ export interface MenuItem {
 export const menuItems: MenuItem[] = [
   { 
     name: 'Dashboard', 
-    href: '/dashboard', 
+    href: '/', 
     icon: LayoutDashboard,
     roles: ['owner', 'admin_pusat', 'kepala_produksi', 'kasir_cabang']
   },
