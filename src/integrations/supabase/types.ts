@@ -642,11 +642,13 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          created_from_order: string | null
           default_expiry_days: number | null
           description: string | null
           has_expiry: boolean | null
           id: string
           image_url: string | null
+          is_custom: boolean | null
           name: string
           price: number
           product_type: Database["public"]["Enums"]["product_type"] | null
@@ -654,11 +656,13 @@ export type Database = {
         Insert: {
           active?: boolean
           created_at?: string
+          created_from_order?: string | null
           default_expiry_days?: number | null
           description?: string | null
           has_expiry?: boolean | null
           id?: string
           image_url?: string | null
+          is_custom?: boolean | null
           name: string
           price: number
           product_type?: Database["public"]["Enums"]["product_type"] | null
@@ -666,11 +670,13 @@ export type Database = {
         Update: {
           active?: boolean
           created_at?: string
+          created_from_order?: string | null
           default_expiry_days?: number | null
           description?: string | null
           has_expiry?: boolean | null
           id?: string
           image_url?: string | null
+          is_custom?: boolean | null
           name?: string
           price?: number
           product_type?: Database["public"]["Enums"]["product_type"] | null
@@ -1059,6 +1065,15 @@ export type Database = {
       bulk_update_order_status: {
         Args: { new_status: string; notes?: string; order_ids: string[] }
         Returns: number
+      }
+      create_custom_product: {
+        Args: {
+          p_description?: string
+          p_name: string
+          p_order_id?: string
+          p_price: number
+        }
+        Returns: string
       }
       generate_order_number: {
         Args: Record<PropertyKey, never>
