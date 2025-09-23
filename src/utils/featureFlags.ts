@@ -5,13 +5,13 @@
 
 export const FEATURE_FLAGS = {
   // Main feature flag for Simple Inventory V1
-  INVENTORY_SIMPLE_V1: process.env.INVENTORY_SIMPLE_V1 === 'true' || true, // Default true for development
+  INVENTORY_SIMPLE_V1: import.meta.env.VITE_INVENTORY_SIMPLE_V1 === 'true' || true, // Default true for development
   
   // Allow negative stock override with supervisor approval
-  ALLOW_NEGATIVE_STOCK_OVERRIDE: process.env.ALLOW_NEGATIVE_STOCK_OVERRIDE === 'true' || false,
+  ALLOW_NEGATIVE_STOCK_OVERRIDE: import.meta.env.VITE_ALLOW_NEGATIVE_STOCK_OVERRIDE === 'true' || false,
   
   // Demo mode with sample data
-  DEMO_MODE: process.env.DEMO_MODE === 'true' || false,
+  DEMO_MODE: import.meta.env.VITE_DEMO_MODE === 'true' || false,
 } as const;
 
 /**
