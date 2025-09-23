@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import jsPDF from 'jspdf';
 import { SalesReceipt } from './SalesReceipt';
+import { ThermalReceiptGenerator } from './ThermalReceiptGenerator';
 
 interface ReceiptProduct {
   name: string;
@@ -554,74 +555,99 @@ export const ImprovedReceiptPrinter: React.FC<ImprovedReceiptPrinterProps> = ({
   };
 
   return (
-    <div className={`flex flex-col gap-2 ${className}`}>
-      <div className="flex gap-2">
-        <Button
-          onClick={handlePrint}
-          className="flex-1 bg-primary hover:bg-primary/90"
-          size="sm"
-        >
-          <Printer className="h-4 w-4 mr-2" />
-          Cetak Struk
-        </Button>
-        
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Eye className="h-4 w-4" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Preview Struk</DialogTitle>
-            </DialogHeader>
-            <div className="max-h-[500px] overflow-y-auto">
-              <SalesReceipt
-                branchName={receiptData.branchName}
-                cashierName={receiptData.cashierName}
-                transactionDate={receiptData.transactionDate}
-                products={receiptData.products}
-                total={receiptData.total}
-                received={receiptData.received}
-                change={receiptData.change}
-                transactionId={receiptData.transactionId}
-                paymentStatus={receiptData.paymentStatus}
-                amountPaid={receiptData.amountPaid}
-                amountRemaining={receiptData.amountRemaining}
-                dueDate={receiptData.dueDate}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
+    <div className={`flex flex-col gap-3 ${className}`}>
+      {/* Thermal Print Section */}
+      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+        <div className="text-sm font-medium text-blue-900 mb-2">🖨️ Printer Thermal 58mm</div>
+        <ThermalReceiptGenerator 
+          receiptData={receiptData}
+          className="w-full"
+        />
       </div>
-      
-      <div className="flex gap-2">
-        <Button
-          onClick={handleDownloadPDF}
-          variant="outline"
-          size="sm"
-          className="flex-1"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Download PDF
-        </Button>
-        
-        <Button
-          onClick={handleSendWhatsApp}
-          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-          size="sm"
-        >
-          <Share className="h-4 w-4 mr-2" />
-          WhatsApp
-        </Button>
-        
-        <Button
-          onClick={handleCopyWhatsApp}
-          variant="outline"
-          size="sm"
-        >
-          <Copy className="h-4 w-4" />
-        </Button>
+
+      {/* Regular Print Options */}
+      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+        <div className="text-sm font-medium text-gray-900 mb-2">📄 Opsi Lainnya</div>
+        <div className="flex flex-col gap-2">
+          {/* Regular Print Button */}
+          <Button 
+            onClick={handlePrint}
+            size="sm"
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Printer className="h-4 w-4" />
+            Cetak Biasa
+          </Button>
+
+          {/* Preview Dialog */}
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <Eye className="h-4 w-4" />
+                Preview Struk
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Preview Struk</DialogTitle>
+              </DialogHeader>
+              <div className="max-h-[500px] overflow-y-auto">
+                <SalesReceipt
+                  branchName={receiptData.branchName}
+                  cashierName={receiptData.cashierName}
+                  transactionDate={receiptData.transactionDate}
+                  products={receiptData.products}
+                  total={receiptData.total}
+                  received={receiptData.received}
+                  change={receiptData.change}
+                  transactionId={receiptData.transactionId}
+                  paymentStatus={receiptData.paymentStatus}
+                  amountPaid={receiptData.amountPaid}
+                  amountRemaining={receiptData.amountRemaining}
+                  dueDate={receiptData.dueDate}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Download PDF */}
+          <Button 
+            onClick={handleDownloadPDF}
+            variant="outline" 
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Download PDF
+          </Button>
+        </div>
+      </div>
+
+      {/* WhatsApp Share Section */}
+      <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+        <div className="text-sm font-medium text-green-900 mb-2">💬 Bagikan WhatsApp</div>
+        <div className="flex gap-2">
+          <Button 
+            onClick={handleCopyWhatsApp}
+            variant="outline" 
+            size="sm"
+            className="flex items-center gap-2 flex-1"
+          >
+            <Copy className="h-4 w-4" />
+            Copy WA
+          </Button>
+          
+          <Button 
+            onClick={handleSendWhatsApp}
+            variant="outline" 
+            size="sm"
+            className="flex items-center gap-2 flex-1"
+          >
+            <Share className="h-4 w-4" />
+            Kirim WA
+          </Button>
+        </div>
       </div>
     </div>
   );
