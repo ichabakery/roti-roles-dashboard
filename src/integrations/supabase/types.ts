@@ -644,6 +644,7 @@ export type Database = {
       products: {
         Row: {
           active: boolean
+          cost_per_unit: number | null
           created_at: string
           created_from_order: string | null
           default_expiry_days: number | null
@@ -652,12 +653,18 @@ export type Database = {
           id: string
           image_url: string | null
           is_custom: boolean | null
+          lead_time_days: number | null
           name: string
           price: number
           product_type: Database["public"]["Enums"]["product_type"] | null
+          reorder_point: number | null
+          shelf_life_days: number | null
+          sku: string | null
+          uom: string | null
         }
         Insert: {
           active?: boolean
+          cost_per_unit?: number | null
           created_at?: string
           created_from_order?: string | null
           default_expiry_days?: number | null
@@ -666,12 +673,18 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_custom?: boolean | null
+          lead_time_days?: number | null
           name: string
           price: number
           product_type?: Database["public"]["Enums"]["product_type"] | null
+          reorder_point?: number | null
+          shelf_life_days?: number | null
+          sku?: string | null
+          uom?: string | null
         }
         Update: {
           active?: boolean
+          cost_per_unit?: number | null
           created_at?: string
           created_from_order?: string | null
           default_expiry_days?: number | null
@@ -680,9 +693,14 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_custom?: boolean | null
+          lead_time_days?: number | null
           name?: string
           price?: number
           product_type?: Database["public"]["Enums"]["product_type"] | null
+          reorder_point?: number | null
+          shelf_life_days?: number | null
+          sku?: string | null
+          uom?: string | null
         }
         Relationships: []
       }
@@ -819,6 +837,63 @@ export type Database = {
             columns: ["transaction_id"]
             isOneToOne: false
             referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_adjustments: {
+        Row: {
+          adjustment_date: string | null
+          adjustment_type: Database["public"]["Enums"]["stock_adjustment_type"]
+          branch_id: string
+          created_at: string | null
+          id: string
+          performed_by: string | null
+          product_id: string
+          quantity_change: number
+          reason: string | null
+          reference_id: string | null
+          reference_type: string | null
+        }
+        Insert: {
+          adjustment_date?: string | null
+          adjustment_type: Database["public"]["Enums"]["stock_adjustment_type"]
+          branch_id: string
+          created_at?: string | null
+          id?: string
+          performed_by?: string | null
+          product_id: string
+          quantity_change: number
+          reason?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+        }
+        Update: {
+          adjustment_date?: string | null
+          adjustment_type?: Database["public"]["Enums"]["stock_adjustment_type"]
+          branch_id?: string
+          created_at?: string | null
+          id?: string
+          performed_by?: string | null
+          product_id?: string
+          quantity_change?: number
+          reason?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_adjustments_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_adjustments_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -1078,6 +1153,14 @@ export type Database = {
         }
         Returns: string
       }
+      create_initial_stock: {
+        Args: {
+          p_branch_id: string
+          p_initial_stock: number
+          p_product_id: string
+        }
+        Returns: undefined
+      }
       generate_order_number: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1159,6 +1242,15 @@ export type Database = {
     Enums: {
       payment_status: "paid" | "pending" | "partial" | "cancelled"
       product_type: "regular" | "package" | "bundle"
+      stock_adjustment_type:
+        | "init"
+        | "adjust_in"
+        | "adjust_out"
+        | "production"
+        | "return"
+        | "transfer_in"
+        | "transfer_out"
+        | "sale"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1288,6 +1380,16 @@ export const Constants = {
     Enums: {
       payment_status: ["paid", "pending", "partial", "cancelled"],
       product_type: ["regular", "package", "bundle"],
+      stock_adjustment_type: [
+        "init",
+        "adjust_in",
+        "adjust_out",
+        "production",
+        "return",
+        "transfer_in",
+        "transfer_out",
+        "sale",
+      ],
     },
   },
 } as const
