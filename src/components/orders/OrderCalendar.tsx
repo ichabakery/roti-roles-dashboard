@@ -34,7 +34,16 @@ const OrderCalendar: React.FC = () => {
     });
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number, isMobile: boolean = false) => {
+    if (isMobile) {
+      // Shorter format for mobile: Rp 1.5K, Rp 120K, etc.
+      if (amount >= 1000000) {
+        return `Rp ${(amount / 1000000).toFixed(1)}M`;
+      } else if (amount >= 1000) {
+        return `Rp ${(amount / 1000).toFixed(amount >= 10000 ? 0 : 1)}K`;
+      }
+      return `Rp ${amount}`;
+    }
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
@@ -113,9 +122,9 @@ const OrderCalendar: React.FC = () => {
         ) : (
           <div className="space-y-4">
             {/* Calendar Header */}
-            <div className="grid grid-cols-7 gap-1 text-sm font-medium text-center">
+            <div className="grid grid-cols-7 gap-1 text-xs sm:text-sm font-medium text-center">
               {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map(day => (
-                <div key={day} className="p-2 text-muted-foreground">
+                <div key={day} className="p-1 sm:p-2 text-muted-foreground">
                   {day}
                 </div>
               ))}
@@ -126,31 +135,36 @@ const OrderCalendar: React.FC = () => {
               {calendarGrid.map((cell, index) => (
                 <div
                   key={index}
-                  className={`min-h-24 p-1 border border-border rounded ${
+                  className={`min-h-16 sm:min-h-24 p-1 border border-border rounded ${
                     cell ? 'bg-background' : 'bg-muted/50'
                   }`}
                 >
                   {cell && (
-                    <div className="h-full">
-                      <div className="text-sm font-medium mb-1">
+                    <div className="h-full flex flex-col">
+                      <div className="text-xs sm:text-sm font-medium mb-1 flex-shrink-0">
                         {cell.day}
                       </div>
                       {cell.data && (
-                        <div className="space-y-1">
-                          <div className="text-xs font-medium">
+                        <div className="space-y-0.5 sm:space-y-1 flex-1 overflow-hidden">
+                          <div className="text-[10px] sm:text-xs font-medium leading-tight">
                             {cell.data.order_count} pesanan
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {formatCurrency(cell.data.total_amount)}
+                          <div className="text-[10px] sm:text-xs text-muted-foreground leading-tight">
+                            <span className="sm:hidden">
+                              {formatCurrency(cell.data.total_amount, true)}
+                            </span>
+                            <span className="hidden sm:inline">
+                              {formatCurrency(cell.data.total_amount)}
+                            </span>
                           </div>
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-wrap gap-0.5 sm:gap-1">
                             {cell.data.status_breakdown && Object.entries(cell.data.status_breakdown).map(([status, count]) => {
                               if ((count as number) > 0) {
                                 return (
                                   <Badge
                                     key={status}
                                     variant="secondary"
-                                    className={`text-xs px-1 py-0 ${getStatusColor(status)}`}
+                                    className={`text-[8px] sm:text-xs px-0.5 sm:px-1 py-0 h-4 sm:h-auto leading-none ${getStatusColor(status)}`}
                                   >
                                     {count as number}
                                   </Badge>
