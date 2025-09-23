@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ProductionRequest } from '@/hooks/useProduction';
 import { format, parseISO } from 'date-fns';
 
@@ -32,7 +34,15 @@ const ProductionDetailDialog: React.FC<ProductionDetailDialogProps> = ({
   onStartRequest,
   userRole
 }) => {
-  const [quantityProduced, setQuantityProduced] = useState<number>(0);
+  const [quantityProduced, setQuantityProduced] = useState<number>(request?.quantity_requested || 0);
+  
+  // Update quantity when request changes
+  React.useEffect(() => {
+    if (request) {
+      setQuantityProduced(request.quantity_produced || request.quantity_requested);
+    }
+  }, [request]);
+  
   if (!request) return null;
 
   const formatDate = (dateString: string) => {
@@ -109,6 +119,28 @@ const ProductionDetailDialog: React.FC<ProductionDetailDialogProps> = ({
             <div className="bg-green-50 p-3 rounded-md">
               <p className="text-sm font-medium text-green-800">Hasil Produksi</p>
               <p className="text-sm text-green-700">{request.quantity_produced} unit berhasil diproduksi</p>
+            </div>
+          )}
+          
+          {/* Quantity Produced Input for In Progress Requests */}
+          {request.status === 'in_progress' && canManageProduction && (
+            <div className="bg-blue-50 p-3 rounded-md">
+              <Label htmlFor="quantityProduced" className="text-sm font-medium text-blue-800">
+                Jumlah yang Diproduksi
+              </Label>
+              <Input
+                id="quantityProduced"
+                type="number"
+                value={quantityProduced || request.quantity_requested}
+                onChange={(e) => setQuantityProduced(Number(e.target.value))}
+                min={1}
+                max={request.quantity_requested}
+                className="mt-1"
+                placeholder="Masukkan jumlah yang diproduksi"
+              />
+              <p className="text-xs text-blue-600 mt-1">
+                Target: {request.quantity_requested} unit
+              </p>
             </div>
           )}
         </div>
