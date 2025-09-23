@@ -195,21 +195,34 @@ const Orders = () => {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Manajemen Pesanan</h1>
             <p className="text-muted-foreground">Kelola pesanan pelanggan dan jadwal pengiriman</p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setShowBulkActions(!showBulkActions)}>
-              <BarChart3 className="mr-2 h-4 w-4" />
-              Aksi Massal
-            </Button>
-            <Button variant="outline" onClick={() => setShowExport(!showExport)}>
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-            <Button className="w-full sm:w-auto" onClick={handleCreateOrder}>
+          <div className="flex flex-col sm:flex-row gap-2 w-full">
+            <div className="flex flex-col sm:flex-row gap-2 flex-1">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowBulkActions(!showBulkActions)}
+                className="w-full sm:w-auto"
+              >
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Aksi Massal
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowExport(!showExport)}
+                className="w-full sm:w-auto"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+            </div>
+            <Button 
+              onClick={handleCreateOrder}
+              className="w-full sm:w-auto sm:min-w-48"
+            >
               <Plus className="mr-2 h-4 w-4" />
               Buat Pesanan Baru
             </Button>

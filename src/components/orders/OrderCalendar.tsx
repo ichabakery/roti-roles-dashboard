@@ -85,20 +85,21 @@ const OrderCalendar: React.FC = () => {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="flex items-center gap-2">
             <CalendarIcon className="h-5 w-5" />
             Kalender Pesanan
           </CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between sm:justify-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigateMonth('prev')}
+              className="h-8 w-8 p-0 sm:h-auto sm:w-auto sm:px-3"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm font-medium min-w-32 text-center">
+            <span className="text-sm font-medium min-w-32 text-center px-2">
               {currentDate.toLocaleDateString('id-ID', { 
                 month: 'long', 
                 year: 'numeric' 
@@ -108,6 +109,7 @@ const OrderCalendar: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={() => navigateMonth('next')}
+              className="h-8 w-8 p-0 sm:h-auto sm:w-auto sm:px-3"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
