@@ -6,6 +6,7 @@ import { PaymentData } from '@/components/cashier/PaymentOptionsDialog';
 import { CartItem, Transaction } from '@/types/cashier';
 import { validateStock } from '@/services/stockValidationService';
 import { createTransaction } from '@/services/transactionService';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useCashierPayment = () => {
   const { user } = useAuth();
@@ -87,16 +88,32 @@ export const useCashierPayment = () => {
 
       console.log('🎉 Transaction created successfully:', transaction);
 
+      // Fetch branch name from database
+      let branchName = 'Cabang';
+      try {
+        const { data: branchData, error: branchError } = await supabase
+          .from('branches')
+          .select('name')
+          .eq('id', selectedBranch)
+          .single();
+        
+        if (!branchError && branchData) {
+          branchName = branchData.name;
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to fetch branch name:', error);
+      }
+
       // Store complete transaction data for receipt with product details
       const transactionWithProducts = {
         ...transaction,
         products: cart.map(item => ({
           name: item.product.name,
           quantity: item.quantity,
-          price: item.product.price * item.quantity
+          price: item.product.price * item.quantity // This is the subtotal per product
         })),
         cashier_name: user.name || 'Kasir',
-        branch_name: 'Cabang' // This should be fetched from branches data
+        branch_name: branchName
       };
 
       setLastTransaction(transactionWithProducts);

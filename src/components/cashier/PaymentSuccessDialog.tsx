@@ -71,7 +71,7 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
   const validatedProducts = products.map(product => ({
     name: product.name || 'Produk Tidak Dikenal',
     quantity: product.quantity || 1,
-    price: product.price || 0
+    price: product.price || 0 // This is already the subtotal (quantity * unit_price)
   }));
 
   if (validatedProducts.length === 0 && total > 0) {

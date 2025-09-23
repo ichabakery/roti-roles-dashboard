@@ -166,8 +166,9 @@ export const UnifiedThermalReceipt: React.FC<UnifiedThermalReceiptProps> = ({
           addText(product.name, 8);
         }
         
-        addText(`${product.quantity} x Rp ${product.price.toLocaleString('id-ID')}`, 7);
-        addText(`= Rp ${(product.quantity * product.price).toLocaleString('id-ID')}`, 7);
+        const unitPrice = product.price / product.quantity;
+        addText(`${product.quantity} x Rp ${unitPrice.toLocaleString('id-ID')}`, 7);
+        addText(`= Rp ${product.price.toLocaleString('id-ID')}`, 7);
         y += 1;
       });
 
@@ -282,9 +283,10 @@ export const UnifiedThermalReceipt: React.FC<UnifiedThermalReceiptProps> = ({
       }
     }
 
-    const items = receiptData.products.map((item, index) => 
-      `${index + 1}. ${item.name}\n   ${item.quantity} x Rp ${item.price.toLocaleString('id-ID')} = Rp ${(item.quantity * item.price).toLocaleString('id-ID')}`
-    ).join('\n');
+    const items = receiptData.products.map((item, index) => {
+      const unitPrice = item.price / item.quantity;
+      return `${index + 1}. ${item.name}\n   ${item.quantity} x Rp ${unitPrice.toLocaleString('id-ID')} = Rp ${item.price.toLocaleString('id-ID')}`;
+    }).join('\n');
 
     content.push(`\n🛍️ *DETAIL ${receiptData.type === 'order' ? 'PESANAN' : 'PEMBELIAN'}*`);
     content.push(items);
