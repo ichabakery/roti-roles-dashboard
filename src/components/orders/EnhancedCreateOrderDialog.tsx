@@ -257,23 +257,52 @@ export function EnhancedCreateOrderDialog({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="pickupBranch">Cabang Pengambilan</Label>
+                  <Label htmlFor="pickupBranch">Lokasi Pengambilan</Label>
                   <Select 
                     value={formData.pickup_branch_id} 
                     onValueChange={(value) => setFormData({ ...formData, pickup_branch_id: value })}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih cabang..." />
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder="Pilih lokasi pengambilan..." />
                     </SelectTrigger>
-                    <SelectContent>
-                      {branches.map(branch => (
-                        <SelectItem key={branch.id} value={branch.id}>
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4" />
-                            {branch.name}
+                    <SelectContent className="z-50 bg-background border shadow-lg">
+                      {/* Render branches grouped by type */}
+                      {branches.filter(branch => branch.location_type === 'branch' || !branch.location_type).length > 0 && (
+                        <>
+                          <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
+                            Cabang Toko
                           </div>
-                        </SelectItem>
-                      ))}
+                          {branches
+                            .filter(branch => branch.location_type === 'branch' || !branch.location_type)
+                            .map(branch => (
+                              <SelectItem key={branch.id} value={branch.id}>
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="h-4 w-4 text-blue-600" />
+                                  {branch.name}
+                                </div>
+                              </SelectItem>
+                          ))}
+                        </>
+                      )}
+                      
+                      {/* Admin and Management Offices */}
+                      {branches.filter(branch => ['admin_office', 'management_office'].includes(branch.location_type || '')).length > 0 && (
+                        <>
+                          <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50 border-t">
+                            Kantor Pusat
+                          </div>
+                          {branches
+                            .filter(branch => ['admin_office', 'management_office'].includes(branch.location_type || ''))
+                            .map(branch => (
+                              <SelectItem key={branch.id} value={branch.id}>
+                                <div className="flex items-center gap-2">
+                                  <Package className="h-4 w-4 text-orange-600" />
+                                  {branch.name}
+                                </div>
+                              </SelectItem>
+                          ))}
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>

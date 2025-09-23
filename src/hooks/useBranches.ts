@@ -8,6 +8,7 @@ export interface Branch {
   name: string;
   address: string | null;
   phone: string | null;
+  location_type?: string;
 }
 
 export const useBranches = () => {
@@ -22,8 +23,9 @@ export const useBranches = () => {
       
       const { data, error } = await supabase
         .from('branches')
-        .select('*')
-        .order('name');
+        .select('id, name, address, phone, location_type')
+        .order('location_type', { ascending: true })
+        .order('name', { ascending: true });
 
       if (error) {
         console.error('Error fetching branches:', error);

@@ -2,6 +2,7 @@
 export interface Branch {
   id: string;
   name: string;
+  location_type?: string;
 }
 
 export interface TransactionItem {
