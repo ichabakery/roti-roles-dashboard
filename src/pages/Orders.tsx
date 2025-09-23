@@ -99,6 +99,10 @@ const Orders = () => {
 
   const handleSubmitOrder = async (orderData: any) => {
     try {
+      console.log('handleSubmitOrder called with:', orderData);
+      console.log('User branch:', userBranch);
+      console.log('User:', user);
+      
       if (!userBranch.branchId) {
         throw new Error('Tidak ada akses cabang');
       }
@@ -115,8 +119,12 @@ const Orders = () => {
         created_by: currentUser.data.user.id,
       };
 
+      console.log('Calling orderService.createOrder with:', orderWithBranch);
+      
       // Save order to database
       const savedOrder = await orderService.createOrder(orderWithBranch);
+      
+      console.log('Order created successfully:', savedOrder);
       
       // Update orders list with proper type casting
       setOrders(prevOrders => [savedOrder as Order, ...prevOrders]);
@@ -132,6 +140,8 @@ const Orders = () => {
       // Show receipt dialog for the newly created order
       setSelectedOrderForReceipt(savedOrder as Order);
       setShowReceiptDialog(true);
+      
+      return savedOrder;
     } catch (error) {
       console.error('Error creating order:', error);
       toast({
@@ -139,6 +149,7 @@ const Orders = () => {
         description: error instanceof Error ? error.message : "Terjadi kesalahan saat membuat pesanan",
         variant: "destructive"
       });
+      throw error; // Re-throw to prevent success message in dialog
     }
   };
 

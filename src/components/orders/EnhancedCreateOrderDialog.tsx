@@ -154,9 +154,11 @@ export function EnhancedCreateOrderDialog({
         }))
       };
 
-      await onSubmit(orderData);
+      console.log('Submitting order data:', orderData);
+      const result = await onSubmit(orderData);
+      console.log('Order submit result:', result);
       
-      // Show success message
+      // Show success message only if order was actually created
       toast({
         variant: "default",
         title: "Pesanan Berhasil Dibuat!",
