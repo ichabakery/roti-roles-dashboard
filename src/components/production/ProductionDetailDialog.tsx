@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -127,7 +127,7 @@ const ProductionDetailDialog: React.FC<ProductionDetailDialogProps> = ({
               )}
               
               {request.status === 'in_progress' && onCompleteRequest && (
-                <Button onClick={() => onCompleteRequest(request.id)}>
+                <Button onClick={() => onCompleteRequest(request.id, quantityProduced || request.quantity_requested)}>
                   Selesaikan
                 </Button>
               )}
