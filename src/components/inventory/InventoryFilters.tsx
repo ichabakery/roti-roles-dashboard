@@ -30,25 +30,27 @@ export const InventoryFilters: React.FC<InventoryFiltersProps> = ({
   const canChangeBranch = userRole === 'owner' || userRole === 'admin_pusat' || userRole === 'kepala_produksi';
 
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-4">
-      <div className="flex items-center flex-1">
-        <Search className="mr-2 h-4 w-4 text-muted-foreground" />
+    <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+      <div className="flex items-center flex-1 min-w-0">
+        <Search className="mr-2 h-4 w-4 text-muted-foreground flex-shrink-0" />
         <Input
           placeholder="Cari produk..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-xs"
+          className="w-full sm:max-w-xs"
         />
       </div>
       
       {canChangeBranch && branches.length > 1 && (
-        <div className="flex items-center gap-2">
-          <Label htmlFor="branch-filter">Cabang:</Label>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Label htmlFor="branch-filter" className="text-sm whitespace-nowrap">
+            Cabang:
+          </Label>
           <Select 
             value={selectedBranch || ""} 
             onValueChange={setSelectedBranch}
           >
-            <SelectTrigger id="branch-filter" className="w-[180px]">
+            <SelectTrigger id="branch-filter" className="w-full sm:w-[180px]">
               <SelectValue placeholder="Pilih Cabang" />
             </SelectTrigger>
             <SelectContent>
