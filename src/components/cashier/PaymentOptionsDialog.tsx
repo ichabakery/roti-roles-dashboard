@@ -19,6 +19,8 @@ export interface PaymentData {
   amountPaid?: number;
   dueDate?: string;
   notes?: string;
+  received?: number;  // Uang yang diterima dari pelanggan
+  change?: number;    // Kembalian
 }
 
 export const PaymentOptionsDialog: React.FC<PaymentOptionsDialogProps> = ({

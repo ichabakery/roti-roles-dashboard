@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, CreditCard, History } from 'lucide-react';
@@ -9,6 +9,7 @@ import { BranchSelector } from './BranchSelector';
 import { PaymentMethodSelector } from './PaymentMethodSelector';
 import { PaymentOptionsDialog, PaymentData } from './PaymentOptionsDialog';
 import { PendingPaymentsDialog } from './PendingPaymentsDialog';
+import { CashReceivedInput } from './CashReceivedInput';
 import { CartItem } from '@/types/cashier';
 import { Branch } from '@/types/inventory';
 
@@ -45,12 +46,29 @@ export const CartPanel: React.FC<CartPanelProps> = ({
 }) => {
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [showPendingPayments, setShowPendingPayments] = useState(false);
+  const [cashReceived, setCashReceived] = useState(0);
+  const [changeAmount, setChangeAmount] = useState(0);
   
   const totalAmount = calculateTotal();
-  const isDisabled = cart.length === 0 || !selectedBranch || processingPayment;
+  const isCashPayment = paymentMethod === 'cash';
+  const isInsufficientCash = isCashPayment && cashReceived > 0 && cashReceived < totalAmount;
+  const needsCashInput = isCashPayment && cashReceived < totalAmount;
+  const isDisabled = cart.length === 0 || !selectedBranch || processingPayment || (isCashPayment && needsCashInput);
+
+  const handleCashReceivedChange = useCallback((received: number, change: number) => {
+    setCashReceived(received);
+    setChangeAmount(change);
+  }, []);
 
   const handleQuickPayment = () => {
-    onProcessPayment();
+    // Include cash received and change in payment data
+    const paymentData: PaymentData = {
+      type: 'full',
+      paymentMethod,
+      received: cashReceived,
+      change: changeAmount
+    };
+    onProcessPayment(paymentData);
   };
 
   const handleAdvancedPayment = () => {
@@ -58,6 +76,11 @@ export const CartPanel: React.FC<CartPanelProps> = ({
   };
 
   const handlePaymentConfirm = (paymentData: PaymentData) => {
+    // Include cash received and change if cash payment
+    if (isCashPayment) {
+      paymentData.received = cashReceived;
+      paymentData.change = changeAmount;
+    }
     onProcessPayment(paymentData);
   };
 
@@ -114,12 +137,23 @@ export const CartPanel: React.FC<CartPanelProps> = ({
 
           {/* Total */}
           <div className="border-t pt-4">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-3">
               <span className="text-lg font-medium">Total:</span>
               <span className="text-xl font-bold">
                 Rp {totalAmount.toLocaleString('id-ID')}
               </span>
             </div>
+
+            {/* Cash Received Input - Only for cash payments */}
+            {isCashPayment && cart.length > 0 && (
+              <div className="mb-4">
+                <CashReceivedInput
+                  totalAmount={totalAmount}
+                  onCashReceivedChange={handleCashReceivedChange}
+                  disabled={processingPayment || !selectedBranch}
+                />
+              </div>
+            )}
 
             {/* Payment Buttons */}
             <div className="space-y-2">

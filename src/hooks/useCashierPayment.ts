@@ -113,7 +113,9 @@ export const useCashierPayment = () => {
           price: item.product.price * item.quantity // This is the subtotal per product
         })),
         cashier_name: user.name || 'Kasir',
-        branch_name: branchName
+        branch_name: branchName,
+        received: paymentData?.received,
+        change: paymentData?.change
       };
 
       setLastTransaction(transactionWithProducts);
