@@ -21,7 +21,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Search, Package, Save, X, Layers } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { BatchStockTable } from './BatchStockTable';
+import { BranchFilterPopover } from './BranchFilterPopover';
 import { batchAddStock, fetchProductsWithStock, BatchStockItem } from '@/services/batchInventoryService';
 
 interface Branch {
@@ -70,6 +72,7 @@ export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
   onSuccess,
 }) => {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [products, setProducts] = useState<ProductWithStock[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -78,6 +81,21 @@ export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
   const [stockInputs, setStockInputs] = useState<StockInputs>({});
   const [uniformStock, setUniformStock] = useState(false);
   const [uniformValue, setUniformValue] = useState<number>(0);
+  
+  // Branch filter state - default all branches selected
+  const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
+
+  // Initialize selected branches when branches prop changes
+  useEffect(() => {
+    if (branches.length > 0 && selectedBranches.length === 0) {
+      setSelectedBranches(branches.map(b => b.id));
+    }
+  }, [branches]);
+
+  // Filter branches based on selection
+  const filteredBranches = useMemo(() => {
+    return branches.filter(b => selectedBranches.includes(b.id));
+  }, [branches, selectedBranches]);
 
   // Load products when dialog opens
   useEffect(() => {
@@ -137,7 +155,7 @@ export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
     }));
   };
 
-  // Apply uniform stock to all visible products and branches
+  // Apply uniform stock to all visible products and selected branches
   const applyUniformStock = () => {
     if (uniformValue <= 0) return;
 
@@ -146,7 +164,7 @@ export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
       if (!newInputs[product.id]) {
         newInputs[product.id] = {};
       }
-      branches.forEach((branch) => {
+      filteredBranches.forEach((branch) => {
         newInputs[product.id][branch.id] = uniformValue;
       });
     });
@@ -154,7 +172,7 @@ export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
     
     toast({
       title: 'Stok diterapkan',
-      description: `${uniformValue} unit diterapkan ke ${filteredProducts.length} produk di ${branches.length} cabang`,
+      description: `${uniformValue} unit diterapkan ke ${filteredProducts.length} produk di ${filteredBranches.length} cabang`,
     });
   };
 
@@ -219,26 +237,27 @@ export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
     setUniformValue(0);
     setSearchQuery('');
     setCategoryFilter('all');
+    setSelectedBranches(branches.map(b => b.id));
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[95vw] w-full max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Layers className="h-5 w-5" />
+      <DialogContent className="max-w-[98vw] md:max-w-[95vw] w-full max-h-[95vh] md:max-h-[90vh] flex flex-col p-4 md:p-6">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="flex items-center gap-2 text-base md:text-lg">
+            <Layers className="h-4 w-4 md:h-5 md:w-5" />
             Batch Tambah Stok
           </DialogTitle>
-          <DialogDescription>
-            Tambah stok banyak produk ke banyak cabang sekaligus. Input jumlah stok yang akan ditambahkan.
+          <DialogDescription className="text-xs md:text-sm">
+            Tambah stok banyak produk ke banyak cabang sekaligus.
           </DialogDescription>
         </DialogHeader>
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-4 py-4 border-b">
-          {/* Search */}
-          <div className="flex-1 min-w-[200px]">
+        {/* Filters - Responsive layout */}
+        <div className="flex flex-col gap-3 py-3 border-b">
+          {/* Row 1: Search (full width on mobile) */}
+          <div className="w-full">
             <Label htmlFor="search" className="sr-only">Cari Produk</Label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -252,25 +271,48 @@ export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
             </div>
           </div>
 
-          {/* Category Filter */}
-          <div className="w-48">
-            <Label htmlFor="category" className="sr-only">Kategori</Label>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih kategori" />
-              </SelectTrigger>
-              <SelectContent>
-                {CATEGORIES.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Row 2: Category, Branch Filter, Stats */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Category Filter */}
+            <div className="w-full sm:w-auto sm:min-w-[160px]">
+              <Label htmlFor="category" className="sr-only">Kategori</Label>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Pilih kategori" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Branch Filter */}
+            <BranchFilterPopover
+              branches={branches}
+              selectedBranches={selectedBranches}
+              onSelectionChange={setSelectedBranches}
+            />
+
+            {/* Stats */}
+            <div className="flex items-center gap-2 ml-auto">
+              <Badge variant="outline" className="gap-1 text-xs">
+                <Package className="h-3 w-3" />
+                {filteredProducts.length}
+              </Badge>
+              {totalChanges > 0 && (
+                <Badge variant="default" className="gap-1 text-xs">
+                  {totalChanges}
+                </Badge>
+              )}
+            </div>
           </div>
 
-          {/* Uniform Stock */}
-          <div className="flex items-center gap-2 border-l pl-4">
+          {/* Row 3: Uniform Stock (optional) */}
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
             <div className="flex items-center gap-2">
               <Checkbox
                 id="uniformStock"
@@ -295,45 +337,43 @@ export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
                   size="sm"
                   variant="secondary"
                   onClick={applyUniformStock}
-                  disabled={uniformValue <= 0}
+                  disabled={uniformValue <= 0 || filteredBranches.length === 0}
                 >
                   Terapkan
                 </Button>
               </div>
             )}
           </div>
-
-          {/* Stats */}
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="gap-1">
-              <Package className="h-3 w-3" />
-              {filteredProducts.length} Produk
-            </Badge>
-            {totalChanges > 0 && (
-              <Badge variant="default" className="gap-1">
-                {totalChanges} Perubahan
-              </Badge>
-            )}
-          </div>
         </div>
 
-        {/* Table */}
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <BatchStockTable
-            products={filteredProducts}
-            branches={branches}
-            stockInputs={stockInputs}
-            onStockChange={handleStockChange}
-            loading={loading}
-          />
+        {/* Table - takes remaining space */}
+        <div className="flex-1 min-h-0 overflow-hidden py-2">
+          {selectedBranches.length === 0 ? (
+            <div className="flex items-center justify-center h-64 text-muted-foreground">
+              Pilih minimal satu cabang untuk menampilkan tabel
+            </div>
+          ) : (
+            <BatchStockTable
+              products={filteredProducts}
+              branches={filteredBranches}
+              stockInputs={stockInputs}
+              onStockChange={handleStockChange}
+              loading={loading}
+            />
+          )}
         </div>
 
-        <DialogFooter className="gap-2 border-t pt-4">
-          <Button variant="outline" onClick={handleClose} disabled={saving}>
+        {/* Footer */}
+        <DialogFooter className="gap-2 border-t pt-3 flex-col-reverse sm:flex-row">
+          <Button variant="outline" onClick={handleClose} disabled={saving} className="w-full sm:w-auto">
             <X className="h-4 w-4 mr-2" />
             Batal
           </Button>
-          <Button onClick={handleSave} disabled={saving || totalChanges === 0}>
+          <Button 
+            onClick={handleSave} 
+            disabled={saving || totalChanges === 0}
+            className="w-full sm:w-auto"
+          >
             <Save className="h-4 w-4 mr-2" />
             {saving ? 'Menyimpan...' : `Simpan (${totalChanges})`}
           </Button>

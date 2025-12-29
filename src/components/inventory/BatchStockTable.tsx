@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Branch {
   id: string;
@@ -62,22 +64,186 @@ const getCategoryLabel = (category: string | null): string => {
 const getCategoryColor = (category: string | null): string => {
   const colors: Record<string, string> = {
     'produk_utama': 'bg-primary/20 text-primary',
-    'minuman': 'bg-blue-100 text-blue-700',
-    'titipan': 'bg-purple-100 text-purple-700',
-    'peralatan_ultah': 'bg-pink-100 text-pink-700',
-    'tart': 'bg-amber-100 text-amber-700',
-    'es_krim': 'bg-cyan-100 text-cyan-700',
+    'minuman': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    'titipan': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+    'peralatan_ultah': 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400',
+    'tart': 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+    'es_krim': 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400',
   };
   return colors[category || ''] || 'bg-muted text-muted-foreground';
 };
 
-export const BatchStockTable: React.FC<BatchStockTableProps> = ({
+// Mobile Card View Component
+const MobileCardView: React.FC<BatchStockTableProps> = ({
   products,
   branches,
   stockInputs,
   onStockChange,
-  loading = false,
 }) => {
+  return (
+    <ScrollArea className="h-[400px] md:h-[500px]">
+      <div className="space-y-3 p-1">
+        {products.map((product, index) => (
+          <Card key={product.id} className="overflow-hidden">
+            <CardHeader className="py-3 px-4 bg-muted/50">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground font-medium">
+                      #{index + 1}
+                    </span>
+                    <h4 className="font-medium text-sm truncate">{product.name}</h4>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-muted-foreground">
+                      {formatPrice(product.price)}
+                    </span>
+                    {product.sku && (
+                      <span className="text-xs text-muted-foreground">• {product.sku}</span>
+                    )}
+                  </div>
+                </div>
+                <Badge variant="secondary" className={`text-xs shrink-0 ${getCategoryColor(product.category)}`}>
+                  {getCategoryLabel(product.category)}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="py-3 px-4">
+              <div className="grid grid-cols-2 gap-3">
+                {branches.map((branch) => {
+                  const currentStock = product.stockByBranch.get(branch.id) || 0;
+                  const inputValue = stockInputs[product.id]?.[branch.id] || 0;
+                  const hasInput = inputValue > 0;
+
+                  return (
+                    <div key={branch.id} className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium truncate">{branch.name}</span>
+                        <span className="text-xs text-muted-foreground">Stok: {currentStock}</span>
+                      </div>
+                      <Input
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={inputValue || ''}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 0;
+                          onStockChange(product.id, branch.id, value);
+                        }}
+                        className={`h-9 text-center ${
+                          hasInput ? 'border-primary bg-primary/5' : ''
+                        }`}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </ScrollArea>
+  );
+};
+
+// Desktop Table View Component
+const DesktopTableView: React.FC<BatchStockTableProps> = ({
+  products,
+  branches,
+  stockInputs,
+  onStockChange,
+}) => {
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <ScrollArea className="h-[500px]">
+        <div className="min-w-max">
+          <Table>
+            <TableHeader className="sticky top-0 z-20 bg-background">
+              <TableRow className="hover:bg-transparent">
+                {/* Frozen columns header */}
+                <TableHead className="w-12 sticky left-0 z-30 bg-background border-r">
+                  No
+                </TableHead>
+                <TableHead className="min-w-[180px] sticky left-12 z-30 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                  Produk
+                </TableHead>
+                <TableHead className="w-28">Harga</TableHead>
+                <TableHead className="w-32">Kategori</TableHead>
+                {/* Dynamic branch columns */}
+                {branches.map((branch) => (
+                  <TableHead key={branch.id} className="min-w-[120px] text-center">
+                    {branch.name}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {products.map((product, index) => (
+                <TableRow key={product.id} className="hover:bg-muted/50">
+                  {/* Frozen columns */}
+                  <TableCell className="font-medium sticky left-0 z-10 bg-background border-r">
+                    {index + 1}
+                  </TableCell>
+                  <TableCell className="sticky left-12 z-10 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                    <div className="flex flex-col">
+                      <span className="font-medium">{product.name}</span>
+                      {product.sku && (
+                        <span className="text-xs text-muted-foreground">{product.sku}</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {formatPrice(product.price)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className={getCategoryColor(product.category)}>
+                      {getCategoryLabel(product.category)}
+                    </Badge>
+                  </TableCell>
+                  {/* Dynamic branch inputs */}
+                  {branches.map((branch) => {
+                    const currentStock = product.stockByBranch.get(branch.id) || 0;
+                    const inputValue = stockInputs[product.id]?.[branch.id] || 0;
+                    const hasInput = inputValue > 0;
+
+                    return (
+                      <TableCell key={branch.id} className="text-center p-2">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-xs text-muted-foreground">
+                            Stok: {currentStock}
+                          </span>
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={inputValue || ''}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value) || 0;
+                              onStockChange(product.id, branch.id, value);
+                            }}
+                            className={`w-20 h-8 text-center text-sm ${
+                              hasInput ? 'border-primary bg-primary/5' : ''
+                            }`}
+                          />
+                        </div>
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
+    </div>
+  );
+};
+
+export const BatchStockTable: React.FC<BatchStockTableProps> = (props) => {
+  const { products, loading } = props;
+  const isMobile = useIsMobile();
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -94,77 +260,10 @@ export const BatchStockTable: React.FC<BatchStockTableProps> = ({
     );
   }
 
-  return (
-    <ScrollArea className="h-[500px] border rounded-lg">
-      <Table>
-        <TableHeader className="sticky top-0 bg-background z-10">
-          <TableRow>
-            <TableHead className="w-12 sticky left-0 bg-background z-20">No</TableHead>
-            <TableHead className="min-w-[200px] sticky left-12 bg-background z-20">Produk</TableHead>
-            <TableHead className="w-24">Harga</TableHead>
-            <TableHead className="w-32">Kategori</TableHead>
-            {branches.map((branch) => (
-              <TableHead key={branch.id} className="min-w-[120px] text-center">
-                {branch.name}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {products.map((product, index) => (
-            <TableRow key={product.id} className="hover:bg-muted/50">
-              <TableCell className="font-medium sticky left-0 bg-background">
-                {index + 1}
-              </TableCell>
-              <TableCell className="sticky left-12 bg-background">
-                <div className="flex flex-col">
-                  <span className="font-medium">{product.name}</span>
-                  {product.sku && (
-                    <span className="text-xs text-muted-foreground">{product.sku}</span>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell className="text-sm">
-                {formatPrice(product.price)}
-              </TableCell>
-              <TableCell>
-                <Badge variant="secondary" className={getCategoryColor(product.category)}>
-                  {getCategoryLabel(product.category)}
-                </Badge>
-              </TableCell>
-              {branches.map((branch) => {
-                const currentStock = product.stockByBranch.get(branch.id) || 0;
-                const inputValue = stockInputs[product.id]?.[branch.id] || 0;
-                const hasInput = inputValue > 0;
-                
-                return (
-                  <TableCell key={branch.id} className="text-center p-2">
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-xs text-muted-foreground">
-                        Stok: {currentStock}
-                      </span>
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="0"
-                        value={inputValue || ''}
-                        onChange={(e) => {
-                          const value = parseInt(e.target.value) || 0;
-                          onStockChange(product.id, branch.id, value);
-                        }}
-                        className={`w-20 h-8 text-center text-sm ${
-                          hasInput ? 'border-primary bg-primary/5' : ''
-                        }`}
-                      />
-                    </div>
-                  </TableCell>
-                );
-              })}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      <ScrollBar orientation="horizontal" />
-    </ScrollArea>
-  );
+  // Use card view on mobile, table view on desktop
+  if (isMobile) {
+    return <MobileCardView {...props} />;
+  }
+
+  return <DesktopTableView {...props} />;
 };
