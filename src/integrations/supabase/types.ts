@@ -1161,14 +1161,8 @@ export type Database = {
         }
         Returns: undefined
       }
-      generate_order_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_current_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_order_number: { Args: never; Returns: string }
+      get_current_user_role: { Args: never; Returns: string }
       get_expiring_products: {
         Args: { days_ahead?: number }
         Returns: {

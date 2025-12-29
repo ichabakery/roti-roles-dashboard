@@ -84,31 +84,32 @@ const EnhancedProducts = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              onClick={() => navigate('/products')}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Kembali ke Produk Sederhana
-            </Button>
-            <div>
-              <h2 className="text-3xl font-bold tracking-tight">Manajemen Produk Lengkap</h2>
-              <p className="text-muted-foreground">
-                Kelola produk reguler, paket, bundling, dan tracking expired
-              </p>
-            </div>
+      <div className="space-y-4 sm:space-y-6">
+        {/* Header - responsive layout */}
+        <div className="flex flex-col gap-4">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/products')}
+            className="flex items-center gap-2 w-full sm:w-auto self-start"
+            size="sm"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="text-sm">Kembali ke Produk Sederhana</span>
+          </Button>
+          
+          <div>
+            <h2 className="text-xl sm:text-3xl font-bold tracking-tight">Manajemen Produk Lengkap</h2>
+            <p className="text-sm text-muted-foreground">
+              Kelola produk reguler, paket, bundling, dan tracking expired
+            </p>
           </div>
           
           {expiringProducts.length > 0 && (
             <Card className="border-orange-200 bg-orange-50">
-              <CardContent className="pt-6">
+              <CardContent className="p-3 sm:pt-6">
                 <div className="flex items-center gap-2 text-orange-800">
-                  <AlertTriangle className="h-5 w-5" />
-                  <span className="font-semibold">
+                  <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                  <span className="text-sm font-semibold">
                     {expiringProducts.length} produk akan expired dalam 7 hari!
                   </span>
                 </div>
@@ -117,20 +118,20 @@ const EnhancedProducts = () => {
           )}
         </div>
 
-        <Tabs defaultValue="products" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="products">Produk</TabsTrigger>
-            <TabsTrigger value="packages">Paket & Bundling</TabsTrigger>
-            <TabsTrigger value="batches">Batch Management</TabsTrigger>
-            <TabsTrigger value="expiry">Monitoring Expired</TabsTrigger>
+        <Tabs defaultValue="products" className="space-y-4 sm:space-y-6">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
+            <TabsTrigger value="products" className="text-xs sm:text-sm py-2">Produk</TabsTrigger>
+            <TabsTrigger value="packages" className="text-xs sm:text-sm py-2">Paket & Bundling</TabsTrigger>
+            <TabsTrigger value="batches" className="text-xs sm:text-sm py-2">Batch</TabsTrigger>
+            <TabsTrigger value="expiry" className="text-xs sm:text-sm py-2">Monitoring</TabsTrigger>
           </TabsList>
 
           <TabsContent value="products">
             <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Daftar Produk</CardTitle>
-                  <div className="flex items-center gap-4">
+              <CardHeader className="pb-3 sm:pb-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <CardTitle className="text-lg sm:text-xl">Daftar Produk</CardTitle>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
                     <ProductTypeSelector
                       selectedType={selectedProductType}
                       onTypeChange={setSelectedProductType}
