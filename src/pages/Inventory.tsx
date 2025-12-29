@@ -9,6 +9,7 @@ import { InventoryTable } from '@/components/inventory/InventoryTable';
 import { EnhancedInventoryTable } from '@/components/inventory/EnhancedInventoryTable';
 import { InventoryKPICards } from '@/components/inventory/InventoryKPICards';
 import { AddStockDialog } from '@/components/inventory/AddStockDialog';
+import { BatchAddStockDialog } from '@/components/inventory/BatchAddStockDialog';
 import { StockMonitoring } from '@/components/inventory/StockMonitoring';
 import { StockConsistencyChecker } from '@/components/inventory/StockConsistencyChecker';
 import { isInventoryV1Enabled, isDemoModeEnabled } from '@/utils/featureFlags';
@@ -16,12 +17,13 @@ import { getInventoryKPIs } from '@/services/inventoryV1Service';
 import { resetDemoData } from '@/services/demoDataService';
 import { InventoryKPI } from '@/types/products';
 import { Button } from '@/components/ui/button';
-import { RotateCcw, AlertTriangle } from 'lucide-react';
+import { RotateCcw, AlertTriangle, Layers } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const Inventory = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
   const [kpis, setKPIs] = useState<InventoryKPI>({
     activeSKUs: 0,
     totalUnits: 0,
@@ -133,12 +135,24 @@ const Inventory = () => {
           </div>
         )}
 
-        <InventoryHeader
-          loading={loading}
-          isAddDialogOpen={canAddStock ? isAddDialogOpen : false}
-          setIsAddDialogOpen={canAddStock ? setIsAddDialogOpen : () => {}}
-          onRefresh={fetchInventory}
-        />
+        <div className="flex items-center justify-between">
+          <InventoryHeader
+            loading={loading}
+            isAddDialogOpen={canAddStock ? isAddDialogOpen : false}
+            setIsAddDialogOpen={canAddStock ? setIsAddDialogOpen : () => {}}
+            onRefresh={fetchInventory}
+          />
+          {canAddStock && (
+            <Button
+              variant="outline"
+              onClick={() => setIsBatchDialogOpen(true)}
+              className="gap-2"
+            >
+              <Layers className="h-4 w-4" />
+              Batch Tambah Stok
+            </Button>
+          )}
+        </div>
         
         {showMonitoring && (
           <StockMonitoring />
@@ -187,15 +201,24 @@ const Inventory = () => {
 
         {/* Dialog tambah stok hanya untuk owner & admin pusat */}
         {canAddStock && (
-          <AddStockDialog
-            open={isAddDialogOpen}
-            onOpenChange={setIsAddDialogOpen}
-            products={products}
-            branches={branches}
-            onAddStock={handleAddStock}
-            userRole={user?.role}
-            userBranchId={user?.branchId}
-          />
+          <>
+            <AddStockDialog
+              open={isAddDialogOpen}
+              onOpenChange={setIsAddDialogOpen}
+              products={products}
+              branches={branches}
+              onAddStock={handleAddStock}
+              userRole={user?.role}
+              userBranchId={user?.branchId}
+            />
+            <BatchAddStockDialog
+              open={isBatchDialogOpen}
+              onOpenChange={setIsBatchDialogOpen}
+              branches={branches}
+              userId={user?.id || ''}
+              onSuccess={fetchInventory}
+            />
+          </>
         )}
       </div>
     </DashboardLayout>
