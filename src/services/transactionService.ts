@@ -218,6 +218,17 @@ export const createTransaction = async ({
 
   // For paid and partial payments, record the payment history
   if (amount_paid > 0) {
+    // Build notes including received and change info for cash payments
+    let paymentNotes = '';
+    if (paymentData?.received && paymentData?.change !== undefined) {
+      paymentNotes = `Diterima: Rp ${paymentData.received.toLocaleString('id-ID')}, Kembalian: Rp ${paymentData.change.toLocaleString('id-ID')}`;
+    }
+    if (paymentData?.type === 'down_payment') {
+      paymentNotes = `Down Payment: Rp ${amount_paid.toLocaleString('id-ID')} dari total Rp ${totalAmount.toLocaleString('id-ID')}. ${paymentNotes}`;
+    } else if (paymentData?.notes) {
+      paymentNotes = paymentData.notes + (paymentNotes ? '. ' + paymentNotes : '');
+    }
+
     const { error: paymentHistoryError } = await supabase
       .from('payment_history')
       .insert({
@@ -225,9 +236,7 @@ export const createTransaction = async ({
         amount_paid: amount_paid,
         payment_method: paymentData?.paymentMethod || paymentMethod,
         cashier_id: userId,
-        notes: paymentData?.type === 'down_payment' 
-          ? `Down Payment: Rp ${amount_paid.toLocaleString('id-ID')} dari total Rp ${totalAmount.toLocaleString('id-ID')}`
-          : paymentData?.notes || null
+        notes: paymentNotes || null
       });
 
     if (paymentHistoryError) {
