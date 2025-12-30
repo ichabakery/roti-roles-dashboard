@@ -2,13 +2,15 @@ import React from 'react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Receipt } from 'lucide-react';
+import { Eye, Receipt, CheckCircle, XCircle, Edit } from 'lucide-react';
 import type { Order } from '@/services/orderService';
 
 interface OrdersTableProps {
   orders: Order[];
   onViewDetail: (orderId: string) => void;
   onShowReceipt: (order: Order) => void;
+  onEditOrder: (order: Order) => void;
+  onQuickStatusChange: (orderId: string, status: 'completed' | 'cancelled') => void;
   formatCurrency: (amount: number) => string;
 }
 
@@ -16,6 +18,8 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
   orders,
   onViewDetail,
   onShowReceipt,
+  onEditOrder,
+  onQuickStatusChange,
   formatCurrency
 }) => {
   const getStatusBadge = (status: string) => {
@@ -40,8 +44,12 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
     });
   };
 
+  const canChangeStatus = (status: string) => {
+    return !['completed', 'cancelled'].includes(status);
+  };
+
   return (
-    <div className="bg-white rounded-lg border overflow-hidden">
+    <div className="bg-background rounded-lg border overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50">
@@ -83,6 +91,39 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
               </TableCell>
               <TableCell>
                 <div className="flex items-center justify-center gap-1">
+                  {/* Quick Action Buttons */}
+                  {canChangeStatus(order.status) && (
+                    <>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                        onClick={() => onQuickStatusChange(order.id!, 'completed')}
+                        title="Selesai"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => onQuickStatusChange(order.id!, 'cancelled')}
+                        title="Batalkan"
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                  {canChangeStatus(order.status) && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => onEditOrder(order)}
+                      title="Edit"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button 
                     variant="ghost" 
                     size="sm"

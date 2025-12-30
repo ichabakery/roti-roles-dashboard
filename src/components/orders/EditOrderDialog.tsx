@@ -1,60 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, X, MapPin, Package } from 'lucide-react';
+import { Loader2, X, Package, Edit } from 'lucide-react';
 import { EnhancedProductSelector } from './EnhancedProductSelector';
-import { useBranches } from '@/hooks/useBranches';
 import { toast } from '@/hooks/use-toast';
-import type { OrderFormData } from '@/services/orderService';
+import { orderService, type Order, type OrderItem } from '@/services/orderService';
 
-interface EnhancedOrderItem {
-  productId: string;
-  productName: string;
-  quantity: number;
-  unitPrice: number;
-}
-
-interface EnhancedCreateOrderDialogProps {
+interface EditOrderDialogProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (orderData: any) => void;
-  currentBranchId: string;
+  order: Order | null;
+  onOrderUpdated: (updatedOrder: Order) => void;
 }
 
-export function EnhancedCreateOrderDialog({ 
+export function EditOrderDialog({ 
   open, 
   onClose, 
-  onSubmit,
-  currentBranchId 
-}: EnhancedCreateOrderDialogProps) {
+  order,
+  onOrderUpdated 
+}: EditOrderDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [items, setItems] = useState<EnhancedOrderItem[]>([]);
-
-  const { branches } = useBranches();
-
+  const [items, setItems] = useState<OrderItem[]>([]);
   const [formData, setFormData] = useState({
     customer_name: '',
     customer_phone: '',
-    order_date: new Date().toISOString().split('T')[0],
     delivery_date: '',
-    pickup_branch_id: currentBranchId,
-    payment_type: 'cash_on_delivery' as 'cash_on_delivery' | 'dp' | 'full_payment',
-    dp_amount: 0,
     shipping_cost: 0,
-    delivery_address: '',
     notes: ''
   });
 
-  const handleAddItem = (item: EnhancedOrderItem) => {
+  // Load order data when dialog opens
+  useEffect(() => {
+    if (open && order) {
+      setFormData({
+        customer_name: order.customer_name || '',
+        customer_phone: order.customer_phone || '',
+        delivery_date: order.delivery_date || '',
+        shipping_cost: order.shipping_cost || 0,
+        notes: order.notes || ''
+      });
+      
+      // Parse items
+      const orderItems = Array.isArray(order.items) ? order.items : [];
+      setItems(orderItems.map((item: any) => ({
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice
+      })));
+    }
+  }, [open, order]);
+
+  const handleAddItem = (item: OrderItem) => {
     const existingItemIndex = items.findIndex(i => i.productId === item.productId);
     
     if (existingItemIndex >= 0) {
-      // Update existing item
       const newItems = [...items];
       newItems[existingItemIndex] = {
         ...newItems[existingItemIndex],
@@ -62,7 +66,6 @@ export function EnhancedCreateOrderDialog({
       };
       setItems(newItems);
     } else {
-      // Add new item
       setItems([...items, item]);
     }
   };
@@ -88,70 +91,61 @@ export function EnhancedCreateOrderDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!order?.id) return;
+    
     if (items.length === 0) {
-      alert('Tambahkan minimal 1 produk ke pesanan');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Pesanan harus memiliki minimal 1 produk"
+      });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const orderData: any = {
-        ...formData,
-        shipping_cost: formData.shipping_cost || 0,
+      const updatedOrder = await orderService.updateOrder(order.id, {
+        customer_name: formData.customer_name,
+        customer_phone: formData.customer_phone,
+        delivery_date: formData.delivery_date,
+        shipping_cost: formData.shipping_cost,
+        notes: formData.notes,
         items: items.map(item => ({
           productId: item.productId,
           productName: item.productName,
           quantity: item.quantity,
           unitPrice: item.unitPrice
         }))
-      };
-
-      console.log('Submitting order data:', orderData);
-      const result = await onSubmit(orderData);
-      console.log('Order submit result:', result);
+      });
       
       toast({
-        variant: "default",
-        title: "Pesanan Berhasil Dibuat!",
-        description: "Pesanan berhasil disimpan.",
+        title: "Pesanan Berhasil Diperbarui",
+        description: `Pesanan ${order.order_number} telah diperbarui.`
       });
       
-      // Reset form
-      setItems([]);
-      setFormData({
-        customer_name: '',
-        customer_phone: '',
-        order_date: new Date().toISOString().split('T')[0],
-        delivery_date: '',
-        pickup_branch_id: currentBranchId,
-        payment_type: 'cash_on_delivery',
-        dp_amount: 0,
-        shipping_cost: 0,
-        delivery_address: '',
-        notes: ''
-      });
-      
-      console.log('Order submitted successfully, dialog will close');
+      onOrderUpdated(updatedOrder);
       onClose();
     } catch (error: any) {
-      console.error('Error submitting order:', error);
+      console.error('Error updating order:', error);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: error.message || "Gagal membuat pesanan. Silakan coba lagi.",
+        title: "Gagal memperbarui pesanan",
+        description: error.message || "Terjadi kesalahan saat memperbarui pesanan."
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  if (!order) return null;
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Buat Pesanan Baru
+            <Edit className="h-5 w-5" />
+            Edit Pesanan {order.order_number}
           </DialogTitle>
         </DialogHeader>
         
@@ -188,13 +182,12 @@ export function EnhancedCreateOrderDialog({
               <h3 className="font-semibold">Detail Pesanan</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="orderDate">Tanggal Pesan *</Label>
+                  <Label>Tanggal Pesan</Label>
                   <Input
-                    id="orderDate"
                     type="date"
-                    value={formData.order_date}
-                    onChange={(e) => setFormData({ ...formData, order_date: e.target.value })}
-                    required
+                    value={order.order_date}
+                    disabled
+                    className="bg-muted"
                   />
                 </div>
                 <div>
@@ -207,102 +200,13 @@ export function EnhancedCreateOrderDialog({
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="pickupBranch">Lokasi Pengambilan</Label>
-                  <Select 
-                    value={formData.pickup_branch_id} 
-                    onValueChange={(value) => setFormData({ ...formData, pickup_branch_id: value })}
-                  >
-                    <SelectTrigger className="bg-background">
-                      <SelectValue placeholder="Pilih lokasi pengambilan..." />
-                    </SelectTrigger>
-                    <SelectContent className="z-50 bg-background border shadow-lg">
-                      {/* Render branches grouped by type */}
-                      {branches.filter(branch => branch.location_type === 'branch' || !branch.location_type).length > 0 && (
-                        <>
-                          <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
-                            Cabang Toko
-                          </div>
-                          {branches
-                            .filter(branch => branch.location_type === 'branch' || !branch.location_type)
-                            .map(branch => (
-                              <SelectItem key={branch.id} value={branch.id}>
-                                <div className="flex items-center gap-2">
-                                  <MapPin className="h-4 w-4 text-blue-600" />
-                                  {branch.name}
-                                </div>
-                              </SelectItem>
-                          ))}
-                        </>
-                      )}
-                      
-                      {/* Admin and Management Offices */}
-                      {branches.filter(branch => ['admin_office', 'management_office'].includes(branch.location_type || '')).length > 0 && (
-                        <>
-                          <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50 border-t">
-                            Kantor Pusat
-                          </div>
-                          {branches
-                            .filter(branch => ['admin_office', 'management_office'].includes(branch.location_type || ''))
-                            .map(branch => (
-                              <SelectItem key={branch.id} value={branch.id}>
-                                <div className="flex items-center gap-2">
-                                  <Package className="h-4 w-4 text-orange-600" />
-                                  {branch.name}
-                                </div>
-                              </SelectItem>
-                          ))}
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="paymentType">Tipe Pembayaran</Label>
-                  <Select 
-                    value={formData.payment_type} 
-                    onValueChange={(value: any) => setFormData({ ...formData, payment_type: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash_on_delivery">Bayar saat ambil</SelectItem>
-                      <SelectItem value="dp">DP (Uang Muka)</SelectItem>
-                      <SelectItem value="full_payment">Lunas</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {formData.payment_type === 'dp' && (
-                <div>
-                  <Label htmlFor="dpAmount">Jumlah DP</Label>
-                  <Input
-                    id="dpAmount"
-                    type="number"
-                    value={formData.dp_amount}
-                    onChange={(e) => setFormData({ ...formData, dp_amount: parseInt(e.target.value) || 0 })}
-                    placeholder="Rp 0"
-                  />
-                </div>
-              )}
-
-              <div>
-                <Label htmlFor="deliveryAddress">Alamat Pengiriman (Opsional)</Label>
-                <Textarea
-                  id="deliveryAddress"
-                  value={formData.delivery_address}
-                  onChange={(e) => setFormData({ ...formData, delivery_address: e.target.value })}
-                  placeholder="Alamat lengkap jika perlu dikirim"
-                />
               </div>
             </CardContent>
           </Card>
 
           {/* Product Selection */}
           <EnhancedProductSelector 
-            branchId={currentBranchId}
+            branchId={order.branch_id}
             onAddItem={handleAddItem}
           />
 
@@ -329,10 +233,7 @@ export function EnhancedCreateOrderDialog({
                       />
                       <div className="text-right min-w-[100px]">
                         <div className="font-medium">
-                          Rp {item.unitPrice.toLocaleString()}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          = Rp {(item.quantity * item.unitPrice).toLocaleString()}
+                          Rp {(item.quantity * item.unitPrice).toLocaleString()}
                         </div>
                       </div>
                       <Button
@@ -362,11 +263,10 @@ export function EnhancedCreateOrderDialog({
                       value={formData.shipping_cost}
                       onChange={(e) => setFormData({ ...formData, shipping_cost: parseInt(e.target.value) || 0 })}
                       min="0"
-                      placeholder="0"
                     />
                   </div>
                   <div className="flex justify-between items-center text-lg font-semibold border-t pt-2">
-                    <span>Total Pesanan:</span>
+                    <span>Total:</span>
                     <span>Rp {calculateTotal().toLocaleString()}</span>
                   </div>
                 </div>
@@ -391,7 +291,7 @@ export function EnhancedCreateOrderDialog({
             </Button>
             <Button type="submit" disabled={isSubmitting || items.length === 0}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Buat Pesanan
+              Simpan Perubahan
             </Button>
           </DialogFooter>
         </form>
