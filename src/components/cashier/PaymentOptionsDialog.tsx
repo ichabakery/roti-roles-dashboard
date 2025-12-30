@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { PaymentTypeSelector } from './PaymentTypeSelector';
 import { PaymentFormFields } from './PaymentFormFields';
 import { PaymentSummary } from './PaymentSummary';
+import { CashReceivedInput } from './CashReceivedInput';
 
 interface PaymentOptionsDialogProps {
   open: boolean;
@@ -34,6 +35,22 @@ export const PaymentOptionsDialog: React.FC<PaymentOptionsDialogProps> = ({
   const [downPaymentAmount, setDownPaymentAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [cashReceived, setCashReceived] = useState(0);
+  const [cashChange, setCashChange] = useState(0);
+
+  // Handle cash received changes
+  const handleCashReceivedChange = useCallback((received: number, change: number) => {
+    setCashReceived(received);
+    setCashChange(change);
+  }, []);
+
+  // Calculate the effective total for cash input (full payment or DP amount)
+  const getEffectiveTotalForCash = () => {
+    if (paymentType === 'down_payment') {
+      return parseFloat(downPaymentAmount) || 0;
+    }
+    return totalAmount;
+  };
 
   const handleConfirm = () => {
     const paymentData: PaymentData = {
@@ -49,6 +66,12 @@ export const PaymentOptionsDialog: React.FC<PaymentOptionsDialogProps> = ({
       paymentData.dueDate = dueDate;
     }
 
+    // Include cash received and change for cash payments
+    if (paymentMethod === 'cash' && paymentType !== 'deferred') {
+      paymentData.received = cashReceived;
+      paymentData.change = cashChange;
+    }
+
     onConfirmPayment(paymentData);
     onOpenChange(false);
     
@@ -57,6 +80,8 @@ export const PaymentOptionsDialog: React.FC<PaymentOptionsDialogProps> = ({
     setDownPaymentAmount('');
     setDueDate('');
     setNotes('');
+    setCashReceived(0);
+    setCashChange(0);
   };
 
   const isValidDownPayment = () => {
@@ -70,14 +95,27 @@ export const PaymentOptionsDialog: React.FC<PaymentOptionsDialogProps> = ({
       return dueDate !== '';
     }
     if (paymentType === 'down_payment') {
-      return dueDate !== '' && isValidDownPayment();
+      const validDP = dueDate !== '' && isValidDownPayment();
+      // For cash DP, check if received >= DP amount
+      if (paymentMethod === 'cash') {
+        const dpAmount = parseFloat(downPaymentAmount) || 0;
+        return validDP && cashReceived >= dpAmount;
+      }
+      return validDP;
+    }
+    // For full payment with cash, check if received >= total
+    if (paymentMethod === 'cash') {
+      return cashReceived >= totalAmount;
     }
     return true;
   };
 
+  // Check if we should show cash input (cash payment and not deferred)
+  const showCashInput = paymentMethod === 'cash' && paymentType !== 'deferred';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Pilih Metode Pembayaran</DialogTitle>
         </DialogHeader>
@@ -100,6 +138,14 @@ export const PaymentOptionsDialog: React.FC<PaymentOptionsDialogProps> = ({
             onNotesChange={setNotes}
             totalAmount={totalAmount}
           />
+
+          {/* Cash Received Input - Show for cash payments */}
+          {showCashInput && (
+            <CashReceivedInput
+              totalAmount={getEffectiveTotalForCash()}
+              onCashReceivedChange={handleCashReceivedChange}
+            />
+          )}
 
           <PaymentSummary
             totalAmount={totalAmount}
