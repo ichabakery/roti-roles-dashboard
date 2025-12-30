@@ -264,6 +264,7 @@ export type Database = {
           phone_number: string | null
           pickup_branch_id: string | null
           remaining_amount: number | null
+          shipping_cost: number | null
           status: string
           total_amount: number
           updated_at: string
@@ -290,6 +291,7 @@ export type Database = {
           phone_number?: string | null
           pickup_branch_id?: string | null
           remaining_amount?: number | null
+          shipping_cost?: number | null
           status?: string
           total_amount?: number
           updated_at?: string
@@ -316,6 +318,7 @@ export type Database = {
           phone_number?: string | null
           pickup_branch_id?: string | null
           remaining_amount?: number | null
+          shipping_cost?: number | null
           status?: string
           total_amount?: number
           updated_at?: string

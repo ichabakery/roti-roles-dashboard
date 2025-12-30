@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Search, Calendar, Filter, Eye, BarChart3, Download, Receipt, LayoutGrid, TableIcon } from 'lucide-react';
+import { Plus, Search, Calendar, Filter, Eye, BarChart3, Download, Receipt, LayoutGrid, TableIcon, CheckCircle, XCircle, Edit } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { EnhancedCreateOrderDialog } from '@/components/orders/EnhancedCreateOrderDialog';
 import { OrderDetailDialog } from '@/components/orders/OrderDetailDialog';
+import { EditOrderDialog } from '@/components/orders/EditOrderDialog';
 import { useUserBranch } from '@/hooks/useUserBranch';
 import { useToast } from '@/hooks/use-toast';
 import { orderService, type Order } from '@/services/orderService';
@@ -43,6 +44,8 @@ const Orders = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [selectedOrderForEdit, setSelectedOrderForEdit] = useState<Order | null>(null);
   
   // Get statistics for current branch and date range
   const branchId = user?.role === 'owner' || user?.role === 'admin_pusat' ? undefined : userBranch.branchId;
@@ -95,6 +98,29 @@ const Orders = () => {
   const handleShowReceipt = (order: Order) => {
     setSelectedOrderForReceipt(order);
     setShowReceiptDialog(true);
+  };
+
+  const handleEditOrder = (order: Order) => {
+    setSelectedOrderForEdit(order);
+    setShowEditDialog(true);
+  };
+
+  const handleQuickStatusChange = async (orderId: string, status: 'completed' | 'cancelled') => {
+    try {
+      const updatedOrder = await orderService.updateOrderStatus(orderId, status);
+      handleOrderUpdate(updatedOrder);
+      toast({
+        title: "Status diperbarui",
+        description: `Pesanan berhasil diubah menjadi ${status === 'completed' ? 'Selesai' : 'Dibatalkan'}`
+      });
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast({
+        title: "Gagal mengubah status",
+        description: "Terjadi kesalahan saat mengubah status pesanan",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleOrderUpdate = (updatedOrder: Order) => {
@@ -279,6 +305,14 @@ const Orders = () => {
           order={selectedOrderForReceipt}
         />
 
+        {/* Edit Order Dialog */}
+        <EditOrderDialog
+          open={showEditDialog}
+          onClose={() => setShowEditDialog(false)}
+          order={selectedOrderForEdit}
+          onOrderUpdated={handleOrderUpdate}
+        />
+
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
@@ -437,6 +471,8 @@ const Orders = () => {
                   orders={filteredOrders}
                   onViewDetail={handleViewOrderDetail}
                   onShowReceipt={handleShowReceipt}
+                  onEditOrder={handleEditOrder}
+                  onQuickStatusChange={handleQuickStatusChange}
                   formatCurrency={formatCurrency}
                 />
               </div>
@@ -455,12 +491,41 @@ const Orders = () => {
                              <CardDescription>{order.customer_name} • {order.customer_phone}</CardDescription>
                            </div>
                            <div className="flex items-center gap-2">
-                             {getStatusBadge(order.status)}
+                           {getStatusBadge(order.status)}
+                            {order.status !== 'completed' && order.status !== 'cancelled' && (
+                              <>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="text-green-600 hover:text-green-700"
+                                  onClick={() => handleQuickStatusChange(order.id!, 'completed')}
+                                  title="Selesai"
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700"
+                                  onClick={() => handleQuickStatusChange(order.id!, 'cancelled')}
+                                  title="Batal"
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => handleEditOrder(order)}
+                                  title="Edit"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
                               <Button 
                                 variant="outline" 
                                 size="sm"
                                 onClick={() => handleShowReceipt(order)}
-                                className="mr-2"
                               >
                                 <Receipt className="h-4 w-4 mr-1" />
                                 Bukti

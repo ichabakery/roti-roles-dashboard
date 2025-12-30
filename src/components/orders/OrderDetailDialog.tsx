@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { orderService, type Order } from '@/services/orderService';
 import { OrderPaymentDialog } from './OrderPaymentDialog';
+import { EditOrderDialog } from './EditOrderDialog';
 import { 
   Clock, 
   User, 
@@ -21,7 +22,9 @@ import {
   PauseCircle,
   AlertCircle,
   CreditCard,
-  Banknote
+  Banknote,
+  Edit,
+  Truck
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -54,6 +57,7 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
   const [updating, setUpdating] = useState(false);
   const [notes, setNotes] = useState('');
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -168,11 +172,12 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
     }).format(amount);
   };
 
+  // Simplified status flow - skip pending, production, ready
   const getNextPossibleStatuses = (currentStatus: string) => {
     const workflow = {
       pending: ['confirmed', 'cancelled'],
-      confirmed: ['in_production', 'cancelled'],
-      in_production: ['ready', 'cancelled'],
+      confirmed: ['completed', 'cancelled'],
+      in_production: ['completed', 'cancelled'],
       ready: ['completed', 'cancelled'],
       completed: [],
       cancelled: []
@@ -213,7 +218,19 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
                   Dibuat pada {format(new Date(order.created_at!), 'PPpp', { locale: id })}
                 </p>
               </div>
-              {getStatusBadge(order.status)}
+              <div className="flex items-center gap-2">
+                {getStatusBadge(order.status)}
+                {order.status !== 'completed' && order.status !== 'cancelled' && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowEditDialog(true)}
+                  >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Edit
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Customer Information */}
@@ -260,6 +277,15 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
                     <p className="text-sm font-medium text-muted-foreground">Cabang</p>
                     <p>{order.branch_name || 'Unknown Branch'}</p>
                   </div>
+                  {(order.shipping_cost || 0) > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Ongkir</p>
+                      <p className="flex items-center gap-1">
+                        <Truck className="h-4 w-4 text-muted-foreground" />
+                        {formatCurrency(order.shipping_cost || 0)}
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Total Pembayaran</p>
                     <p className="text-lg font-semibold">{formatCurrency(order.total_amount)}</p>
@@ -416,6 +442,17 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
           onOpenChange={setShowPaymentDialog}
           order={order}
           onPaymentComplete={(updatedOrder) => {
+            setOrder(updatedOrder);
+            onOrderUpdate(updatedOrder);
+          }}
+        />
+        
+        {/* Edit Dialog */}
+        <EditOrderDialog
+          open={showEditDialog}
+          onClose={() => setShowEditDialog(false)}
+          order={order}
+          onOrderUpdated={(updatedOrder) => {
             setOrder(updatedOrder);
             onOrderUpdate(updatedOrder);
           }}

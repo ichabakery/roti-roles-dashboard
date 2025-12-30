@@ -27,6 +27,7 @@ export interface Order {
   delivery_date: string;
   status: 'pending' | 'confirmed' | 'in_production' | 'ready' | 'completed' | 'cancelled';
   total_amount: number;
+  shipping_cost?: number;
   payment_type?: 'cash_on_delivery' | 'dp' | 'full_payment';
   payment_status?: 'pending' | 'partial' | 'paid' | 'full_payment';
   dp_amount?: number;
@@ -46,7 +47,8 @@ export const orderService = {
     payment_type?: string,
     dp_amount?: number,
     delivery_address?: string,
-    pickup_branch_id?: string
+    pickup_branch_id?: string,
+    shipping_cost?: number
   }) {
     try {
       // Validate items
@@ -54,9 +56,11 @@ export const orderService = {
         throw new Error('Pesanan harus memiliki minimal 1 item');
       }
 
-      // Calculate total
-      const total_amount = orderData.items.reduce((total, item) => 
+      // Calculate total (subtotal + shipping)
+      const subtotal = orderData.items.reduce((total, item) => 
         total + (item.quantity * item.unitPrice), 0);
+      const shipping_cost = orderData.shipping_cost || 0;
+      const total_amount = subtotal + shipping_cost;
 
       // Calculate payment details
       const payment_status = orderData.payment_type === 'full_payment' ? 'paid' : 'pending';
@@ -77,6 +81,7 @@ export const orderService = {
         order_date: orderData.order_date,
         delivery_date: orderData.delivery_date,
         total_amount,
+        shipping_cost,
         payment_type: orderData.payment_type || 'cash_on_delivery',
         payment_status,
         dp_amount: orderData.dp_amount || 0,
@@ -249,6 +254,78 @@ export const orderService = {
     } catch (error) {
       console.error('Error creating production request:', error);
       throw error;
+    }
+  },
+
+  async updateOrder(orderId: string, orderData: Partial<OrderFormData> & { 
+    shipping_cost?: number,
+    customer_name?: string,
+    customer_phone?: string,
+    delivery_date?: string,
+    notes?: string,
+    items?: any[]
+  }) {
+    try {
+      // Calculate new total if items are provided
+      let updateData: any = {
+        updated_at: new Date().toISOString()
+      };
+
+      if (orderData.customer_name) updateData.customer_name = orderData.customer_name;
+      if (orderData.customer_phone !== undefined) updateData.customer_phone = orderData.customer_phone;
+      if (orderData.delivery_date) updateData.delivery_date = orderData.delivery_date;
+      if (orderData.notes !== undefined) updateData.notes = orderData.notes;
+      if (orderData.shipping_cost !== undefined) updateData.shipping_cost = orderData.shipping_cost;
+      
+      if (orderData.items) {
+        updateData.items = orderData.items;
+        // Recalculate total
+        const subtotal = orderData.items.reduce((total, item) => 
+          total + (item.quantity * item.unitPrice), 0);
+        const shipping = orderData.shipping_cost || 0;
+        updateData.total_amount = subtotal + shipping;
+      }
+
+      const { data, error } = await supabase
+        .from('orders')
+        .update(updateData)
+        .eq('id', orderId)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      // Update order_items if items changed
+      if (orderData.items) {
+        // Delete existing items
+        await supabase.from('order_items').delete().eq('order_id', orderId);
+        
+        // Insert new items
+        const orderItems = orderData.items.map((item: any) => ({
+          order_id: orderId,
+          product_id: item.productId,
+          quantity: item.quantity,
+          unit_price: item.unitPrice,
+          subtotal: item.quantity * item.unitPrice
+        }));
+
+        await supabase.from('order_items').insert(orderItems);
+      }
+
+      // Get branch name
+      const { data: branchData } = await supabase
+        .from('branches')
+        .select('name')
+        .eq('id', data.branch_id)
+        .single();
+
+      return {
+        ...data,
+        branch_name: branchData?.name
+      } as Order;
+    } catch (error: any) {
+      console.error('Error updating order:', error);
+      throw new Error(error.message || 'Gagal memperbarui pesanan');
     }
   }
 };
