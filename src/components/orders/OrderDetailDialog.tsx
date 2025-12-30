@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { orderService, type Order } from '@/services/orderService';
+import { OrderPaymentDialog } from './OrderPaymentDialog';
 import { 
   Clock, 
   User, 
@@ -18,7 +19,9 @@ import {
   XCircle, 
   PlayCircle,
   PauseCircle,
-  AlertCircle
+  AlertCircle,
+  CreditCard,
+  Banknote
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -50,6 +53,7 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [notes, setNotes] = useState('');
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -261,6 +265,43 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
                     <p className="text-lg font-semibold">{formatCurrency(order.total_amount)}</p>
                   </div>
                 </div>
+                
+                {/* Payment Information */}
+                <Separator className="my-3" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Status Pembayaran</p>
+                    <Badge variant={order.payment_status === 'paid' ? 'default' : 'secondary'} className="mt-1">
+                      {order.payment_status === 'paid' ? 'Lunas' : 
+                       order.payment_status === 'partial' ? 'Sebagian' : 'Belum Bayar'}
+                    </Badge>
+                  </div>
+                  {(order.dp_amount || 0) > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Sudah Dibayar</p>
+                      <p className="text-green-600 font-medium">{formatCurrency(order.dp_amount || 0)}</p>
+                    </div>
+                  )}
+                  {(order.remaining_amount || 0) > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Sisa Pembayaran</p>
+                      <p className="text-orange-600 font-medium">{formatCurrency(order.remaining_amount || 0)}</p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Payment Button */}
+                {order.payment_status !== 'paid' && order.status !== 'cancelled' && (
+                  <div className="pt-3">
+                    <Button 
+                      onClick={() => setShowPaymentDialog(true)}
+                      className="w-full sm:w-auto"
+                    >
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Proses Pembayaran
+                    </Button>
+                  </div>
+                )}
                 {order.notes && (
                   <div>
                     <p className="text-sm font-medium text-muted-foreground mb-1">Catatan</p>
@@ -368,6 +409,17 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
             <p className="text-muted-foreground">Pesanan tidak ditemukan</p>
           </div>
         )}
+        
+        {/* Payment Dialog */}
+        <OrderPaymentDialog
+          open={showPaymentDialog}
+          onOpenChange={setShowPaymentDialog}
+          order={order}
+          onPaymentComplete={(updatedOrder) => {
+            setOrder(updatedOrder);
+            onOrderUpdate(updatedOrder);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
