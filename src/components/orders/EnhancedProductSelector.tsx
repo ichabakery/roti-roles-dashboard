@@ -9,7 +9,6 @@ interface EnhancedOrderItem {
   productName: string;
   quantity: number;
   unitPrice: number;
-  availableStock: number;
 }
 
 interface EnhancedProductSelectorProps {
