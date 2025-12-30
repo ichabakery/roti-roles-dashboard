@@ -101,6 +101,8 @@ export interface ProductWithInventoryInfo extends Product {
   days_until_expiry?: number | null;
 }
 
+export type ReturnCondition = 'resaleable' | 'damaged' | 'expired' | 'sample' | 'bonus';
+
 export interface Return {
   id: string;
   transaction_id: string | null;
@@ -120,7 +122,7 @@ export interface ReturnItem {
   batch_id: string | null;
   quantity: number;
   reason: string;
-  condition: 'resaleable' | 'damaged' | 'expired';
+  condition: ReturnCondition;
   created_at: string;
   product?: Product;
   batch?: ProductBatch;
