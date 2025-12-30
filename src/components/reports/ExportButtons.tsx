@@ -161,20 +161,20 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({ transactions }) =>
   };
 
   return (
-    <div className="flex flex-wrap gap-2">
-      <Button variant="outline" onClick={exportTransactionSummary}>
+    <div className="flex flex-col gap-2 w-full sm:flex-row sm:flex-wrap sm:w-auto">
+      <Button variant="outline" size="sm" className="w-full sm:w-auto justify-center" onClick={exportTransactionSummary}>
         <FileText className="mr-2 h-4 w-4" />
-        Ringkasan Transaksi
+        <span className="text-xs sm:text-sm">Ringkasan</span>
       </Button>
 
-      <Button variant="outline" onClick={exportDetailedTransactions}>
+      <Button variant="outline" size="sm" className="w-full sm:w-auto justify-center" onClick={exportDetailedTransactions}>
         <DownloadIcon className="mr-2 h-4 w-4" />
-        Detail Item
+        <span className="text-xs sm:text-sm">Detail Item</span>
       </Button>
 
-      <Button variant="outline" onClick={exportProductAnalysis}>
+      <Button variant="outline" size="sm" className="w-full sm:w-auto justify-center" onClick={exportProductAnalysis}>
         <FileSpreadsheet className="mr-2 h-4 w-4" />
-        Analisis Produk
+        <span className="text-xs sm:text-sm">Analisis</span>
       </Button>
     </div>
   );

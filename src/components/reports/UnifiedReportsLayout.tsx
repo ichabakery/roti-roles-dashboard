@@ -29,12 +29,12 @@ export const UnifiedReportsLayout = () => {
   } = useUnifiedReports();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
         <div>
-          <h1 className="text-3xl font-bold">Laporan Transaksi</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold">Laporan Transaksi</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Monitor dan analisis transaksi penjualan
           </p>
         </div>
@@ -45,11 +45,11 @@ export const UnifiedReportsLayout = () => {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="daily" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="daily">Laporan Harian</TabsTrigger>
-          <TabsTrigger value="transactions">Transaksi</TabsTrigger>
-          <TabsTrigger value="summary">Ringkasan</TabsTrigger>
-          <TabsTrigger value="products">Produk</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto gap-1">
+          <TabsTrigger value="daily" className="text-xs sm:text-sm py-2">Laporan Harian</TabsTrigger>
+          <TabsTrigger value="transactions" className="text-xs sm:text-sm py-2">Transaksi</TabsTrigger>
+          <TabsTrigger value="summary" className="text-xs sm:text-sm py-2">Ringkasan</TabsTrigger>
+          <TabsTrigger value="products" className="text-xs sm:text-sm py-2">Produk</TabsTrigger>
         </TabsList>
 
         <TabsContent value="daily" className="space-y-4">

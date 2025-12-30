@@ -104,15 +104,15 @@ export const DailySalesReport: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Filters */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Filter Laporan Harian</CardTitle>
+          <CardTitle className="text-base sm:text-lg">Filter Laporan Harian</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4 items-end">
-            {/* Date Picker */}
+        <CardContent className="space-y-4">
+          {/* Date Section */}
+          <div className="flex flex-col gap-3">
             <div className="space-y-2">
               <label className="text-sm font-medium">Tanggal</label>
               <Popover>
@@ -120,7 +120,7 @@ export const DailySalesReport: React.FC = () => {
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-[200px] justify-start text-left font-normal",
+                      "w-full sm:w-[200px] justify-start text-left font-normal",
                       !selectedDate && "text-muted-foreground"
                     )}
                   >
@@ -141,19 +141,22 @@ export const DailySalesReport: React.FC = () => {
 
             {/* Quick Date Buttons */}
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => handleQuickDate(0)}>
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={() => handleQuickDate(0)}>
                 Hari Ini
               </Button>
-              <Button variant="outline" size="sm" onClick={() => handleQuickDate(-1)}>
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={() => handleQuickDate(-1)}>
                 Kemarin
               </Button>
             </div>
+          </div>
 
+          {/* Branch and Export Section */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             {/* Branch Selector */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Cabang</label>
               <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Pilih cabang" />
                 </SelectTrigger>
                 <SelectContent>
@@ -168,14 +171,14 @@ export const DailySalesReport: React.FC = () => {
             </div>
 
             {/* Export Buttons */}
-            <div className="flex gap-2 ml-auto">
-              <Button variant="outline" size="sm" onClick={exportToCSV}>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={exportToCSV}>
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Export Excel
+                <span className="text-xs sm:text-sm">Export</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={handlePrint}>
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={handlePrint}>
                 <Printer className="h-4 w-4 mr-2" />
-                Print
+                <span className="text-xs sm:text-sm">Print</span>
               </Button>
             </div>
           </div>
@@ -183,37 +186,37 @@ export const DailySalesReport: React.FC = () => {
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-600">
+          <CardContent className="p-4 sm:pt-6">
+            <div className="text-lg sm:text-2xl font-bold text-green-600">
               Rp {formatCurrency(summary.total_pendapatan)}
             </div>
-            <p className="text-sm text-muted-foreground">Total Pendapatan</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Total Pendapatan</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-blue-600">
+          <CardContent className="p-4 sm:pt-6">
+            <div className="text-lg sm:text-2xl font-bold text-blue-600">
               {summary.total_penjualan} unit
             </div>
-            <p className="text-sm text-muted-foreground">Total Penjualan</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Total Penjualan</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-600">
+          <CardContent className="p-4 sm:pt-6">
+            <div className="text-lg sm:text-2xl font-bold text-green-600">
               +{summary.total_stock_masuk} unit
             </div>
-            <p className="text-sm text-muted-foreground">Stock Masuk</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Stock Masuk</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-orange-600">
+          <CardContent className="p-4 sm:pt-6">
+            <div className="text-lg sm:text-2xl font-bold text-orange-600">
               {summary.total_retur} unit
             </div>
-            <p className="text-sm text-muted-foreground">Total Retur</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Total Retur</p>
           </CardContent>
         </Card>
       </div>
