@@ -4,12 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, X, MapPin, Package, CreditCard } from 'lucide-react';
+import { Loader2, X, MapPin, Package } from 'lucide-react';
 import { EnhancedProductSelector } from './EnhancedProductSelector';
-import { StockManagementAlert } from './StockManagementAlert';
 import { useBranches } from '@/hooks/useBranches';
 import { toast } from '@/hooks/use-toast';
 import type { OrderFormData } from '@/services/orderService';
@@ -19,7 +17,6 @@ interface EnhancedOrderItem {
   productName: string;
   quantity: number;
   unitPrice: number;
-  availableStock: number;
 }
 
 interface EnhancedCreateOrderDialogProps {
@@ -37,11 +34,6 @@ export function EnhancedCreateOrderDialog({
 }: EnhancedCreateOrderDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [items, setItems] = useState<EnhancedOrderItem[]>([]);
-  const [stockAlerts, setStockAlerts] = useState<Array<{
-    productName: string;
-    requested: number;
-    available: number;
-  }>>([]);
 
   const { branches } = useBranches();
 
@@ -72,45 +64,16 @@ export function EnhancedCreateOrderDialog({
       // Add new item
       setItems([...items, item]);
     }
-
-    // Track stock issues for display but don't block orders
-    if (item.quantity > item.availableStock) {
-      setStockAlerts(prev => [
-        ...prev.filter(alert => alert.productName !== item.productName),
-        {
-          productName: item.productName,
-          requested: item.quantity,
-          available: item.availableStock
-        }
-      ]);
-    }
   };
 
   const removeItem = (index: number) => {
-    const removedItem = items[index];
     setItems(items.filter((_, i) => i !== index));
-    setStockAlerts(prev => prev.filter(alert => alert.productName !== removedItem.productName));
   };
 
   const updateItemQuantity = (index: number, quantity: number) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], quantity };
     setItems(newItems);
-
-    // Update stock alerts
-    const item = newItems[index];
-    if (quantity > item.availableStock) {
-      setStockAlerts(prev => [
-        ...prev.filter(alert => alert.productName !== item.productName),
-        {
-          productName: item.productName,
-          requested: quantity,
-          available: item.availableStock
-        }
-      ]);
-    } else {
-      setStockAlerts(prev => prev.filter(alert => alert.productName !== item.productName));
-    }
   };
 
   const calculateTotal = () => {
@@ -125,32 +88,15 @@ export function EnhancedCreateOrderDialog({
       return;
     }
 
-    // Show confirmation for zero stock items but don't block
-    if (stockAlerts.length > 0) {
-      const confirm = window.confirm(
-        'Ada produk dengan stok tidak mencukupi. Sistem akan otomatis membuat permintaan produksi. Lanjutkan?'
-      );
-      if (!confirm) return;
-    }
-
     setIsSubmitting(true);
     try {
-      const productionNotes = stockAlerts.length > 0
-        ? `Perlu diproduksi: ` + stockAlerts.map(a => `${a.productName} x ${Math.max(0, a.requested - a.available)}`).join(', ')
-        : '';
-
       const orderData: any = {
         ...formData,
-        notes: formData.notes || productionNotes ? `${formData.notes}${formData.notes ? '\n' : ''}${productionNotes}` : formData.notes,
-        allowZeroStock: true,
         items: items.map(item => ({
           productId: item.productId,
           productName: item.productName,
           quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          availableStock: item.availableStock,
-          productionNeeded: item.quantity > item.availableStock,
-          productionQuantity: Math.max(0, item.quantity - item.availableStock)
+          unitPrice: item.unitPrice
         }))
       };
 
@@ -158,18 +104,14 @@ export function EnhancedCreateOrderDialog({
       const result = await onSubmit(orderData);
       console.log('Order submit result:', result);
       
-      // Show success message only if order was actually created
       toast({
         variant: "default",
         title: "Pesanan Berhasil Dibuat!",
-        description: stockAlerts.length > 0 
-          ? `Sistem otomatis membuat permintaan produksi untuk ${stockAlerts.length} item yang kurang stok.`
-          : "Pesanan berhasil disimpan.",
+        description: "Pesanan berhasil disimpan.",
       });
       
       // Reset form
       setItems([]);
-      setStockAlerts([]);
       setFormData({
         customer_name: '',
         customer_phone: '',
@@ -363,57 +305,39 @@ export function EnhancedCreateOrderDialog({
               <CardContent className="p-4">
                 <h3 className="font-semibold mb-4">Item Pesanan</h3>
                 <div className="space-y-3">
-                  {items.map((item, index) => {
-                    const fromStock = Math.min(item.quantity, item.availableStock);
-                    const toProduce = Math.max(0, item.quantity - item.availableStock);
-                    
-                     return (
-                       <div key={index} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
-                         <div className="flex-1">
-                           <div className="font-medium">{item.productName}</div>
-                           <div className="flex flex-wrap gap-2 mt-2">
-                             {fromStock > 0 && (
-                               <Badge variant="secondary" className="text-xs">
-                                 Dari Stok: {fromStock}
-                               </Badge>
-                             )}
-                             {toProduce > 0 && (
-                               <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
-                                 Perlu Produksi: {toProduce}
-                               </Badge>
-                             )}
-                           </div>
-                           <div className="text-sm text-muted-foreground mt-1">
-                             Stok tersedia: {item.availableStock}
-                           </div>
-                         </div>
-                       <Input
-                         type="number"
-                         className="w-20"
-                         value={item.quantity}
-                         onChange={(e) => updateItemQuantity(index, parseInt(e.target.value) || 1)}
-                         min="1"
-                         // Remove max limit to allow ordering more than available stock
-                       />
-                       <div className="text-right min-w-[100px]">
-                         <div className="font-medium">
-                           Rp {item.unitPrice.toLocaleString()}
-                         </div>
-                         <div className="text-sm text-muted-foreground">
-                           = Rp {(item.quantity * item.unitPrice).toLocaleString()}
-                         </div>
-                       </div>
-                       <Button
-                         type="button"
-                         variant="destructive"
-                         size="icon"
-                         onClick={() => removeItem(index)}
-                       >
-                         <X className="h-4 w-4" />
-                       </Button>
-                     </div>
-                     );
-                   })}
+                  {items.map((item, index) => (
+                    <div key={index} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                      <div className="flex-1">
+                        <div className="font-medium">{item.productName}</div>
+                        <div className="text-sm text-muted-foreground">
+                          Rp {item.unitPrice.toLocaleString()} per unit
+                        </div>
+                      </div>
+                      <Input
+                        type="number"
+                        className="w-20"
+                        value={item.quantity}
+                        onChange={(e) => updateItemQuantity(index, parseInt(e.target.value) || 1)}
+                        min="1"
+                      />
+                      <div className="text-right min-w-[100px]">
+                        <div className="font-medium">
+                          Rp {item.unitPrice.toLocaleString()}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          = Rp {(item.quantity * item.unitPrice).toLocaleString()}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => removeItem(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
                 
                 <div className="border-t pt-4 mt-4">
@@ -425,16 +349,6 @@ export function EnhancedCreateOrderDialog({
               </CardContent>
             </Card>
           )}
-
-          {/* Stock Alerts */}
-          {stockAlerts.map((alert, index) => (
-            <StockManagementAlert
-              key={index}
-              productName={alert.productName}
-              requestedQuantity={alert.requested}
-              availableStock={alert.available}
-            />
-          ))}
 
           {/* Notes */}
           <div>
@@ -448,21 +362,12 @@ export function EnhancedCreateOrderDialog({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+            <Button type="button" variant="outline" onClick={onClose}>
               Batal
             </Button>
             <Button type="submit" disabled={isSubmitting || items.length === 0}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Menyimpan...
-                </>
-              ) : (
-                <>
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Buat Pesanan
-                </>
-              )}
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Buat Pesanan
             </Button>
           </DialogFooter>
         </form>
