@@ -22,6 +22,7 @@ export interface PaymentData {
   notes?: string;
   received?: number;  // Uang yang diterima dari pelanggan
   change?: number;    // Kembalian
+  discountAmount?: number; // Diskon yang diberikan
 }
 
 export const PaymentOptionsDialog: React.FC<PaymentOptionsDialogProps> = ({

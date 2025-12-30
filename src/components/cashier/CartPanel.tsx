@@ -10,6 +10,7 @@ import { PaymentMethodSelector } from './PaymentMethodSelector';
 import { PaymentOptionsDialog, PaymentData } from './PaymentOptionsDialog';
 import { PendingPaymentsDialog } from './PendingPaymentsDialog';
 import { CashReceivedInput } from './CashReceivedInput';
+import { DiscountInput } from './DiscountInput';
 import { CartItem } from '@/types/cashier';
 import { Branch } from '@/types/inventory';
 
@@ -48,8 +49,10 @@ export const CartPanel: React.FC<CartPanelProps> = ({
   const [showPendingPayments, setShowPendingPayments] = useState(false);
   const [cashReceived, setCashReceived] = useState(0);
   const [changeAmount, setChangeAmount] = useState(0);
+  const [discountAmount, setDiscountAmount] = useState(0);
   
-  const totalAmount = calculateTotal();
+  const subtotal = calculateTotal();
+  const totalAmount = subtotal - discountAmount;
   const isCashPayment = paymentMethod === 'cash';
   const isInsufficientCash = isCashPayment && cashReceived > 0 && cashReceived < totalAmount;
   const needsCashInput = isCashPayment && cashReceived < totalAmount;
@@ -60,13 +63,18 @@ export const CartPanel: React.FC<CartPanelProps> = ({
     setChangeAmount(change);
   }, []);
 
+  const handleDiscountChange = useCallback((discount: number) => {
+    setDiscountAmount(discount);
+  }, []);
+
   const handleQuickPayment = () => {
-    // Include cash received and change in payment data
+    // Include cash received, change, and discount in payment data
     const paymentData: PaymentData = {
       type: 'full',
       paymentMethod,
       received: cashReceived,
-      change: changeAmount
+      change: changeAmount,
+      discountAmount: discountAmount
     };
     onProcessPayment(paymentData);
   };
@@ -76,11 +84,12 @@ export const CartPanel: React.FC<CartPanelProps> = ({
   };
 
   const handlePaymentConfirm = (paymentData: PaymentData) => {
-    // Include cash received and change if cash payment
+    // Include cash received, change, and discount
     if (isCashPayment) {
       paymentData.received = cashReceived;
       paymentData.change = changeAmount;
     }
+    paymentData.discountAmount = discountAmount;
     onProcessPayment(paymentData);
   };
 
@@ -135,24 +144,39 @@ export const CartPanel: React.FC<CartPanelProps> = ({
             onPaymentMethodChange={onPaymentMethodChange}
           />
 
-          {/* Total */}
-          <div className="border-t pt-4">
-            <div className="flex justify-between items-center mb-3">
+          {/* Discount and Total */}
+          <div className="border-t pt-4 space-y-3">
+            {/* Discount Input */}
+            {cart.length > 0 && (
+              <DiscountInput
+                subtotal={subtotal}
+                onDiscountChange={handleDiscountChange}
+                disabled={processingPayment || !selectedBranch}
+              />
+            )}
+
+            {/* Subtotal and Total Display */}
+            {discountAmount > 0 && (
+              <div className="flex justify-between items-center text-sm text-muted-foreground">
+                <span>Subtotal:</span>
+                <span>Rp {subtotal.toLocaleString('id-ID')}</span>
+              </div>
+            )}
+            
+            <div className="flex justify-between items-center">
               <span className="text-lg font-medium">Total:</span>
-              <span className="text-xl font-bold">
+              <span className="text-xl font-bold text-primary">
                 Rp {totalAmount.toLocaleString('id-ID')}
               </span>
             </div>
 
             {/* Cash Received Input - Only for cash payments */}
             {isCashPayment && cart.length > 0 && (
-              <div className="mb-4">
-                <CashReceivedInput
-                  totalAmount={totalAmount}
-                  onCashReceivedChange={handleCashReceivedChange}
-                  disabled={processingPayment || !selectedBranch}
-                />
-              </div>
+              <CashReceivedInput
+                totalAmount={totalAmount}
+                onCashReceivedChange={handleCashReceivedChange}
+                disabled={processingPayment || !selectedBranch}
+              />
             )}
 
             {/* Payment Buttons */}

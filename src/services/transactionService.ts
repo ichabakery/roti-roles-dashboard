@@ -20,11 +20,17 @@ export const createTransaction = async ({
   paymentData,
   paymentMethod
 }: CreateTransactionParams): Promise<Transaction> => {
+  // Calculate discount-adjusted total
+  const discountAmount = paymentData?.discountAmount || 0;
+  const finalTotal = totalAmount - discountAmount;
+
   console.log('🔄 Creating transaction with params:', {
     cartItems: cart.length,
     selectedBranch,
     userId,
     totalAmount,
+    discountAmount,
+    finalTotal,
     paymentData,
     paymentMethod
   });
@@ -47,7 +53,7 @@ export const createTransaction = async ({
   // Determine payment status and amounts based on payment type
   let payment_status: 'paid' | 'pending' | 'partial' = 'paid';
   let transaction_status: 'completed' | 'pending' = 'completed';
-  let amount_paid = totalAmount;
+  let amount_paid = finalTotal;
   let amount_remaining = 0;
   let due_date = null;
 
@@ -57,21 +63,21 @@ export const createTransaction = async ({
         payment_status = 'pending';
         transaction_status = 'pending'; // Important: transaction remains pending
         amount_paid = 0;
-        amount_remaining = totalAmount;
+        amount_remaining = finalTotal;
         due_date = paymentData.dueDate || null;
         break;
       case 'down_payment':
         payment_status = 'partial';
         transaction_status = 'pending'; // Important: transaction remains pending
         amount_paid = paymentData.amountPaid || 0;
-        amount_remaining = totalAmount - amount_paid;
+        amount_remaining = finalTotal - amount_paid;
         due_date = paymentData.dueDate || null;
         break;
       case 'full':
       default:
         payment_status = 'paid';
         transaction_status = 'completed';
-        amount_paid = totalAmount;
+        amount_paid = finalTotal;
         amount_remaining = 0;
         break;
     }
@@ -81,7 +87,8 @@ export const createTransaction = async ({
   const transactionData = {
     branch_id: selectedBranch,
     cashier_id: userId,
-    total_amount: totalAmount,
+    total_amount: finalTotal,
+    discount_amount: discountAmount,
     payment_method: paymentData?.paymentMethod || paymentMethod,
     payment_status,
     status: transaction_status, // Use the determined status
@@ -250,6 +257,8 @@ export const createTransaction = async ({
   // Return transaction with enhanced data for receipt
   const enhancedTransaction = {
     ...transaction,
+    subtotal: totalAmount,
+    discount_amount: discountAmount,
     products: cart.map(item => ({
       name: item.product.name,
       quantity: item.quantity,
