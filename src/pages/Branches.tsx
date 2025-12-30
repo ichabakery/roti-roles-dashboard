@@ -23,11 +23,13 @@ const BranchesManagement = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [newBranch, setNewBranch] = useState({
     name: '',
     address: '',
     phone: ''
   });
+  const [editBranch, setEditBranch] = useState<Branch | null>(null);
   
   const { toast } = useToast();
 
@@ -105,6 +107,59 @@ const BranchesManagement = () => {
         variant: "destructive",
         title: "Error",
         description: `Gagal menambahkan cabang: ${error.message}`,
+      });
+    }
+  };
+
+  const handleEditClick = (branch: Branch) => {
+    setEditBranch({
+      ...branch,
+      address: branch.address || '',
+      phone: branch.phone || ''
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateBranch = async () => {
+    if (!editBranch) return;
+
+    try {
+      // Validation
+      if (!editBranch.name.trim()) {
+        toast({
+          variant: "destructive",
+          title: "Validasi Gagal",
+          description: "Nama cabang harus diisi",
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('branches')
+        .update({
+          name: editBranch.name.trim(),
+          address: editBranch.address?.trim() || null,
+          phone: editBranch.phone?.trim() || null
+        })
+        .eq('id', editBranch.id);
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "✅ Cabang Berhasil Diperbarui",
+        description: `Cabang "${editBranch.name}" telah diperbarui`,
+      });
+
+      setEditBranch(null);
+      setIsEditDialogOpen(false);
+      fetchBranches();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Gagal memperbarui cabang: ${error.message}`,
       });
     }
   };
@@ -220,6 +275,61 @@ const BranchesManagement = () => {
           </Dialog>
         </div>
 
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Cabang</DialogTitle>
+              <DialogDescription>
+                Perbarui informasi cabang
+              </DialogDescription>
+            </DialogHeader>
+            
+            {editBranch && (
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-name">Nama Cabang *</Label>
+                  <Input 
+                    id="edit-name" 
+                    placeholder="Contoh: Cabang Pusat"
+                    value={editBranch.name}
+                    onChange={(e) => setEditBranch({ ...editBranch, name: e.target.value })}
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-address">Alamat</Label>
+                  <Input 
+                    id="edit-address" 
+                    placeholder="Contoh: Jl. Raya Utama No. 123, Jakarta"
+                    value={editBranch.address || ''}
+                    onChange={(e) => setEditBranch({ ...editBranch, address: e.target.value })}
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-phone">Telepon</Label>
+                  <Input 
+                    id="edit-phone" 
+                    placeholder="Contoh: 021-1234567"
+                    value={editBranch.phone || ''}
+                    onChange={(e) => setEditBranch({ ...editBranch, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Batal
+              </Button>
+              <Button onClick={handleUpdateBranch}>
+                Simpan Perubahan
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Testing suggestions */}
         {branches.length === 0 && (
           <Card className="border-purple-200 bg-purple-50">
@@ -307,7 +417,12 @@ const BranchesManagement = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button size="icon" variant="outline" title="Edit cabang">
+                            <Button 
+                              size="icon" 
+                              variant="outline" 
+                              title="Edit cabang"
+                              onClick={() => handleEditClick(branch)}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button 
