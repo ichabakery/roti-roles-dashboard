@@ -1044,6 +1044,7 @@ export type Database = {
           notes: string | null
           payment_method: string
           payment_status: Database["public"]["Enums"]["payment_status"] | null
+          source_type: string | null
           status: string
           total_amount: number
           transaction_date: string
@@ -1060,6 +1061,7 @@ export type Database = {
           notes?: string | null
           payment_method?: string
           payment_status?: Database["public"]["Enums"]["payment_status"] | null
+          source_type?: string | null
           status?: string
           total_amount?: number
           transaction_date?: string
@@ -1076,6 +1078,7 @@ export type Database = {
           notes?: string | null
           payment_method?: string
           payment_status?: Database["public"]["Enums"]["payment_status"] | null
+          source_type?: string | null
           status?: string
           total_amount?: number
           transaction_date?: string

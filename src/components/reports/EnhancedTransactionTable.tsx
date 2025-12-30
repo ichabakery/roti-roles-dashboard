@@ -46,6 +46,22 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
     return <span className="bg-green-100 text-green-800 rounded px-2 py-0.5 text-xs">Selesai</span>;
   };
 
+  const getSourceBadge = (transaction: Transaction) => {
+    // Check source_type first (new field)
+    if (transaction.source_type === 'order') {
+      return <span className="bg-blue-100 text-blue-800 rounded px-2 py-0.5 text-xs">Pesanan</span>;
+    }
+    if (transaction.source_type === 'cashier') {
+      return <span className="bg-green-100 text-green-800 rounded px-2 py-0.5 text-xs">Kasir</span>;
+    }
+    // Fallback: check notes for order-related keywords
+    const notes = (transaction.notes || '').toLowerCase();
+    if (notes.includes('pesanan') || notes.includes('pickup') || notes.includes('ord-')) {
+      return <span className="bg-blue-100 text-blue-800 rounded px-2 py-0.5 text-xs">Pesanan</span>;
+    }
+    return <span className="bg-green-100 text-green-800 rounded px-2 py-0.5 text-xs">Kasir</span>;
+  };
+
   const getTotalQuantity = (items: any[]) => {
     if (!items || items.length === 0) return 0;
     return items.reduce((sum, item) => sum + item.quantity, 0);
@@ -87,6 +103,7 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
               <TableHead>ID Transaksi</TableHead>
               <TableHead>Tanggal</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Sumber</TableHead>
               <TableHead>Kasir</TableHead>
               <TableHead>Metode Bayar</TableHead>
               <TableHead>Produk</TableHead>
@@ -108,6 +125,7 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
                     toggleRow={toggleRow}
                     getPaymentMethodBadge={getPaymentMethodBadge}
                     getStatusBadge={getStatusBadge}
+                    getSourceBadge={getSourceBadge}
                     getTotalQuantity={getTotalQuantity}
                   />
                   {isExpanded && (
@@ -118,7 +136,7 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
             })}
             {transactions.length === 0 && (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={12} className="text-center py-8 text-gray-500">
                   Tidak ada transaksi ditemukan untuk periode yang dipilih
                 </TableCell>
               </TableRow>
@@ -162,6 +180,10 @@ export const EnhancedTransactionTable: React.FC<EnhancedTransactionTableProps> =
               <div>
                 <span className="text-gray-500">Metode:</span>
                 <div className="mt-1">{getPaymentMethodBadge(transaction.payment_method)}</div>
+              </div>
+              <div>
+                <span className="text-gray-500">Sumber:</span>
+                <div className="mt-1">{getSourceBadge(transaction)}</div>
               </div>
             </div>
 

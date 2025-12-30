@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Search, Calendar, Filter, Eye, BarChart3, Download, Receipt } from 'lucide-react';
+import { Plus, Search, Calendar, Filter, Eye, BarChart3, Download, Receipt, LayoutGrid, TableIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { EnhancedCreateOrderDialog } from '@/components/orders/EnhancedCreateOrderDialog';
 import { OrderDetailDialog } from '@/components/orders/OrderDetailDialog';
@@ -19,6 +19,11 @@ import OrderCalendar from '@/components/orders/OrderCalendar';
 import { BulkOrderActions } from '@/components/orders/BulkOrderActions';
 import { OrderExport } from '@/components/orders/OrderExport';
 import { OrderReceiptDialog } from '@/components/orders/OrderReceiptDialog';
+import { OrdersTable } from '@/components/orders/OrdersTable';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { id as localeId } from 'date-fns/locale';
 
 const Orders = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -35,6 +40,9 @@ const Orders = () => {
   const [showExport, setShowExport] = useState(false);
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [selectedOrderForReceipt, setSelectedOrderForReceipt] = useState<Order | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   
   // Get statistics for current branch and date range
   const branchId = user?.role === 'owner' || user?.role === 'admin_pusat' ? undefined : userBranch.branchId;
@@ -188,8 +196,27 @@ const Orders = () => {
     const matchesSearch = order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          order.order_number.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    
+    // Date filter - check delivery_date
+    let matchesDate = true;
+    if (dateFrom) {
+      const orderDate = new Date(order.delivery_date);
+      matchesDate = matchesDate && orderDate >= dateFrom;
+    }
+    if (dateTo) {
+      const orderDate = new Date(order.delivery_date);
+      const endOfDay = new Date(dateTo);
+      endOfDay.setHours(23, 59, 59, 999);
+      matchesDate = matchesDate && orderDate <= endOfDay;
+    }
+    
+    return matchesSearch && matchesStatus && matchesDate;
   });
+
+  const clearDateFilter = () => {
+    setDateFrom(undefined);
+    setDateTo(undefined);
+  };
 
   return (
     <DashboardLayout>
@@ -255,30 +282,101 @@ const Orders = () => {
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Cari nama pelanggan atau nomor pesanan..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    placeholder="Cari nama pelanggan atau nomor pesanan..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue placeholder="Filter Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Status</SelectItem>
+                    <SelectItem value="pending">Menunggu</SelectItem>
+                    <SelectItem value="confirmed">Dikonfirmasi</SelectItem>
+                    <SelectItem value="in_production">Produksi</SelectItem>
+                    <SelectItem value="ready">Siap</SelectItem>
+                    <SelectItem value="completed">Selesai</SelectItem>
+                    <SelectItem value="cancelled">Dibatalkan</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="Filter Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Status</SelectItem>
-                  <SelectItem value="pending">Menunggu</SelectItem>
-                  <SelectItem value="confirmed">Dikonfirmasi</SelectItem>
-                  <SelectItem value="in_production">Produksi</SelectItem>
-                  <SelectItem value="ready">Siap</SelectItem>
-                  <SelectItem value="completed">Selesai</SelectItem>
-                  <SelectItem value="cancelled">Dibatalkan</SelectItem>
-                </SelectContent>
-              </Select>
+              
+              {/* Date Filter and View Toggle */}
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className="text-sm text-muted-foreground">Tanggal Kirim:</span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="w-[130px] justify-start text-left font-normal">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Dari'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={dateFrom}
+                        onSelect={setDateFrom}
+                        locale={localeId}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <span className="text-muted-foreground">-</span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="w-[130px] justify-start text-left font-normal">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Sampai'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={dateTo}
+                        onSelect={setDateTo}
+                        locale={localeId}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {(dateFrom || dateTo) && (
+                    <Button variant="ghost" size="sm" onClick={clearDateFilter}>
+                      Reset
+                    </Button>
+                  )}
+                </div>
+                
+                {/* View Toggle - only visible on desktop */}
+                <div className="hidden lg:flex items-center gap-2 border rounded-lg p-1">
+                  <Button
+                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('grid')}
+                    className="gap-2"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                    Grid
+                  </Button>
+                  <Button
+                    variant={viewMode === 'table' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('table')}
+                    className="gap-2"
+                  >
+                    <TableIcon className="h-4 w-4" />
+                    Tabel
+                  </Button>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -332,75 +430,90 @@ const Orders = () => {
                   </div>
                 </CardContent>
               </Card>
-            ) : (
-              <div className="grid gap-4">
-                {filteredOrders.map((order) => (
-                  <Card key={order.id} className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                         <div>
-                           <CardTitle className="text-lg">{order.order_number}</CardTitle>
-                           <CardDescription>{order.customer_name} • {order.customer_phone}</CardDescription>
-                         </div>
-                         <div className="flex items-center gap-2">
-                           {getStatusBadge(order.status)}
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleShowReceipt(order)}
-                              className="mr-2"
-                            >
-                              <Receipt className="h-4 w-4 mr-1" />
-                              Bukti
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleViewOrderDetail(order.id!)}
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              Detail
-                            </Button>
-                         </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                         <div>
-                           <p className="font-medium text-foreground">Cabang Pemesan</p>
-                           <p className="text-muted-foreground">{order.branch_name || userBranch.branchName}</p>
-                         </div>
-                         <div>
-                           <p className="font-medium text-foreground">Tanggal Pengiriman</p>
-                           <p className="text-muted-foreground">{formatDate(order.delivery_date)}</p>
-                         </div>
-                         <div>
-                           <p className="font-medium text-foreground">Total Pembayaran</p>
-                           <p className="text-muted-foreground">
-                             {formatCurrency(order.total_amount)}
-                           </p>
-                         </div>
-                      </div>
-                      
-                      {/* Order Items */}
-                      <div className="mt-4 pt-4 border-t border-border">
-                        <p className="font-medium text-foreground mb-2">Item Pesanan:</p>
-                        <div className="space-y-1">
-                          {order.items.map((item, index) => (
-                            <div key={index} className="flex justify-between items-center text-sm">
-                              <span className="text-muted-foreground">
-                                {item.quantity}x {item.productName}
-                              </span>
-                              <span className="text-foreground">
-                                {formatCurrency(item.unitPrice * item.quantity)}
-                              </span>
-                            </div>
-                          ))}
+            ) : viewMode === 'table' ? (
+              /* Table View - Desktop only */
+              <div className="hidden lg:block">
+                <OrdersTable
+                  orders={filteredOrders}
+                  onViewDetail={handleViewOrderDetail}
+                  onShowReceipt={handleShowReceipt}
+                  formatCurrency={formatCurrency}
+                />
+              </div>
+            ) : null}
+
+            {/* Grid View - Always show on mobile, conditional on desktop */}
+            {!loading && filteredOrders.length > 0 && (viewMode === 'grid' || true) && (
+              <div className={viewMode === 'table' ? 'lg:hidden' : ''}>
+                <div className="grid gap-4">
+                  {filteredOrders.map((order) => (
+                    <Card key={order.id} className="hover:shadow-md transition-shadow">
+                      <CardHeader>
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                           <div>
+                             <CardTitle className="text-lg">{order.order_number}</CardTitle>
+                             <CardDescription>{order.customer_name} • {order.customer_phone}</CardDescription>
+                           </div>
+                           <div className="flex items-center gap-2">
+                             {getStatusBadge(order.status)}
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleShowReceipt(order)}
+                                className="mr-2"
+                              >
+                                <Receipt className="h-4 w-4 mr-1" />
+                                Bukti
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleViewOrderDetail(order.id!)}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Detail
+                              </Button>
+                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                           <div>
+                             <p className="font-medium text-foreground">Cabang Pemesan</p>
+                             <p className="text-muted-foreground">{order.branch_name || userBranch.branchName}</p>
+                           </div>
+                           <div>
+                             <p className="font-medium text-foreground">Tanggal Pengiriman</p>
+                             <p className="text-muted-foreground">{formatDate(order.delivery_date)}</p>
+                           </div>
+                           <div>
+                             <p className="font-medium text-foreground">Total Pembayaran</p>
+                             <p className="text-muted-foreground">
+                               {formatCurrency(order.total_amount)}
+                             </p>
+                           </div>
+                        </div>
+                        
+                        {/* Order Items */}
+                        <div className="mt-4 pt-4 border-t border-border">
+                          <p className="font-medium text-foreground mb-2">Item Pesanan:</p>
+                          <div className="space-y-1">
+                            {order.items.map((item, index) => (
+                              <div key={index} className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground">
+                                  {item.quantity}x {item.productName}
+                                </span>
+                                <span className="text-foreground">
+                                  {formatCurrency(item.unitPrice * item.quantity)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </div>
             )}
           </TabsContent>

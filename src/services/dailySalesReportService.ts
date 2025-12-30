@@ -64,22 +64,35 @@ export const fetchDailySalesReport = async (
     const { data: stockMovements, error: stockMovementsError } = await stockMovementsQuery;
     if (stockMovementsError) throw stockMovementsError;
 
-    // Fetch transactions for the selected date
+    // Fetch transactions for the selected date - ONLY CASHIER transactions (not from orders)
     const { data: transactions, error: transactionsError } = await supabase
       .from('transactions')
-      .select('id, branch_id')
+      .select('id, branch_id, source_type, notes')
       .gte('transaction_date', startOfDay)
       .lte('transaction_date', endOfDay)
       .eq('status', 'completed');
 
     if (transactionsError) throw transactionsError;
+    
+    // Filter to only include cashier transactions (not from orders)
+    const cashierTransactions = (transactions || []).filter(t => {
+      // Check source_type first (new field)
+      if (t.source_type === 'order') return false;
+      if (t.source_type === 'cashier') return true;
+      // Fallback: check notes for order-related keywords
+      const notes = (t.notes || '').toLowerCase();
+      if (notes.includes('pesanan') || notes.includes('pickup') || notes.includes('ord-')) {
+        return false;
+      }
+      return true;
+    });
 
-    // Filter transactions by branch if specified
+    // Filter transactions by branch if specified (using cashierTransactions)
     const filteredTransactions = branchId 
-      ? transactions?.filter(t => t.branch_id === branchId)
-      : transactions;
+      ? cashierTransactions.filter(t => t.branch_id === branchId)
+      : cashierTransactions;
 
-    const transactionIds = filteredTransactions?.map(t => t.id) || [];
+    const transactionIds = filteredTransactions.map(t => t.id);
 
     // Fetch transaction items for these transactions
     let transactionItems: any[] = [];
