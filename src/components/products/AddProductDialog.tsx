@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { isInventoryV1Enabled, INVENTORY_DEFAULTS } from '@/utils/featureFlags';
 import { createInitialStock } from '@/services/inventoryV1Service';
 import { useBranches } from '@/hooks/useBranches';
+import { PRODUCT_CATEGORIES, DEFAULT_CATEGORY } from '@/constants/productCategories';
 
 interface AddProductDialogProps {
   onProductAdded: () => void;
@@ -27,6 +28,7 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
     name: '',
     description: '',
     price: '',
+    category: DEFAULT_CATEGORY,
     hasExpiry: false,
     defaultExpiryDays: '',
     // Inventory V1 fields
@@ -50,6 +52,7 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
         name: formData.name,
         description: formData.description,
         price: parseFloat(formData.price),
+        category: formData.category,
         active: true,
         has_expiry: formData.hasExpiry,
         default_expiry_days: formData.hasExpiry && formData.defaultExpiryDays 
@@ -96,6 +99,7 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
         name: '', 
         description: '', 
         price: '', 
+        category: DEFAULT_CATEGORY,
         hasExpiry: false, 
         defaultExpiryDays: '',
         sku: '',
@@ -171,6 +175,25 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
               step="100"
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="category">Kategori</Label>
+            <Select 
+              value={formData.category} 
+              onValueChange={(value) => handleInputChange('category', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih kategori" />
+              </SelectTrigger>
+              <SelectContent>
+                {PRODUCT_CATEGORIES.map(cat => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-3">

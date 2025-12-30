@@ -1,17 +1,60 @@
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AddProductDialog } from '@/components/products/AddProductDialog';
 import { ProductExpiryBadge } from '@/components/products/ProductExpiryBadge';
 import { useProducts } from '@/hooks/useProducts';
 import { Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
+import { PRODUCT_CATEGORIES, getCategoryLabel } from '@/constants/productCategories';
 
 const Products = () => {
   const navigate = useNavigate();
   const { products, loading, error, refetchProducts } = useProducts();
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
+  // Filter products by category
+  const filteredProducts = useMemo(() => {
+    if (selectedCategory === 'all') {
+      return products;
+    }
+    return products.filter(p => (p as any).category === selectedCategory);
+  }, [products, selectedCategory]);
+
+  // Get unique categories that have products
+  const availableCategories = useMemo(() => {
+    const categoriesWithProducts = new Set(products.map(p => (p as any).category || 'produk_utama'));
+    return PRODUCT_CATEGORIES.filter(cat => categoriesWithProducts.has(cat.value));
+  }, [products]);
+
+  // Group products by category
+  const groupedProducts = useMemo(() => {
+    if (selectedCategory !== 'all') {
+      return { [selectedCategory]: filteredProducts };
+    }
+    
+    const groups: Record<string, typeof filteredProducts> = {};
+    filteredProducts.forEach(product => {
+      const cat = (product as any).category || 'produk_utama';
+      if (!groups[cat]) {
+        groups[cat] = [];
+      }
+      groups[cat].push(product);
+    });
+    
+    // Sort by category order
+    const orderedGroups: Record<string, typeof filteredProducts> = {};
+    PRODUCT_CATEGORIES.forEach(cat => {
+      if (groups[cat.value]) {
+        orderedGroups[cat.value] = groups[cat.value];
+      }
+    });
+    
+    return orderedGroups;
+  }, [filteredProducts, selectedCategory]);
 
   return (
     <DashboardLayout>
@@ -63,31 +106,57 @@ const Products = () => {
               </div>
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {products.map((product) => (
-                <div key={product.id} className="border rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow">
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-semibold line-clamp-2">{product.name}</h3>
-                    {product.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {product.description}
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="text-lg font-bold text-primary">
-                      Rp {product.price.toLocaleString('id-ID')}
-                    </div>
-                    
-                    <ProductExpiryBadge 
-                      hasExpiry={product.has_expiry} 
-                      defaultExpiryDays={product.default_expiry_days} 
-                    />
-                  </div>
-                  
-                  <div className="text-xs text-muted-foreground">
-                    Dibuat: {new Date(product.created_at).toLocaleDateString('id-ID')}
+            <div className="space-y-4">
+              {/* Category Tabs */}
+              <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
+                <TabsList className="flex flex-wrap h-auto gap-1">
+                  <TabsTrigger value="all" className="text-xs sm:text-sm">
+                    Semua
+                  </TabsTrigger>
+                  {availableCategories.map(cat => (
+                    <TabsTrigger key={cat.value} value={cat.value} className="text-xs sm:text-sm">
+                      {cat.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+
+              {/* Products grouped by category */}
+              {Object.entries(groupedProducts).map(([category, categoryProducts]) => (
+                <div key={category} className="space-y-3">
+                  {selectedCategory === 'all' && (
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
+                      {getCategoryLabel(category)}
+                    </h3>
+                  )}
+                  <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {categoryProducts.map((product) => (
+                      <div key={product.id} className="border rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow">
+                        <div className="space-y-2">
+                          <h3 className="text-lg font-semibold line-clamp-2">{product.name}</h3>
+                          {product.description && (
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {product.description}
+                            </p>
+                          )}
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="text-lg font-bold text-primary">
+                            Rp {product.price.toLocaleString('id-ID')}
+                          </div>
+                          
+                          <ProductExpiryBadge 
+                            hasExpiry={product.has_expiry} 
+                            defaultExpiryDays={product.default_expiry_days} 
+                          />
+                        </div>
+                        
+                        <div className="text-xs text-muted-foreground">
+                          Dibuat: {new Date(product.created_at).toLocaleDateString('id-ID')}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}

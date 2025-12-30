@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,18 +18,60 @@ import { EditProductDialog } from '@/components/products/EditProductDialog';
 import { DeleteProductDialog } from '@/components/products/DeleteProductDialog';
 import { ProductSearchCommand } from '@/components/products/ProductSearchCommand';
 import { useNavigate } from 'react-router-dom';
+import { PRODUCT_CATEGORIES, getCategoryLabel } from '@/constants/productCategories';
 
 const EnhancedProducts = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProductType, setSelectedProductType] = useState<ProductType>('regular');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
   const { expiringProducts, fetchExpiring } = useProductBatches();
+
+  // Filter products by category
+  const filteredProducts = useMemo(() => {
+    if (selectedCategory === 'all') {
+      return products;
+    }
+    return products.filter(p => (p as any).category === selectedCategory);
+  }, [products, selectedCategory]);
+
+  // Get unique categories that have products
+  const availableCategories = useMemo(() => {
+    const categoriesWithProducts = new Set(products.map(p => (p as any).category || 'produk_utama'));
+    return PRODUCT_CATEGORIES.filter(cat => categoriesWithProducts.has(cat.value));
+  }, [products]);
+
+  // Group products by category
+  const groupedProducts = useMemo(() => {
+    if (selectedCategory !== 'all') {
+      return { [selectedCategory]: filteredProducts };
+    }
+    
+    const groups: Record<string, Product[]> = {};
+    filteredProducts.forEach(product => {
+      const cat = (product as any).category || 'produk_utama';
+      if (!groups[cat]) {
+        groups[cat] = [];
+      }
+      groups[cat].push(product);
+    });
+    
+    // Sort by category order
+    const orderedGroups: Record<string, Product[]> = {};
+    PRODUCT_CATEGORIES.forEach(cat => {
+      if (groups[cat.value]) {
+        orderedGroups[cat.value] = groups[cat.value];
+      }
+    });
+    
+    return orderedGroups;
+  }, [filteredProducts, selectedCategory]);
 
   useEffect(() => {
     fetchProducts();
@@ -161,7 +203,21 @@ const EnhancedProducts = () => {
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                   </div>
                 ) : (
-                  <div className="grid gap-4">
+                  <div className="space-y-4">
+                    {/* Category Tabs */}
+                    <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
+                      <TabsList className="flex flex-wrap h-auto gap-1">
+                        <TabsTrigger value="all" className="text-xs sm:text-sm">
+                          Semua
+                        </TabsTrigger>
+                        {availableCategories.map(cat => (
+                          <TabsTrigger key={cat.value} value={cat.value} className="text-xs sm:text-sm">
+                            {cat.label}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                    </Tabs>
+
                     {products.length === 0 ? (
                       <div className="text-center py-8 space-y-4">
                         <div className="text-muted-foreground">
@@ -170,36 +226,49 @@ const EnhancedProducts = () => {
                         <EnhancedAddProductDialog onProductAdded={fetchProducts} />
                       </div>
                     ) : (
-                      products.map((product) => (
-                        <div key={product.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold">{product.name}</h3>
-                              {getProductTypeBadge(product.product_type)}
+                      <div className="space-y-4">
+                        {Object.entries(groupedProducts).map(([category, categoryProducts]) => (
+                          <div key={category} className="space-y-3">
+                            {selectedCategory === 'all' && (
+                              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
+                                {getCategoryLabel(category)}
+                              </h3>
+                            )}
+                            <div className="grid gap-4">
+                              {categoryProducts.map((product) => (
+                                <div key={product.id} className="flex items-center justify-between p-4 border rounded-lg">
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <h3 className="font-semibold">{product.name}</h3>
+                                      {getProductTypeBadge(product.product_type)}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">{product.description}</p>
+                                    <p className="font-bold text-green-600">Rp {product.price.toLocaleString('id-ID')}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => handleEditProduct(product)}
+                                    >
+                                      <Edit className="h-4 w-4 mr-2" />
+                                      Edit
+                                    </Button>
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => handleDeleteProduct(product)}
+                                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                            <p className="text-sm text-muted-foreground">{product.description}</p>
-                            <p className="font-bold text-green-600">Rp {product.price.toLocaleString('id-ID')}</p>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleEditProduct(product)}
-                            >
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleDeleteProduct(product)}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     )}
                   </div>
                 )}
