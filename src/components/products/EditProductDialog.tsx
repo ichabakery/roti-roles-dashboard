@@ -14,6 +14,7 @@ import { ProductType, Product } from '@/types/products';
 import { useEnhancedProducts } from '@/hooks/useEnhancedProducts';
 import { isInventoryV1Enabled, INVENTORY_DEFAULTS } from '@/utils/featureFlags';
 import { supabase } from '@/integrations/supabase/client';
+import { PRODUCT_CATEGORIES, DEFAULT_CATEGORY } from '@/constants/productCategories';
 
 interface EditProductDialogProps {
   product: Product | null;
@@ -34,6 +35,7 @@ export const EditProductDialog: React.FC<EditProductDialogProps> = ({
     name: '',
     description: '',
     price: '',
+    category: DEFAULT_CATEGORY,
     productType: 'regular' as ProductType,
     hasExpiry: false,
     defaultExpiryDays: '',
@@ -53,6 +55,7 @@ export const EditProductDialog: React.FC<EditProductDialogProps> = ({
         name: product.name,
         description: product.description || '',
         price: product.price.toString(),
+        category: (product as any).category || DEFAULT_CATEGORY,
         productType: product.product_type,
         hasExpiry: product.has_expiry || false,
         defaultExpiryDays: product.default_expiry_days?.toString() || '',
@@ -78,6 +81,7 @@ export const EditProductDialog: React.FC<EditProductDialogProps> = ({
         name: formData.name,
         description: formData.description,
         price: parseFloat(formData.price),
+        category: formData.category,
         has_expiry: formData.hasExpiry,
         default_expiry_days: formData.hasExpiry && formData.defaultExpiryDays 
           ? parseInt(formData.defaultExpiryDays) 
@@ -172,6 +176,25 @@ export const EditProductDialog: React.FC<EditProductDialogProps> = ({
               step="100"
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-category">Kategori</Label>
+            <Select 
+              value={formData.category} 
+              onValueChange={(value) => handleInputChange('category', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih kategori" />
+              </SelectTrigger>
+              <SelectContent>
+                {PRODUCT_CATEGORIES.map(cat => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

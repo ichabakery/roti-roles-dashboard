@@ -14,6 +14,7 @@ export interface Product {
   has_expiry: boolean;
   default_expiry_days: number | null;
   stock?: number; // New: stock per branch, optional
+  category?: string | null;
 }
 
 interface UseProductsOptions {

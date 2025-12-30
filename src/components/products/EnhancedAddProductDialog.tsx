@@ -12,6 +12,7 @@ import { Plus } from 'lucide-react';
 import { ProductType } from '@/types/products';
 import { useEnhancedProducts } from '@/hooks/useEnhancedProducts';
 import { ProductExpiryCalendar } from './ProductExpiryCalendar';
+import { PRODUCT_CATEGORIES, DEFAULT_CATEGORY } from '@/constants/productCategories';
 
 interface EnhancedAddProductDialogProps {
   onProductAdded?: () => void;
@@ -26,6 +27,7 @@ export const EnhancedAddProductDialog: React.FC<EnhancedAddProductDialogProps> =
     name: '',
     description: '',
     price: '',
+    category: DEFAULT_CATEGORY,
     productType: 'regular' as ProductType,
     hasExpiry: false,
     defaultExpiryDays: '',
@@ -50,6 +52,7 @@ export const EnhancedAddProductDialog: React.FC<EnhancedAddProductDialogProps> =
         name: '', 
         description: '', 
         price: '', 
+        category: DEFAULT_CATEGORY,
         productType: 'regular',
         hasExpiry: false,
         defaultExpiryDays: '',
@@ -115,6 +118,25 @@ export const EnhancedAddProductDialog: React.FC<EnhancedAddProductDialogProps> =
               step="100"
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="category">Kategori</Label>
+            <Select 
+              value={formData.category} 
+              onValueChange={(value) => handleInputChange('category', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih kategori" />
+              </SelectTrigger>
+              <SelectContent>
+                {PRODUCT_CATEGORIES.map(cat => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
