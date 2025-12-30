@@ -11,60 +11,29 @@ export interface CreateUserData {
 }
 
 export const createUserInSystem = async (userData: CreateUserData) => {
-  console.log('Creating user with data:', userData);
+  console.log('Creating user via edge function:', userData.email);
 
-  // 1. Create user in Supabase Auth
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email: userData.email,
-    password: userData.password,
-    options: {
-      data: {
-        name: userData.name,
-        role: userData.role,
-      },
-      emailRedirectTo: `${window.location.origin}/dashboard`
+  // Call edge function instead of signUp to avoid session change
+  const { data, error } = await supabase.functions.invoke('create-user', {
+    body: {
+      name: userData.name,
+      email: userData.email,
+      password: userData.password,
+      role: userData.role,
+      branchId: userData.branchId
     }
   });
 
-  if (authError) {
-    console.error('Auth error:', authError);
-    throw authError;
+  if (error) {
+    console.error('Edge function error:', error);
+    throw new Error(error.message || 'Gagal membuat pengguna');
   }
 
-  if (!authData.user) {
-    throw new Error('User creation failed - no user returned');
+  if (!data?.success) {
+    console.error('User creation failed:', data?.error);
+    throw new Error(data?.error || 'Gagal membuat pengguna');
   }
 
-  console.log('User created in auth:', authData.user.id);
-
-  // 2. Update profile with correct role (trigger should have created basic profile)
-  const { error: profileError } = await supabase
-    .from('profiles')
-    .update({ 
-      name: userData.name,
-      role: userData.role 
-    })
-    .eq('id', authData.user.id);
-
-  if (profileError) {
-    console.error('Profile update error:', profileError);
-    // Don't throw here as user is already created
-  }
-
-  // 3. If kasir_cabang, assign to branch
-  if (userData.role === 'kasir_cabang' && userData.branchId) {
-    const { error: branchError } = await supabase
-      .from('user_branches')
-      .insert({
-        user_id: authData.user.id,
-        branch_id: userData.branchId
-      });
-
-    if (branchError) {
-      console.error('Branch assignment error:', branchError);
-      // Don't throw here as user is already created
-    }
-  }
-
-  return { success: true };
+  console.log('User created successfully:', data.userId);
+  return { success: true, userId: data.userId };
 };

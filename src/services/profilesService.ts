@@ -61,42 +61,7 @@ export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
       return [];
     }
 
-  // Get the current user to access emails if owner
-  console.log('profilesService: Checking current user permissions...');
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
-  
-  let emailMap = new Map<string, string>();
-  
-  // Only try admin API if user is owner (more secure check)
-  if (currentUser) {
-    const { data: currentProfile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', currentUser.id)
-      .single();
-      
-    if (currentProfile?.role === 'owner') {
-      try {
-        // Try to get real emails using admin API
-        const { data: authResponse, error: authError } = await supabase.auth.admin.listUsers();
-        
-        if (authResponse?.users && !authError) {
-          authResponse.users.forEach((user: any) => {
-            if (user.id && user.email) {
-              emailMap.set(user.id, user.email);
-            }
-          });
-          console.log('profilesService: Successfully fetched emails from admin API');
-        } else {
-          console.warn('profilesService: Admin API not available:', authError);
-        }
-      } catch (adminError) {
-        console.warn('profilesService: Admin API failed, using fallback:', adminError);
-      }
-    }
-  }
-
-    // Transform data to include branch information and real emails
+    // Transform data to include branch information and email from database
     const typedProfiles = profilesData.map(profile => {
       console.log('Processing profile:', profile.name, 'user_branches:', profile.user_branches);
       
@@ -121,18 +86,18 @@ export const fetchProfilesFromDB = async (): Promise<ProfileData[]> => {
         }
       }
 
-    // Get real email from auth system or generate realistic placeholder
-    const realEmail = emailMap.get(profile.id) || `${profile.name.toLowerCase().replace(/\s+/g, '')}@icha.com`;
+      // Use email directly from profiles table (no more fallback generation)
+      const profileEmail = (profile as any).email || 'email@tidak-tersedia.com';
       
       const transformedProfile = {
         ...profile,
         role: profile.role as RoleType,
-        email: realEmail,
+        email: profileEmail,
         branchId,
         branchName
       };
       
-      console.log('Transformed profile:', transformedProfile.name, 'email:', realEmail, 'branch:', branchName);
+      console.log('Transformed profile:', transformedProfile.name, 'email:', profileEmail, 'branch:', branchName);
       return transformedProfile;
     });
 
