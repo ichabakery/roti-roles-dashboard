@@ -12,6 +12,7 @@ import { AddStockDialog } from '@/components/inventory/AddStockDialog';
 import { BatchAddStockDialog } from '@/components/inventory/BatchAddStockDialog';
 import { StockMonitoring } from '@/components/inventory/StockMonitoring';
 import { StockConsistencyChecker } from '@/components/inventory/StockConsistencyChecker';
+import { ResetDataDialog } from '@/components/inventory/ResetDataDialog';
 import { isInventoryV1Enabled, isDemoModeEnabled } from '@/utils/featureFlags';
 import { getInventoryKPIs } from '@/services/inventoryV1Service';
 import { resetDemoData } from '@/services/demoDataService';
@@ -107,6 +108,9 @@ const Inventory = () => {
   // Tambah stok hanya bisa untuk admin pusat & owner
   const canAddStock = user?.role === 'owner' || user?.role === 'admin_pusat';
 
+  // Reset data hanya untuk owner
+  const isOwner = user?.role === 'owner';
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -135,22 +139,38 @@ const Inventory = () => {
           </div>
         )}
 
-        <div className="flex items-center justify-between">
-          <InventoryHeader
-            loading={loading}
-            isAddDialogOpen={canAddStock ? isAddDialogOpen : false}
-            setIsAddDialogOpen={canAddStock ? setIsAddDialogOpen : () => {}}
-            onRefresh={fetchInventory}
-          />
-          {canAddStock && (
-            <Button
-              variant="outline"
-              onClick={() => setIsBatchDialogOpen(true)}
-              className="gap-2"
-            >
-              <Layers className="h-4 w-4" />
-              Batch Tambah Stok
-            </Button>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <InventoryHeader
+              loading={loading}
+              isAddDialogOpen={canAddStock ? isAddDialogOpen : false}
+              setIsAddDialogOpen={canAddStock ? setIsAddDialogOpen : () => {}}
+              onRefresh={fetchInventory}
+            />
+            {canAddStock && (
+              <Button
+                variant="outline"
+                onClick={() => setIsBatchDialogOpen(true)}
+                className="gap-2"
+              >
+                <Layers className="h-4 w-4" />
+                Batch Tambah Stok
+              </Button>
+            )}
+          </div>
+          
+          {/* Reset Data Buttons - Owner Only */}
+          {isOwner && (
+            <div className="flex items-center gap-3 p-4 bg-destructive/5 border border-destructive/20 rounded-lg">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <span className="text-sm text-muted-foreground flex-1">
+                Reset data untuk memulai dengan data baru (hanya Owner)
+              </span>
+              <div className="flex gap-2">
+                <ResetDataDialog type="inventory" onSuccess={fetchInventory} />
+                <ResetDataDialog type="transactions" onSuccess={fetchInventory} />
+              </div>
+            </div>
           )}
         </div>
         
