@@ -25,6 +25,9 @@ interface SalesReceiptProps {
   amountPaid?: number;
   amountRemaining?: number;
   dueDate?: string;
+  // Discount props
+  subtotal?: number;
+  discountAmount?: number;
 }
 
 export const SalesReceipt: React.FC<SalesReceiptProps> = ({
@@ -43,7 +46,9 @@ export const SalesReceipt: React.FC<SalesReceiptProps> = ({
   paymentStatus,
   amountPaid,
   amountRemaining,
-  dueDate
+  dueDate,
+  subtotal,
+  discountAmount
 }) => {
   const isPartialPayment = paymentStatus === 'partial' || paymentStatus === 'pending';
   
@@ -88,6 +93,21 @@ export const SalesReceipt: React.FC<SalesReceiptProps> = ({
         </tbody>
       </table>
       <hr className="my-2 border-gray-300" />
+      
+      {/* Show subtotal and discount if applicable */}
+      {discountAmount && discountAmount > 0 && (
+        <>
+          <div className="flex justify-between">
+            <span>Subtotal</span>
+            <span>Rp {(subtotal || total + discountAmount).toLocaleString("id-ID")}</span>
+          </div>
+          <div className="flex justify-between text-red-600">
+            <span>Diskon</span>
+            <span>-Rp {discountAmount.toLocaleString("id-ID")}</span>
+          </div>
+        </>
+      )}
+      
       <div className="flex justify-between font-bold">
         <span>Total</span>
         <span>Rp {total.toLocaleString("id-ID")}</span>

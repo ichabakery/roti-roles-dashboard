@@ -19,6 +19,8 @@ interface ThermalReceiptData {
   change?: number;
   transactionId?: string;
   branding?: BrandingOptions;
+  subtotal?: number;
+  discountAmount?: number;
 }
 
 interface ThermalReceiptPrinterProps {
@@ -127,6 +129,21 @@ export const ThermalReceiptPrinter: React.FC<ThermalReceiptPrinterProps> = ({
       // Separator line
       thermalPdf.line(2, y, thermalWidth-2, y);
       y += 3;
+      
+      // Show subtotal and discount if applicable
+      if (receiptData.discountAmount && receiptData.discountAmount > 0) {
+        thermalPdf.setFont("helvetica", "normal");
+        thermalPdf.setFontSize(8);
+        const subtotalValue = receiptData.subtotal || (receiptData.total + receiptData.discountAmount);
+        thermalPdf.text("Subtotal", 2, y);
+        thermalPdf.text(`Rp ${subtotalValue.toLocaleString("id-ID")}`, thermalWidth-2, y, { align: 'right' });
+        y += 3;
+        thermalPdf.setTextColor(220, 38, 38); // Red color
+        thermalPdf.text("Diskon", 2, y);
+        thermalPdf.text(`-Rp ${receiptData.discountAmount.toLocaleString("id-ID")}`, thermalWidth-2, y, { align: 'right' });
+        y += 3;
+        thermalPdf.setTextColor(0, 0, 0); // Reset to black
+      }
       
       // Total
       thermalPdf.setFont("helvetica", "bold");

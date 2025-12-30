@@ -1037,6 +1037,7 @@ export type Database = {
           amount_remaining: number | null
           branch_id: string
           cashier_id: string
+          discount_amount: number | null
           due_date: string | null
           id: string
           installment_plan: Json | null
@@ -1052,6 +1053,7 @@ export type Database = {
           amount_remaining?: number | null
           branch_id: string
           cashier_id: string
+          discount_amount?: number | null
           due_date?: string | null
           id?: string
           installment_plan?: Json | null
@@ -1067,6 +1069,7 @@ export type Database = {
           amount_remaining?: number | null
           branch_id?: string
           cashier_id?: string
+          discount_amount?: number | null
           due_date?: string | null
           id?: string
           installment_plan?: Json | null

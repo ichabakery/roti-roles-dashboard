@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Archive, AlertTriangle, ArrowLeft, Edit } from 'lucide-react';
+import { Package, Archive, AlertTriangle, ArrowLeft, Edit, Trash2 } from 'lucide-react';
 import { ProductType, Product } from '@/types/products';
 import { fetchProductsWithType } from '@/services/enhancedProductService';
 import { useProductBatches } from '@/hooks/useProductBatches';
@@ -15,6 +15,7 @@ import { BatchManagement } from '@/components/products/BatchManagement';
 import { ExpiryMonitoring } from '@/components/products/ExpiryMonitoring';
 import { EnhancedAddProductDialog } from '@/components/products/EnhancedAddProductDialog';
 import { EditProductDialog } from '@/components/products/EditProductDialog';
+import { DeleteProductDialog } from '@/components/products/DeleteProductDialog';
 import { ProductSearchCommand } from '@/components/products/ProductSearchCommand';
 import { useNavigate } from 'react-router-dom';
 
@@ -25,6 +26,8 @@ const EnhancedProducts = () => {
   const [selectedProductType, setSelectedProductType] = useState<ProductType>('regular');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
   const { expiringProducts, fetchExpiring } = useProductBatches();
 
@@ -53,6 +56,11 @@ const EnhancedProducts = () => {
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
     setEditDialogOpen(true);
+  };
+
+  const handleDeleteProduct = (product: Product) => {
+    setDeletingProduct(product);
+    setDeleteDialogOpen(true);
   };
 
   const handleProductUpdated = () => {
@@ -181,6 +189,14 @@ const EnhancedProducts = () => {
                               <Edit className="h-4 w-4 mr-2" />
                               Edit
                             </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleDeleteProduct(product)}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                       ))
@@ -209,6 +225,13 @@ const EnhancedProducts = () => {
           open={editDialogOpen}
           onOpenChange={setEditDialogOpen}
           onProductUpdated={handleProductUpdated}
+        />
+
+        <DeleteProductDialog
+          product={deletingProduct}
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onProductDeleted={handleProductUpdated}
         />
       </div>
     </DashboardLayout>
