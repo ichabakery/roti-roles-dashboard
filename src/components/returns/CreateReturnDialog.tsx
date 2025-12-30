@@ -9,12 +9,13 @@ import { useUserBranch } from '@/hooks/useUserBranch';
 import { createReturn } from '@/services/returnService';
 import { ReturnFormFields } from './ReturnFormFields';
 import { ReturnItemsManager } from './ReturnItemsManager';
+import { ReturnCondition } from '@/types/products';
 
 interface ReturnItem {
   productId: string;
   quantity: number;
   reason: string;
-  condition: 'resaleable' | 'damaged' | 'expired';
+  condition: ReturnCondition;
 }
 
 interface CreateReturnDialogProps {

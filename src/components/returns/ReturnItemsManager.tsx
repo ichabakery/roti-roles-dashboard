@@ -4,12 +4,13 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { ReturnItemForm } from './ReturnItemForm';
+import { ReturnCondition } from '@/types/products';
 
 interface ReturnItem {
   productId: string;
   quantity: number;
   reason: string;
-  condition: 'resaleable' | 'damaged' | 'expired';
+  condition: ReturnCondition;
 }
 
 interface ReturnItemsManagerProps {

@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { Return, ReturnItem } from '@/types/products';
+import { Return, ReturnItem, ReturnCondition } from '@/types/products';
 
 export const createReturn = async (returnData: {
   transactionId?: string;
@@ -12,7 +12,7 @@ export const createReturn = async (returnData: {
     batchId?: string;
     quantity: number;
     reason: string;
-    condition: 'resaleable' | 'damaged' | 'expired';
+    condition: ReturnCondition;
   }[];
 }) => {
   console.log('Creating return:', returnData);
@@ -116,7 +116,7 @@ export const fetchReturnItems = async (returnId: string): Promise<ReturnItem[]> 
   // Type assertion to ensure correct typing
   return (data || []).map(item => ({
     ...item,
-    condition: item.condition as 'resaleable' | 'damaged' | 'expired'
+    condition: item.condition as ReturnCondition
   })) as ReturnItem[];
 };
 
