@@ -6,6 +6,7 @@ import { EnhancedFilters } from './EnhancedFilters';
 import { TransactionSummaryStats } from './TransactionSummaryStats';
 import { EnhancedTransactionTable } from './EnhancedTransactionTable';
 import { ExportButtons } from './ExportButtons';
+import { DailySalesReport } from './DailySalesReport';
 
 export const UnifiedReportsLayout = () => {
   const {
@@ -42,36 +43,41 @@ export const UnifiedReportsLayout = () => {
         />
       </div>
 
-      {/* Enhanced Filters */}
-      <EnhancedFilters
-        branches={branches}
-        selectedBranch={selectedBranch}
-        onBranchChange={setSelectedBranch}
-        dateRange={dateRange}
-        onDateRangeChange={setDateRange}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        paymentStatusFilter={paymentStatusFilter}
-        onPaymentStatusChange={setPaymentStatusFilter}
-        onQuickDateRange={setQuickDateRange}
-        isBranchSelectionDisabled={isBranchSelectionDisabled}
-        availableBranches={getAvailableBranches()}
-      />
-
-      {/* Summary Stats */}
-      <TransactionSummaryStats 
-        transactions={transactions}
-      />
-
-      {/* Main Content Tabs - Grafik dihapus */}
-      <Tabs defaultValue="transactions" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+      {/* Main Content Tabs */}
+      <Tabs defaultValue="daily" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="daily">Laporan Harian</TabsTrigger>
           <TabsTrigger value="transactions">Transaksi</TabsTrigger>
           <TabsTrigger value="summary">Ringkasan</TabsTrigger>
           <TabsTrigger value="products">Produk</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="daily" className="space-y-4">
+          <DailySalesReport />
+        </TabsContent>
+
         <TabsContent value="transactions" className="space-y-4">
+          {/* Enhanced Filters */}
+          <EnhancedFilters
+            branches={branches}
+            selectedBranch={selectedBranch}
+            onBranchChange={setSelectedBranch}
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            paymentStatusFilter={paymentStatusFilter}
+            onPaymentStatusChange={setPaymentStatusFilter}
+            onQuickDateRange={setQuickDateRange}
+            isBranchSelectionDisabled={isBranchSelectionDisabled}
+            availableBranches={getAvailableBranches()}
+          />
+
+          {/* Summary Stats */}
+          <TransactionSummaryStats 
+            transactions={transactions}
+          />
+
           <EnhancedTransactionTable
             transactions={transactions}
             loading={loading}
