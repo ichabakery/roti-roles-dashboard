@@ -11,6 +11,7 @@ interface TransactionRowProps {
   toggleRow: (id: string) => void;
   getPaymentMethodBadge: (method: string) => React.ReactNode;
   getStatusBadge: () => React.ReactNode;
+  getSourceBadge: (transaction: Transaction) => React.ReactNode;
   getTotalQuantity: (items: any[]) => number;
 }
 
@@ -21,6 +22,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
   toggleRow,
   getPaymentMethodBadge,
   getStatusBadge,
+  getSourceBadge,
   getTotalQuantity,
 }) => {
   const hasMultipleProducts = transaction.transaction_items && transaction.transaction_items.length > 1;
@@ -105,6 +107,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
         })}
       </td>
       <td className="p-2">{getStatusBadge()}</td>
+      <td className="p-2">{getSourceBadge(transaction)}</td>
       <td className="p-2">{transaction.cashier_name}</td>
       <td className="p-2">{getPaymentMethodBadge(transaction.payment_method)}</td>
       <td className="p-2">{getProductDisplay()}</td>

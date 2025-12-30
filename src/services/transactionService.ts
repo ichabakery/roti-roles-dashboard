@@ -83,7 +83,7 @@ export const createTransaction = async ({
     }
   }
 
-  // Create transaction
+  // Create transaction - mark as 'cashier' source (not from orders)
   const transactionData = {
     branch_id: selectedBranch,
     cashier_id: userId,
@@ -95,7 +95,8 @@ export const createTransaction = async ({
     amount_paid: amount_paid > 0 ? amount_paid : null,
     amount_remaining: amount_remaining > 0 ? amount_remaining : null,
     due_date,
-    notes: paymentData?.notes || null
+    notes: paymentData?.notes || null,
+    source_type: 'cashier' // Mark as direct cashier transaction
   };
 
   console.log('📝 Creating transaction with data:', transactionData);

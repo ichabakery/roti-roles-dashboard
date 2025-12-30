@@ -31,6 +31,8 @@ export interface Transaction {
   cashier_name: string;
   received?: number;
   change?: number;
+  source_type?: 'cashier' | 'order' | string;
+  notes?: string | null;
 }
 
 export interface TransactionSummary {
