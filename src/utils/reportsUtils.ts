@@ -20,6 +20,9 @@ export const transformTransactionData = (rawData: any[]): Transaction[] => {
       payment_method: item.payment_method,
       amount_paid: item.amount_paid ? parseFloat(item.amount_paid) : null,
       amount_remaining: item.amount_remaining ? parseFloat(item.amount_remaining) : null,
+      // Include source_type and notes for proper source identification
+      source_type: item.source_type || null,
+      notes: item.notes || null,
       // Required branches object for Transaction type
       branches: {
         id: item.branch_id,
