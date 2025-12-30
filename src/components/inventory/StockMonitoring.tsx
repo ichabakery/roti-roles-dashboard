@@ -123,25 +123,25 @@ export const StockMonitoring: React.FC = () => {
       <CardContent className="space-y-4">
         {/* Emergency Fix Button */}
         <Alert className="mb-4">
-          <AlertCircle className="h-4 w-4" />
+          <AlertCircle className="h-4 w-4 shrink-0" />
           <AlertDescription>
-            <div className="flex items-center justify-between">
-              <span>Deteksi bug reconciliation pada Bolu Batik Kecil - klik untuk perbaiki ke stok yang benar (60 pcs)</span>
-              <Button size="sm" onClick={fixBolusatikKecil} disabled={loading} variant="outline">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <span className="text-sm flex-1">Deteksi bug reconciliation pada Bolu Batik Kecil - klik untuk perbaiki ke stok yang benar (60 pcs)</span>
+              <Button size="sm" onClick={fixBolusatikKecil} disabled={loading} variant="outline" className="w-full sm:w-auto shrink-0">
                 Fix Bolu Batik Kecil
               </Button>
             </div>
           </AlertDescription>
         </Alert>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button onClick={runReconciliation} disabled={loading}>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button onClick={runReconciliation} disabled={loading} size="sm" className="w-full sm:w-auto">
               <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               Cek Konsistensi Stok
             </Button>
             {discrepancies.length > 0 && (
-              <Button onClick={fixAllDiscrepancies} disabled={loading} variant="outline">
+              <Button onClick={fixAllDiscrepancies} disabled={loading} variant="outline" size="sm" className="w-full sm:w-auto">
                 <Shield className="mr-2 h-4 w-4" />
                 Perbaiki Semua
               </Button>
@@ -149,7 +149,7 @@ export const StockMonitoring: React.FC = () => {
           </div>
           
           {lastCheck && (
-            <span className="text-sm text-muted-foreground">
+            <span className="text-xs sm:text-sm text-muted-foreground text-center sm:text-right">
               Terakhir dicek: {lastCheck.toLocaleString('id-ID')}
             </span>
           )}

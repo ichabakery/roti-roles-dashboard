@@ -140,33 +140,35 @@ const Inventory = () => {
         )}
 
         <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <InventoryHeader
-              loading={loading}
-              isAddDialogOpen={canAddStock ? isAddDialogOpen : false}
-              setIsAddDialogOpen={canAddStock ? setIsAddDialogOpen : () => {}}
-              onRefresh={fetchInventory}
-            />
-            {canAddStock && (
-              <Button
-                variant="outline"
-                onClick={() => setIsBatchDialogOpen(true)}
-                className="gap-2"
-              >
-                <Layers className="h-4 w-4" />
-                Batch Tambah Stok
-              </Button>
-            )}
-          </div>
+          <InventoryHeader
+            loading={loading}
+            isAddDialogOpen={canAddStock ? isAddDialogOpen : false}
+            setIsAddDialogOpen={canAddStock ? setIsAddDialogOpen : () => {}}
+            onRefresh={fetchInventory}
+          />
+          
+          {canAddStock && (
+            <Button
+              variant="outline"
+              onClick={() => setIsBatchDialogOpen(true)}
+              className="gap-2 w-full sm:w-auto"
+              size="sm"
+            >
+              <Layers className="h-4 w-4" />
+              Batch Tambah Stok
+            </Button>
+          )}
           
           {/* Reset Data Buttons - Owner Only */}
           {isOwner && (
-            <div className="flex items-center gap-3 p-4 bg-destructive/5 border border-destructive/20 rounded-lg">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              <span className="text-sm text-muted-foreground flex-1">
-                Reset data untuk memulai dengan data baru (hanya Owner)
-              </span>
-              <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-destructive/5 border border-destructive/20 rounded-lg">
+              <div className="flex items-center gap-2 flex-1">
+                <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
+                <span className="text-sm text-muted-foreground">
+                  Reset data untuk memulai dengan data baru (hanya Owner)
+                </span>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 <ResetDataDialog type="inventory" onSuccess={fetchInventory} />
                 <ResetDataDialog type="transactions" onSuccess={fetchInventory} />
               </div>
