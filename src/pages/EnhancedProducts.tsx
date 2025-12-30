@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Package, Archive, AlertTriangle, ArrowLeft, Edit } from 'lucide-react';
+import { Package, Archive, AlertTriangle, ArrowLeft, Edit } from 'lucide-react';
 import { ProductType, Product } from '@/types/products';
 import { fetchProductsWithType } from '@/services/enhancedProductService';
 import { useProductBatches } from '@/hooks/useProductBatches';
@@ -16,6 +15,7 @@ import { BatchManagement } from '@/components/products/BatchManagement';
 import { ExpiryMonitoring } from '@/components/products/ExpiryMonitoring';
 import { EnhancedAddProductDialog } from '@/components/products/EnhancedAddProductDialog';
 import { EditProductDialog } from '@/components/products/EditProductDialog';
+import { ProductSearchCommand } from '@/components/products/ProductSearchCommand';
 import { useNavigate } from 'react-router-dom';
 
 const EnhancedProducts = () => {
@@ -129,15 +129,22 @@ const EnhancedProducts = () => {
           <TabsContent value="products">
             <Card>
               <CardHeader className="pb-3 sm:pb-6">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <CardTitle className="text-lg sm:text-xl">Daftar Produk</CardTitle>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
-                    <ProductTypeSelector
-                      selectedType={selectedProductType}
-                      onTypeChange={setSelectedProductType}
-                    />
-                    <EnhancedAddProductDialog onProductAdded={fetchProducts} />
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <CardTitle className="text-lg sm:text-xl">Daftar Produk</CardTitle>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
+                      <ProductTypeSelector
+                        selectedType={selectedProductType}
+                        onTypeChange={setSelectedProductType}
+                      />
+                      <EnhancedAddProductDialog onProductAdded={fetchProducts} />
+                    </div>
                   </div>
+                  <ProductSearchCommand
+                    products={products}
+                    onSelectProduct={handleEditProduct}
+                    placeholder="Cari produk untuk edit..."
+                  />
                 </div>
               </CardHeader>
               <CardContent>
