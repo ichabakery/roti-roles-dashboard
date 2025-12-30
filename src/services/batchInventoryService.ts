@@ -51,7 +51,7 @@ export const batchAddStock = async (
 
     if (fetchError) {
       console.error('❌ Error fetching existing inventory:', fetchError);
-      throw fetchError;
+      throw new Error(`Gagal mengambil data inventory: ${fetchError.message}`);
     }
 
     // Create a map for quick lookup
@@ -61,93 +61,79 @@ export const batchAddStock = async (
       inventoryMap.set(key, { id: inv.id, quantity: inv.quantity });
     });
 
-    // Separate items into updates and inserts
-    const updates: { id: string; quantity: number }[] = [];
-    const inserts: { product_id: string; branch_id: string; quantity: number }[] = [];
-    const stockMovements: {
-      product_id: string;
-      branch_id: string;
-      quantity_change: number;
-      movement_type: string;
-      reference_type: string;
-      performed_by: string;
-    }[] = [];
-
+    // Process each item individually for better error handling
     for (const item of validItems) {
       const key = `${item.productId}-${item.branchId}`;
       const existing = inventoryMap.get(key);
 
-      if (existing) {
-        // Update existing - add to current quantity
-        updates.push({
-          id: existing.id,
-          quantity: existing.quantity + item.quantity,
-        });
-        result.totalUpdated++;
-      } else {
-        // Insert new
-        inserts.push({
-          product_id: item.productId,
-          branch_id: item.branchId,
-          quantity: item.quantity,
-        });
-        result.totalInserted++;
-      }
+      try {
+        if (existing) {
+          // Update existing - add to current quantity
+          const newQuantity = existing.quantity + item.quantity;
+          const { error: updateError } = await supabase
+            .from('inventory')
+            .update({ 
+              quantity: newQuantity,
+              last_updated: new Date().toISOString()
+            })
+            .eq('id', existing.id);
 
-      // Log stock movement
-      stockMovements.push({
-        product_id: item.productId,
-        branch_id: item.branchId,
-        quantity_change: item.quantity,
-        movement_type: 'in',
-        reference_type: 'batch_stock_add',
-        performed_by: performedBy,
-      });
-    }
+          if (updateError) {
+            console.error('❌ Error updating inventory:', updateError);
+            result.errors.push(`Gagal update stok: ${updateError.message}`);
+          } else {
+            result.totalUpdated++;
+            // Update local map for next iterations
+            inventoryMap.set(key, { id: existing.id, quantity: newQuantity });
+          }
+        } else {
+          // Insert new inventory record
+          const { data: insertedData, error: insertError } = await supabase
+            .from('inventory')
+            .insert({
+              product_id: item.productId,
+              branch_id: item.branchId,
+              quantity: item.quantity,
+            })
+            .select('id')
+            .single();
 
-    // Execute updates
-    for (const update of updates) {
-      const { error } = await supabase
-        .from('inventory')
-        .update({ 
-          quantity: update.quantity,
-          last_updated: new Date().toISOString()
-        })
-        .eq('id', update.id);
+          if (insertError) {
+            console.error('❌ Error inserting inventory:', insertError);
+            result.errors.push(`Gagal tambah stok baru: ${insertError.message}`);
+          } else {
+            result.totalInserted++;
+            // Add to local map for next iterations
+            if (insertedData) {
+              inventoryMap.set(key, { id: insertedData.id, quantity: item.quantity });
+            }
+          }
+        }
 
-      if (error) {
-        console.error('❌ Error updating inventory:', error);
-        result.errors.push(`Gagal update inventory: ${error.message}`);
-      }
-    }
-
-    // Execute inserts
-    if (inserts.length > 0) {
-      const { error } = await supabase
-        .from('inventory')
-        .insert(inserts);
-
-      if (error) {
-        console.error('❌ Error inserting inventory:', error);
-        result.errors.push(`Gagal insert inventory: ${error.message}`);
-      }
-    }
-
-    // Log stock movements
-    if (stockMovements.length > 0) {
-      const { error: movementError } = await supabase
-        .from('stock_movements')
-        .insert(stockMovements);
-
-      if (movementError) {
-        console.error('⚠️ Error logging stock movements:', movementError);
-        // Don't fail the whole operation for logging errors
+        // Try to log stock movement (optional - don't fail if this fails)
+        try {
+          await supabase
+            .from('stock_movements')
+            .insert({
+              product_id: item.productId,
+              branch_id: item.branchId,
+              quantity_change: item.quantity,
+              movement_type: 'in',
+              reference_type: 'batch_stock_add',
+              performed_by: performedBy,
+            });
+        } catch (movementError) {
+          console.warn('⚠️ Could not log stock movement:', movementError);
+          // Don't fail the whole operation for logging errors
+        }
+      } catch (itemError: any) {
+        console.error('❌ Error processing item:', itemError);
+        result.errors.push(itemError.message || 'Error processing item');
       }
     }
 
-    if (result.errors.length > 0) {
-      result.success = false;
-    }
+    // Determine overall success
+    result.success = result.errors.length === 0 && (result.totalUpdated > 0 || result.totalInserted > 0);
 
     console.log('✅ Batch stock operation completed:', result);
     return result;
@@ -155,7 +141,7 @@ export const batchAddStock = async (
   } catch (error: any) {
     console.error('❌ Batch stock operation failed:', error);
     result.success = false;
-    result.errors.push(error.message || 'Unknown error');
+    result.errors.push(error.message || 'Terjadi kesalahan tidak diketahui');
     return result;
   }
 };
