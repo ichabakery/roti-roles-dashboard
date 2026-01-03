@@ -64,8 +64,8 @@ export const MobileCartDrawer: React.FC<MobileCartDrawerProps> = ({
     const paymentData: PaymentData = {
       type: 'full',
       paymentMethod: paymentMethod,
-      received: paymentMethod === 'tunai' ? cashReceived : total,
-      change: paymentMethod === 'tunai' ? changeAmount : 0,
+      received: paymentMethod === 'cash' ? cashReceived : total,
+      change: paymentMethod === 'cash' ? changeAmount : 0,
       discountAmount: discountAmount,
     };
     onProcessPayment(paymentData);
@@ -86,7 +86,7 @@ export const MobileCartDrawer: React.FC<MobileCartDrawerProps> = ({
     setChangeAmount(0);
   };
 
-  const isPaymentValid = paymentMethod !== 'tunai' || cashReceived >= total;
+  const isPaymentValid = paymentMethod !== 'cash' || cashReceived >= total;
 
   return (
     <>
@@ -146,8 +146,8 @@ export const MobileCartDrawer: React.FC<MobileCartDrawerProps> = ({
                   </div>
                 </div>
 
-                {/* Cash Input - Show only for tunai */}
-                {paymentMethod === 'tunai' && (
+                {/* Cash Input - Show only for cash payment */}
+                {paymentMethod === 'cash' && (
                   <CashReceivedInput
                     totalAmount={total}
                     onCashReceivedChange={handleCashChange}
