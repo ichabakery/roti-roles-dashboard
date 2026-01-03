@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -15,8 +15,11 @@ import { PaymentSuccessDialog } from '@/components/cashier/PaymentSuccessDialog'
 import { CashierHeader } from '@/components/cashier/CashierHeader';
 import { StockValidationAlert } from '@/components/cashier/StockValidationAlert';
 import { PaymentData } from '@/components/cashier/PaymentOptionsDialog';
+import { FloatingCartButton } from '@/components/cashier/FloatingCartButton';
+import { MobileCartDrawer } from '@/components/cashier/MobileCartDrawer';
 
 const Cashier = () => {
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const { cart, addToCart, removeFromCart, updateQuantity, calculateTotal, clearCart } = useCart();
   const { 
     user, 
@@ -119,8 +122,8 @@ const Cashier = () => {
           )}
         </div>
         
-        {/* Panel Keranjang - sticky on desktop, fixed bottom on mobile */}
-        <div className="lg:w-1/3 order-1 lg:order-2">
+        {/* Panel Keranjang - sticky on desktop, hidden on mobile */}
+        <div className="hidden lg:block lg:w-1/3">
           <div className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
             <CartPanel
               cart={cart}
@@ -140,6 +143,29 @@ const Cashier = () => {
           </div>
         </div>
       </div>
+
+      {/* Mobile: Floating Cart Button + Drawer */}
+      <FloatingCartButton
+        itemCount={cart.length}
+        totalAmount={calculateTotal()}
+        onClick={() => setMobileCartOpen(true)}
+      />
+      
+      <MobileCartDrawer
+        open={mobileCartOpen}
+        onOpenChange={setMobileCartOpen}
+        cart={cart}
+        userRole={user?.role}
+        paymentMethod={paymentMethod}
+        onPaymentMethodChange={setPaymentMethod}
+        onUpdateQuantity={updateQuantity}
+        onRemoveFromCart={removeFromCart}
+        onProcessPayment={handleProcessPayment}
+        calculateTotal={calculateTotal}
+        branchError={branchError}
+        processingPayment={processingPayment}
+        selectedBranch={selectedBranch}
+      />
       
       {/* Success Dialog */}
       <PaymentSuccessDialog
