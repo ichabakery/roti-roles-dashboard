@@ -88,9 +88,9 @@ const Cashier = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col md:flex-row gap-6 h-full">
-        {/* Panel Produk */}
-        <div className="md:w-2/3 space-y-6">
+      <div className="flex flex-col lg:flex-row gap-6 h-full">
+        {/* Panel Produk - scrollable */}
+        <div className="lg:w-2/3 space-y-6 order-2 lg:order-1">
           <CashierHeader
             branches={branches}
             selectedBranch={selectedBranch}
@@ -119,23 +119,25 @@ const Cashier = () => {
           )}
         </div>
         
-        {/* Panel Keranjang */}
-        <div className="md:w-1/3">
-          <CartPanel
-            cart={cart}
-            userRole={user?.role}
-            branches={branches}
-            selectedBranch={selectedBranch}
-            onBranchChange={setSelectedBranch}
-            paymentMethod={paymentMethod}
-            onPaymentMethodChange={setPaymentMethod}
-            onUpdateQuantity={updateQuantity}
-            onRemoveFromCart={removeFromCart}
-            onProcessPayment={handleProcessPayment}
-            calculateTotal={calculateTotal}
-            branchError={branchError}
-            processingPayment={processingPayment}
-          />
+        {/* Panel Keranjang - sticky on desktop, fixed bottom on mobile */}
+        <div className="lg:w-1/3 order-1 lg:order-2">
+          <div className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+            <CartPanel
+              cart={cart}
+              userRole={user?.role}
+              branches={branches}
+              selectedBranch={selectedBranch}
+              onBranchChange={setSelectedBranch}
+              paymentMethod={paymentMethod}
+              onPaymentMethodChange={setPaymentMethod}
+              onUpdateQuantity={updateQuantity}
+              onRemoveFromCart={removeFromCart}
+              onProcessPayment={handleProcessPayment}
+              calculateTotal={calculateTotal}
+              branchError={branchError}
+              processingPayment={processingPayment}
+            />
+          </div>
         </div>
       </div>
       
