@@ -18,7 +18,10 @@ interface EnhancedFiltersProps {
   onSearchChange: (query: string) => void;
   paymentStatusFilter: string;
   onPaymentStatusChange: (status: string) => void;
+  sourceTypeFilter: string;
+  onSourceTypeChange: (sourceType: string) => void;
   onQuickDateRange: (days: number) => void;
+  onTodayDateRange: () => void;
   isBranchSelectionDisabled: boolean;
   availableBranches: Branch[];
 }
@@ -33,7 +36,10 @@ export const EnhancedFilters: React.FC<EnhancedFiltersProps> = ({
   onSearchChange,
   paymentStatusFilter,
   onPaymentStatusChange,
+  sourceTypeFilter,
+  onSourceTypeChange,
   onQuickDateRange,
+  onTodayDateRange,
   isBranchSelectionDisabled,
   availableBranches
 }) => {
@@ -86,6 +92,21 @@ export const EnhancedFilters: React.FC<EnhancedFiltersProps> = ({
             </Select>
           </div>
 
+          {/* Source Type Filter */}
+          <div className="space-y-2">
+            <Label>Sumber</Label>
+            <Select value={sourceTypeFilter} onValueChange={onSourceTypeChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Semua Sumber" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Sumber</SelectItem>
+                <SelectItem value="cashier">Kasir</SelectItem>
+                <SelectItem value="order">Pesanan</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Date Range */}
           <div className="space-y-2">
             <Label>Tanggal Mulai</Label>
@@ -110,6 +131,10 @@ export const EnhancedFilters: React.FC<EnhancedFiltersProps> = ({
 
         {/* Quick Date Filters */}
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={onTodayDateRange}>
+            <Calendar className="h-3 w-3 mr-1" />
+            Hari Ini
+          </Button>
           <Button variant="outline" size="sm" onClick={() => onQuickDateRange(7)}>
             <Calendar className="h-3 w-3 mr-1" />
             7 Hari

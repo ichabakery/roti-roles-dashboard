@@ -17,12 +17,15 @@ export const UnifiedReportsLayout = () => {
     setSelectedBranch,
     paymentStatusFilter,
     setPaymentStatusFilter,
+    sourceTypeFilter,
+    setSourceTypeFilter,
     dateRange,
     setDateRange,
     searchQuery,
     setSearchQuery,
     summaries,
     setQuickDateRange,
+    setTodayDateRange,
     getAvailableBranches,
     isBranchSelectionDisabled,
     isKasir
@@ -68,7 +71,10 @@ export const UnifiedReportsLayout = () => {
             onSearchChange={setSearchQuery}
             paymentStatusFilter={paymentStatusFilter}
             onPaymentStatusChange={setPaymentStatusFilter}
+            sourceTypeFilter={sourceTypeFilter}
+            onSourceTypeChange={setSourceTypeFilter}
             onQuickDateRange={setQuickDateRange}
+            onTodayDateRange={setTodayDateRange}
             isBranchSelectionDisabled={isBranchSelectionDisabled}
             availableBranches={getAvailableBranches()}
           />
