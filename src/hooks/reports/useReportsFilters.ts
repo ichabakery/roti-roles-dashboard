@@ -6,6 +6,7 @@ import type { DateRange, Branch } from '@/types/reports';
 export const useReportsFilters = (branches: Branch[], userActualBranchId: string | null) => {
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all');
+  const [sourceTypeFilter, setSourceTypeFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange>(() => {
     // Generate valid default date range
     const today = new Date();
@@ -53,6 +54,13 @@ export const useReportsFilters = (branches: Branch[], userActualBranchId: string
     setDateRange(newDateRange);
   };
 
+  const setTodayDateRange = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const newDateRange = { start: today, end: today };
+    console.log('📅 Today date range set:', newDateRange);
+    setDateRange(newDateRange);
+  };
+
   const getAvailableBranches = () => {
     const safeBranches = Array.isArray(branches) ? branches : [];
     
@@ -72,11 +80,14 @@ export const useReportsFilters = (branches: Branch[], userActualBranchId: string
     setSelectedBranch,
     paymentStatusFilter,
     setPaymentStatusFilter,
+    sourceTypeFilter,
+    setSourceTypeFilter,
     dateRange,
     setDateRange,
     searchQuery,
     setSearchQuery,
     setQuickDateRange,
+    setTodayDateRange,
     getAvailableBranches,
     isBranchSelectionDisabled
   };

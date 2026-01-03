@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useReportsData } from '@/hooks/reports/useReportsDataSimple';
 import { useReportsFilters } from '@/hooks/reports/useReportsFilters';
 import { useReportsSummaries } from '@/hooks/reports/useReportsSummaries';
@@ -17,11 +17,14 @@ export const useUnifiedReports = () => {
     setSelectedBranch,
     paymentStatusFilter,
     setPaymentStatusFilter,
+    sourceTypeFilter,
+    setSourceTypeFilter,
     dateRange,
     setDateRange,
     searchQuery,
     setSearchQuery,
     setQuickDateRange,
+    setTodayDateRange,
     getAvailableBranches,
     isBranchSelectionDisabled
   } = useReportsFilters(branches, userActualBranchId);
@@ -62,9 +65,16 @@ export const useUnifiedReports = () => {
 
   // Fetch transaction data only when we have valid filters
   const {
-    transactions,
+    transactions: rawTransactions,
     loading: dataLoading
   } = useReportsData(selectedBranch, dateRange, paymentStatusFilter);
+
+  // Filter transactions by source type
+  const transactions = React.useMemo(() => {
+    if (!Array.isArray(rawTransactions)) return [];
+    if (sourceTypeFilter === 'all') return rawTransactions;
+    return rawTransactions.filter(t => t.source_type === sourceTypeFilter);
+  }, [rawTransactions, sourceTypeFilter]);
 
   // Generate summaries from filtered data
   const summaries = useReportsSummaries(transactions, searchQuery);
@@ -77,12 +87,15 @@ export const useUnifiedReports = () => {
     setSelectedBranch,
     paymentStatusFilter,
     setPaymentStatusFilter,
+    sourceTypeFilter,
+    setSourceTypeFilter,
     dateRange,
     setDateRange,
     searchQuery,
     setSearchQuery,
     summaries,
     setQuickDateRange,
+    setTodayDateRange,
     getAvailableBranches,
     isBranchSelectionDisabled,
     isKasir: user?.role === 'kasir_cabang'
