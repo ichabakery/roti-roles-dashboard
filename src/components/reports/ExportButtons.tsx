@@ -1,7 +1,13 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { DownloadIcon, FileText, FileSpreadsheet } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { DownloadIcon, FileText, FileSpreadsheet, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface TransactionItem {
@@ -161,21 +167,51 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({ transactions }) =>
   };
 
   return (
-    <div className="flex flex-col gap-2 w-full sm:flex-row sm:flex-wrap sm:w-auto">
-      <Button variant="outline" size="sm" className="w-full sm:w-auto justify-center" onClick={exportTransactionSummary}>
-        <FileText className="mr-2 h-4 w-4" />
-        <span className="text-xs sm:text-sm">Ringkasan</span>
-      </Button>
+    <>
+      {/* Mobile: Dropdown Menu */}
+      <div className="sm:hidden">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <DownloadIcon className="mr-2 h-4 w-4" />
+              Ekspor
+              <ChevronDown className="ml-1 h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={exportTransactionSummary}>
+              <FileText className="mr-2 h-4 w-4" />
+              Ringkasan
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={exportDetailedTransactions}>
+              <DownloadIcon className="mr-2 h-4 w-4" />
+              Detail Item
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={exportProductAnalysis}>
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              Analisis Produk
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
-      <Button variant="outline" size="sm" className="w-full sm:w-auto justify-center" onClick={exportDetailedTransactions}>
-        <DownloadIcon className="mr-2 h-4 w-4" />
-        <span className="text-xs sm:text-sm">Detail Item</span>
-      </Button>
+      {/* Desktop: Full buttons */}
+      <div className="hidden sm:flex flex-row flex-wrap gap-2">
+        <Button variant="outline" size="sm" onClick={exportTransactionSummary}>
+          <FileText className="mr-2 h-4 w-4" />
+          <span className="text-sm">Ringkasan</span>
+        </Button>
 
-      <Button variant="outline" size="sm" className="w-full sm:w-auto justify-center" onClick={exportProductAnalysis}>
-        <FileSpreadsheet className="mr-2 h-4 w-4" />
-        <span className="text-xs sm:text-sm">Analisis</span>
-      </Button>
-    </div>
+        <Button variant="outline" size="sm" onClick={exportDetailedTransactions}>
+          <DownloadIcon className="mr-2 h-4 w-4" />
+          <span className="text-sm">Detail Item</span>
+        </Button>
+
+        <Button variant="outline" size="sm" onClick={exportProductAnalysis}>
+          <FileSpreadsheet className="mr-2 h-4 w-4" />
+          <span className="text-sm">Analisis</span>
+        </Button>
+      </div>
+    </>
   );
 };
