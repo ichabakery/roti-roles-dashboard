@@ -31,14 +31,13 @@ export const Sidebar = ({ sidebarOpen, setSidebarOpen, user, onLogout }: Sidebar
   return (
     <>
       <div className={cn(
-        "bg-card border-r border-border transition-all duration-300 ease-in-out flex flex-col",
+        "bg-card border-r border-border transition-all duration-300 ease-in-out flex flex-col h-screen",
         isMobile ? (
           sidebarOpen 
             ? "fixed inset-y-0 left-0 z-50 w-64"
             : "hidden"
-        ) : (
-          sidebarOpen ? "w-64" : "w-16"
-        )
+        ) : "sticky top-0",
+        !isMobile && (sidebarOpen ? "w-64" : "w-16")
       )}>
         {/* Header */}
         <div className="p-4 border-b border-border flex items-center justify-between">
