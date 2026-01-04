@@ -30,6 +30,7 @@ const EnhancedProducts = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [lastEditedProductId, setLastEditedProductId] = useState<string | null>(null);
   const { toast } = useToast();
   const { expiringProducts, fetchExpiring } = useProductBatches();
 
@@ -78,6 +79,26 @@ const EnhancedProducts = () => {
     fetchExpiring(7);
   }, [selectedProductType]);
 
+  // Scroll to last edited product after data refresh
+  useEffect(() => {
+    if (lastEditedProductId && !loading) {
+      // Small delay to ensure DOM is updated
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`product-${lastEditedProductId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Add highlight effect
+          element.classList.add('ring-2', 'ring-primary', 'transition-all');
+          setTimeout(() => {
+            element.classList.remove('ring-2', 'ring-primary');
+            setLastEditedProductId(null);
+          }, 2000);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, lastEditedProductId]);
+
   const fetchProducts = async () => {
     setLoading(true);
     try {
@@ -106,6 +127,10 @@ const EnhancedProducts = () => {
   };
 
   const handleProductUpdated = () => {
+    // Save the edited product ID before refreshing
+    if (editingProduct) {
+      setLastEditedProductId(editingProduct.id);
+    }
     fetchProducts();
   };
 
@@ -236,7 +261,11 @@ const EnhancedProducts = () => {
                             )}
                             <div className="grid gap-4">
                               {categoryProducts.map((product) => (
-                                <div key={product.id} className="flex items-center justify-between p-4 border rounded-lg">
+                                <div 
+                                  key={product.id} 
+                                  id={`product-${product.id}`}
+                                  className="flex items-center justify-between p-4 border rounded-lg transition-all duration-300"
+                                >
                                   <div className="space-y-2">
                                     <div className="flex items-center gap-2">
                                       <h3 className="font-semibold">{product.name}</h3>
