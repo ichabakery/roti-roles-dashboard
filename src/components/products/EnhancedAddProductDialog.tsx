@@ -46,6 +46,9 @@ export const EnhancedAddProductDialog: React.FC<EnhancedAddProductDialogProps> =
         description: formData.description,
         price: parseFloat(formData.price),
         productType: formData.productType,
+        category: formData.category,
+        hasExpiry: formData.hasExpiry,
+        defaultExpiryDays: formData.defaultExpiryDays ? parseInt(formData.defaultExpiryDays) : undefined,
       });
 
       setFormData({ 

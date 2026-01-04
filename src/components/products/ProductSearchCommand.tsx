@@ -1,19 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { Product } from '@/types/products';
 
 interface ProductSearchCommandProps {
@@ -27,78 +14,73 @@ export const ProductSearchCommand: React.FC<ProductSearchCommandProps> = ({
   onSelectProduct,
   placeholder = "Cari produk..."
 }) => {
-  const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
+  const [showResults, setShowResults] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchValue.toLowerCase())
-  );
+  const filteredProducts = useMemo(() => {
+    if (!searchValue.trim()) return [];
+    return products.filter(product =>
+      product.name.toLowerCase().includes(searchValue.toLowerCase())
+    ).slice(0, 10);
+  }, [products, searchValue]);
 
   const handleSelect = (product: Product) => {
     onSelectProduct(product);
-    setOpen(false);
     setSearchValue('');
+    setShowResults(false);
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={placeholder}
-            value={searchValue}
-            onChange={(e) => {
-              setSearchValue(e.target.value);
-              if (e.target.value.length > 0) {
-                setOpen(true);
-              }
-            }}
-            onFocus={() => {
-              if (searchValue.length > 0 || products.length > 0) {
-                setOpen(true);
-              }
-            }}
-            className="pl-10"
-          />
-        </div>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="start">
-        <Command>
-          <CommandList>
-            <CommandEmpty>Produk tidak ditemukan</CommandEmpty>
-            <CommandGroup heading="Hasil Pencarian">
-              {filteredProducts.slice(0, 10).map((product) => (
-                <CommandItem
+    <div className="relative w-full sm:w-80">
+      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+      <Input
+        ref={inputRef}
+        placeholder={placeholder}
+        value={searchValue}
+        onChange={(e) => setSearchValue(e.target.value)}
+        onFocus={() => setShowResults(true)}
+        onBlur={() => setTimeout(() => setShowResults(false), 200)}
+        className="pl-10"
+      />
+      
+      {showResults && searchValue.trim() && (
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-md shadow-lg max-h-64 overflow-y-auto">
+          {filteredProducts.length === 0 ? (
+            <div className="p-3 text-sm text-muted-foreground text-center">
+              Produk tidak ditemukan
+            </div>
+          ) : (
+            <>
+              {filteredProducts.map((product) => (
+                <div
                   key={product.id}
-                  value={product.name}
-                  onSelect={() => handleSelect(product)}
-                  className="cursor-pointer"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handleSelect(product)}
+                  className="p-3 cursor-pointer hover:bg-accent border-b last:border-b-0"
                 >
-                  <div className="flex flex-col w-full">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">{product.name}</span>
-                      <span className="text-sm text-green-600 font-semibold">
-                        Rp {product.price.toLocaleString('id-ID')}
-                      </span>
-                    </div>
-                    {product.description && (
-                      <span className="text-xs text-muted-foreground">
-                        {product.description}
-                      </span>
-                    )}
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">{product.name}</span>
+                    <span className="text-sm text-green-600 font-semibold">
+                      Rp {product.price.toLocaleString('id-ID')}
+                    </span>
                   </div>
-                </CommandItem>
+                  {product.description && (
+                    <span className="text-xs text-muted-foreground line-clamp-1">
+                      {product.description}
+                    </span>
+                  )}
+                </div>
               ))}
-              {filteredProducts.length > 10 && (
-                <div className="px-2 py-1.5 text-xs text-muted-foreground text-center">
-                  +{filteredProducts.length - 10} produk lainnya
+              {products.filter(p => p.name.toLowerCase().includes(searchValue.toLowerCase())).length > 10 && (
+                <div className="px-3 py-2 text-xs text-muted-foreground text-center bg-muted/50">
+                  +{products.filter(p => p.name.toLowerCase().includes(searchValue.toLowerCase())).length - 10} produk lainnya
                 </div>
               )}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
