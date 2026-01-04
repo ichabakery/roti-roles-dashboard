@@ -53,24 +53,24 @@ export const fetchTransactionsFromDB = async (
     // FIXED: Proper timezone handling for Indonesia (WIB = UTC + 7)
     console.log('📅 Input date range (local):', dateRange);
     
-    // Convert local Indonesian dates to proper UTC range
-    // Indonesian date 2025-07-04 00:00 WIB = 2025-07-03 17:00 UTC
-    // Indonesian date 2025-07-04 23:59 WIB = 2025-07-04 16:59 UTC
-    const startDateWIB = new Date(dateRange.start + 'T00:00:00');
-    const endDateWIB = new Date(dateRange.end + 'T23:59:59');
+    // Parse tanggal sebagai komponen terpisah untuk menghindari interpretasi timezone browser
+    // Input: '2026-01-04' artinya tanggal 4 Jan WIB
+    // WIB = UTC + 7, jadi 4 Jan 00:00 WIB = 3 Jan 17:00 UTC
+    const [startYear, startMonth, startDay] = dateRange.start.split('-').map(Number);
+    const [endYear, endMonth, endDay] = dateRange.end.split('-').map(Number);
     
-    // Convert to UTC by subtracting 7 hours
-    const startDateUTC = new Date(startDateWIB.getTime() - (7 * 60 * 60 * 1000));
-    const endDateUTC = new Date(endDateWIB.getTime() - (7 * 60 * 60 * 1000));
+    // Buat waktu dalam UTC dengan offset WIB (-7 jam)
+    // 4 Jan 00:00:00 WIB = 3 Jan 17:00:00 UTC
+    const startDateUTC = new Date(Date.UTC(startYear, startMonth - 1, startDay, 0, 0, 0) - (7 * 60 * 60 * 1000));
+    // 4 Jan 23:59:59 WIB = 4 Jan 16:59:59 UTC
+    const endDateUTC = new Date(Date.UTC(endYear, endMonth - 1, endDay, 23, 59, 59) - (7 * 60 * 60 * 1000));
 
     console.log('🕐 FIXED timezone conversion:', {
       inputStart: dateRange.start,
       inputEnd: dateRange.end,
-      startWIB: startDateWIB.toISOString(),
-      endWIB: endDateWIB.toISOString(),
       startUTC: startDateUTC.toISOString(),
       endUTC: endDateUTC.toISOString(),
-      note: 'WIB = UTC + 7, so to query UTC we subtract 7 hours'
+      note: 'WIB dates parsed explicitly, then converted to UTC (-7h)'
     });
 
     // Step 1: Build and execute transaction query - ONLY COMPLETED TRANSACTIONS
