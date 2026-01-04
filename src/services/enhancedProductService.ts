@@ -7,7 +7,10 @@ export const createProduct = async (productData: {
   description?: string;
   price: number;
   productType: ProductType;
+  category?: string;
   imageUrl?: string;
+  hasExpiry?: boolean;
+  defaultExpiryDays?: number;
 }) => {
   console.log('Creating product with type:', productData);
 
@@ -18,6 +21,9 @@ export const createProduct = async (productData: {
       description: productData.description,
       price: productData.price,
       product_type: productData.productType,
+      category: productData.category || 'produk_utama',
+      has_expiry: productData.hasExpiry || false,
+      default_expiry_days: productData.defaultExpiryDays,
       image_url: productData.imageUrl,
       active: true
     })

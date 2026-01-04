@@ -41,7 +41,10 @@ export const useEnhancedProducts = (productType?: ProductType) => {
     description?: string;
     price: number;
     productType: ProductType;
+    category?: string;
     imageUrl?: string;
+    hasExpiry?: boolean;
+    defaultExpiryDays?: number;
   }) => {
     try {
       const newProduct = await createProduct(productData);
