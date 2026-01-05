@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { useInventory } from '@/hooks/useInventory';
+import { useBulkSelection } from '@/hooks/useBulkSelection';
 import { InventoryHeader } from '@/components/inventory/InventoryHeader';
 import { InventoryStats } from '@/components/inventory/InventoryStats';
 import { InventoryFilters } from '@/components/inventory/InventoryFilters';
@@ -10,21 +11,24 @@ import { EnhancedInventoryTable } from '@/components/inventory/EnhancedInventory
 import { InventoryKPICards } from '@/components/inventory/InventoryKPICards';
 import { AddStockDialog } from '@/components/inventory/AddStockDialog';
 import { BatchAddStockDialog } from '@/components/inventory/BatchAddStockDialog';
+import { BulkEditInventoryDialog } from '@/components/inventory/BulkEditInventoryDialog';
 import { StockMonitoring } from '@/components/inventory/StockMonitoring';
 import { StockConsistencyChecker } from '@/components/inventory/StockConsistencyChecker';
 import { ResetDataDialog } from '@/components/inventory/ResetDataDialog';
+import { BulkSelectionToolbar, EditBulkAction } from '@/components/common/BulkSelectionToolbar';
 import { isInventoryV1Enabled, isDemoModeEnabled } from '@/utils/featureFlags';
 import { getInventoryKPIs } from '@/services/inventoryV1Service';
 import { resetDemoData } from '@/services/demoDataService';
 import { InventoryKPI } from '@/types/products';
 import { Button } from '@/components/ui/button';
-import { RotateCcw, AlertTriangle, Layers } from 'lucide-react';
+import { RotateCcw, AlertTriangle, Layers, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const Inventory = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
+  const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
   const [kpis, setKPIs] = useState<InventoryKPI>({
     activeSKUs: 0,
     totalUnits: 0,
@@ -47,6 +51,26 @@ const Inventory = () => {
     addStock,
     user
   } = useInventory();
+
+  // Bulk selection hook
+  const {
+    isSelected,
+    toggleSelection,
+    toggleSelectAll,
+    deselectAll,
+    isAllSelected,
+    isPartiallySelected,
+    selectedCount,
+    hasSelection
+  } = useBulkSelection({
+    items: inventory,
+    getItemId: (item) => item.id
+  });
+
+  // Get selected inventory IDs
+  const selectedInventoryIds = inventory
+    .filter(item => isSelected(item.id))
+    .map(item => item.id);
 
   const handleAddStock = async (productId: string, branchId: string, quantity: number): Promise<boolean> => {
     return await addStock(productId, branchId, quantity);
@@ -210,6 +234,12 @@ const Inventory = () => {
                 inventory={inventory}
                 loading={loading}
                 searchQuery={searchQuery}
+                enableSelection={canAddStock}
+                isSelected={isSelected}
+                toggleSelection={toggleSelection}
+                isAllSelected={isAllSelected}
+                isPartiallySelected={isPartiallySelected}
+                toggleSelectAll={toggleSelectAll}
               />
             ) : (
               <InventoryTable
@@ -240,7 +270,30 @@ const Inventory = () => {
               userId={user?.id || ''}
               onSuccess={fetchInventory}
             />
+            <BulkEditInventoryDialog
+              open={isBulkEditDialogOpen}
+              onOpenChange={setIsBulkEditDialogOpen}
+              inventoryIds={selectedInventoryIds}
+              userId={user?.id || ''}
+              onSuccess={() => {
+                deselectAll();
+                fetchInventory();
+              }}
+            />
           </>
+        )}
+
+        {/* Bulk Selection Toolbar */}
+        {hasSelection && canAddStock && (
+          <BulkSelectionToolbar
+            selectedCount={selectedCount}
+            totalCount={inventory.length}
+            onDeselectAll={deselectAll}
+            itemLabel="item inventori"
+            actions={[
+              EditBulkAction(() => setIsBulkEditDialogOpen(true))
+            ]}
+          />
         )}
       </div>
     </DashboardLayout>

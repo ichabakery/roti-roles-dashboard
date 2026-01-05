@@ -1,14 +1,21 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUnifiedReports } from '@/hooks/useUnifiedReports';
+import { useBulkSelection } from '@/hooks/useBulkSelection';
 import { EnhancedFilters } from './EnhancedFilters';
 import { TransactionSummaryStats } from './TransactionSummaryStats';
 import { EnhancedTransactionTable } from './EnhancedTransactionTable';
 import { ExportButtons } from './ExportButtons';
 import { DailySalesReport } from './DailySalesReport';
+import { BulkSelectionToolbar, VoidBulkAction } from '@/components/common/BulkSelectionToolbar';
+import { BulkVoidTransactionsDialog } from '@/components/transactions/BulkVoidTransactionsDialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const UnifiedReportsLayout = () => {
+  const { user } = useAuth();
+  const [bulkVoidDialogOpen, setBulkVoidDialogOpen] = useState(false);
+  
   const {
     transactions,
     branches,
@@ -30,6 +37,25 @@ export const UnifiedReportsLayout = () => {
     isBranchSelectionDisabled,
     isKasir
   } = useUnifiedReports();
+
+  // Bulk selection for transactions (only for owner)
+  const canVoidTransactions = user?.role === 'owner';
+  const {
+    isSelected,
+    toggleSelection,
+    toggleSelectAll,
+    deselectAll,
+    isAllSelected,
+    selectedCount,
+    hasSelection
+  } = useBulkSelection({
+    items: transactions,
+    getItemId: (tx) => tx.id
+  });
+
+  const selectedTransactionIds = transactions
+    .filter(tx => isSelected(tx.id))
+    .map(tx => tx.id);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -137,6 +163,31 @@ export const UnifiedReportsLayout = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Bulk Void Dialog */}
+      <BulkVoidTransactionsDialog
+        open={bulkVoidDialogOpen}
+        onOpenChange={setBulkVoidDialogOpen}
+        transactionIds={selectedTransactionIds}
+        userId={user?.id || ''}
+        onSuccess={() => {
+          deselectAll();
+          window.location.reload();
+        }}
+      />
+
+      {/* Bulk Selection Toolbar */}
+      {hasSelection && canVoidTransactions && (
+        <BulkSelectionToolbar
+          selectedCount={selectedCount}
+          totalCount={transactions.length}
+          onDeselectAll={deselectAll}
+          itemLabel="transaksi"
+          actions={[
+            VoidBulkAction(() => setBulkVoidDialogOpen(true))
+          ]}
+        />
+      )}
     </div>
   );
 };

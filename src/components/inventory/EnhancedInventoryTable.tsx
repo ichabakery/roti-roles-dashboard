@@ -1,5 +1,6 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
@@ -25,6 +26,13 @@ interface EnhancedInventoryTableProps {
   })[];
   loading: boolean;
   searchQuery: string;
+  // Selection props
+  isSelected?: (id: string) => boolean;
+  toggleSelection?: (id: string) => void;
+  isAllSelected?: boolean;
+  isPartiallySelected?: boolean;
+  toggleSelectAll?: () => void;
+  enableSelection?: boolean;
 }
 
 const getStatusColor = (status: 'high' | 'medium' | 'low') => {
@@ -57,6 +65,12 @@ export const EnhancedInventoryTable: React.FC<EnhancedInventoryTableProps> = ({
   inventory,
   loading,
   searchQuery,
+  isSelected,
+  toggleSelection,
+  isAllSelected = false,
+  isPartiallySelected = false,
+  toggleSelectAll,
+  enableSelection = false,
 }) => {
   const filteredInventory = inventory.filter((item) =>
     item.product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -96,6 +110,15 @@ export const EnhancedInventoryTable: React.FC<EnhancedInventoryTableProps> = ({
       <Table>
         <TableHeader>
           <TableRow>
+            {enableSelection && (
+              <TableHead className="w-12">
+                <Checkbox
+                  checked={isAllSelected}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Pilih semua"
+                />
+              </TableHead>
+            )}
             <TableHead>SKU</TableHead>
             <TableHead>Produk</TableHead>
             <TableHead>Cabang</TableHead>
@@ -112,9 +135,22 @@ export const EnhancedInventoryTable: React.FC<EnhancedInventoryTableProps> = ({
               item.product.reorder_point || null
             );
             const uom = item.product.uom || INVENTORY_DEFAULTS.UOM;
+            const selected = isSelected?.(item.id) || false;
 
             return (
-              <TableRow key={item.id}>
+              <TableRow 
+                key={item.id}
+                className={selected ? 'bg-primary/5' : undefined}
+              >
+                {enableSelection && (
+                  <TableCell>
+                    <Checkbox
+                      checked={selected}
+                      onCheckedChange={() => toggleSelection?.(item.id)}
+                      aria-label={`Pilih ${item.product.name}`}
+                    />
+                  </TableCell>
+                )}
                 <TableCell className="font-medium">
                   {item.product.sku || '—'}
                 </TableCell>
