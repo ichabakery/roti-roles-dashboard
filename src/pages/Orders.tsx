@@ -501,24 +501,24 @@ const Orders = () => {
 
             {/* Grid View - Always show on mobile, conditional on desktop */}
             {!loading && filteredOrders.length > 0 && (viewMode === 'grid' || true) && (
-              <div className={viewMode === 'table' ? 'lg:hidden' : ''}>
+              <div className={`${viewMode === 'table' ? 'lg:hidden' : ''} overflow-hidden`}>
                 <div className="grid gap-4">
                   {filteredOrders.map((order) => (
-                    <Card key={order.id} className="hover:shadow-md transition-shadow">
-                      <CardHeader>
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                           <div>
-                             <CardTitle className="text-lg">{order.order_number}</CardTitle>
-                             <CardDescription>{order.customer_name} • {order.customer_phone}</CardDescription>
-                           </div>
-                           <div className="flex items-center gap-2">
-                           {getStatusBadge(order.status)}
+                    <Card key={order.id} className="hover:shadow-md transition-shadow overflow-hidden">
+                      <CardHeader className="pb-3">
+                        <div className="flex flex-col gap-2">
+                          <div className="min-w-0">
+                            <CardTitle className="text-lg truncate">{order.order_number}</CardTitle>
+                            <CardDescription className="truncate">{order.customer_name} • {order.customer_phone}</CardDescription>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {getStatusBadge(order.status)}
                             {order.status !== 'completed' && order.status !== 'cancelled' && (
-                              <>
+                              <div className="flex items-center gap-1">
                                 <Button 
                                   variant="ghost" 
-                                  size="sm"
-                                  className="text-green-600 hover:text-green-700"
+                                  size="icon"
+                                  className="h-8 w-8 text-green-600 hover:text-green-700"
                                   onClick={() => handleQuickStatusChange(order.id!, 'completed')}
                                   title="Selesai"
                                 >
@@ -526,8 +526,8 @@ const Orders = () => {
                                 </Button>
                                 <Button 
                                   variant="ghost" 
-                                  size="sm"
-                                  className="text-red-600 hover:text-red-700"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-600 hover:text-red-700"
                                   onClick={() => handleQuickStatusChange(order.id!, 'cancelled')}
                                   title="Batal"
                                 >
@@ -535,31 +535,36 @@ const Orders = () => {
                                 </Button>
                                 <Button 
                                   variant="ghost" 
-                                  size="sm"
+                                  size="icon"
+                                  className="h-8 w-8"
                                   onClick={() => handleEditOrder(order)}
                                   title="Edit"
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
-                              </>
+                              </div>
                             )}
+                            <div className="flex items-center gap-2 sm:ml-auto">
                               <Button 
                                 variant="outline" 
                                 size="sm"
+                                className="h-8 px-2 sm:px-3"
                                 onClick={() => handleShowReceipt(order)}
                               >
-                                <Receipt className="h-4 w-4 mr-1" />
-                                Bukti
+                                <Receipt className="h-4 w-4 sm:mr-1" />
+                                <span className="hidden sm:inline">Bukti</span>
                               </Button>
                               <Button 
                                 variant="outline" 
                                 size="sm"
+                                className="h-8 px-2 sm:px-3"
                                 onClick={() => handleViewOrderDetail(order.id!)}
                               >
-                                <Eye className="h-4 w-4 mr-1" />
-                                Detail
+                                <Eye className="h-4 w-4 sm:mr-1" />
+                                <span className="hidden sm:inline">Detail</span>
                               </Button>
-                           </div>
+                            </div>
+                          </div>
                         </div>
                       </CardHeader>
                       <CardContent>
