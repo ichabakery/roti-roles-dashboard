@@ -3,7 +3,8 @@ import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShoppingCart } from 'lucide-react';
-import { PRODUCT_CATEGORIES, getCategoryLabel } from '@/constants/productCategories';
+import { getCategoryLabel } from '@/constants/productCategories';
+import { useCategories } from '@/hooks/useCategories';
 
 interface Product {
   id: string;
@@ -29,6 +30,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
   onAddToCart
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const { categories } = useCategories();
 
   // Group and filter products by category
   const filteredProducts = useMemo(() => {
@@ -41,8 +43,8 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
   // Get unique categories that have products
   const availableCategories = useMemo(() => {
     const categoriesWithProducts = new Set(products.map(p => p.category || 'produk_utama'));
-    return PRODUCT_CATEGORIES.filter(cat => categoriesWithProducts.has(cat.value));
-  }, [products]);
+    return categories.filter(cat => categoriesWithProducts.has(cat.value));
+  }, [products, categories]);
 
   // Group products by category for display
   const groupedProducts = useMemo(() => {
@@ -61,14 +63,14 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
     
     // Sort by category order
     const orderedGroups: Record<string, Product[]> = {};
-    PRODUCT_CATEGORIES.forEach(cat => {
+    categories.forEach(cat => {
       if (groups[cat.value]) {
         orderedGroups[cat.value] = groups[cat.value];
       }
     });
     
     return orderedGroups;
-  }, [filteredProducts, selectedCategory]);
+  }, [filteredProducts, selectedCategory, categories]);
 
   if (loading) {
     return (
@@ -112,7 +114,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
         <div key={category} className="space-y-3">
           {selectedCategory === 'all' && (
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
-              {getCategoryLabel(category)}
+              {getCategoryLabel(category, categories)}
             </h3>
           )}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">

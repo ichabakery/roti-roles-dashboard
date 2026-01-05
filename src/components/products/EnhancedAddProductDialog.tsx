@@ -12,7 +12,8 @@ import { Plus } from 'lucide-react';
 import { ProductType } from '@/types/products';
 import { useEnhancedProducts } from '@/hooks/useEnhancedProducts';
 import { ProductExpiryCalendar } from './ProductExpiryCalendar';
-import { PRODUCT_CATEGORIES, DEFAULT_CATEGORY } from '@/constants/productCategories';
+import { DEFAULT_CATEGORY_VALUE } from '@/constants/productCategories';
+import { useCategories } from '@/hooks/useCategories';
 
 interface EnhancedAddProductDialogProps {
   onProductAdded?: () => void;
@@ -27,7 +28,7 @@ export const EnhancedAddProductDialog: React.FC<EnhancedAddProductDialogProps> =
     name: '',
     description: '',
     price: '',
-    category: DEFAULT_CATEGORY,
+    category: DEFAULT_CATEGORY_VALUE,
     productType: 'regular' as ProductType,
     hasExpiry: false,
     defaultExpiryDays: '',
@@ -35,6 +36,7 @@ export const EnhancedAddProductDialog: React.FC<EnhancedAddProductDialogProps> =
   });
   const { toast } = useToast();
   const { addProduct } = useEnhancedProducts();
+  const { categories } = useCategories();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +57,7 @@ export const EnhancedAddProductDialog: React.FC<EnhancedAddProductDialogProps> =
         name: '', 
         description: '', 
         price: '', 
-        category: DEFAULT_CATEGORY,
+        category: DEFAULT_CATEGORY_VALUE,
         productType: 'regular',
         hasExpiry: false,
         defaultExpiryDays: '',
@@ -133,7 +135,7 @@ export const EnhancedAddProductDialog: React.FC<EnhancedAddProductDialogProps> =
                 <SelectValue placeholder="Pilih kategori" />
               </SelectTrigger>
               <SelectContent>
-                {PRODUCT_CATEGORIES.map(cat => (
+                {categories.map(cat => (
                   <SelectItem key={cat.value} value={cat.value}>
                     {cat.label}
                   </SelectItem>

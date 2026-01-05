@@ -449,6 +449,39 @@ export type Database = {
           },
         ]
       }
+      product_categories: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          created_by: string | null
+          display_order: number | null
+          id: string
+          is_default: boolean | null
+          label: string
+          value: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number | null
+          id?: string
+          is_default?: boolean | null
+          label: string
+          value: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number | null
+          id?: string
+          is_default?: boolean | null
+          label?: string
+          value?: string
+        }
+        Relationships: []
+      }
       product_packages: {
         Row: {
           component_product_id: string
