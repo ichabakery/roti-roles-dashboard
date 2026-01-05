@@ -113,12 +113,14 @@ export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-4xl max-h-[90dvh] overflow-y-auto p-0">
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-10 bg-background border-b px-6 pt-6 pb-3">
           <DialogTitle>Buat Retur Baru</DialogTitle>
-        </DialogHeader>
+        </div>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Scrollable Form Content */}
+        <form id="create-return-form" onSubmit={handleSubmit} className="space-y-6 px-6 pb-24">
           <ReturnFormFields
             formData={formData}
             setFormData={setFormData}
@@ -132,21 +134,22 @@ export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
             setReturnItems={setReturnItems}
             products={products}
           />
-
-          <div className="flex justify-end space-x-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
-              Batal
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Menyimpan...' : 'Buat Retur'}
-            </Button>
-          </div>
         </form>
+
+        {/* Sticky Footer with Buttons */}
+        <div className="sticky bottom-0 z-10 bg-background border-t px-6 py-4 flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={loading}
+          >
+            Batal
+          </Button>
+          <Button type="submit" form="create-return-form" disabled={loading}>
+            {loading ? 'Menyimpan...' : 'Buat Retur'}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
