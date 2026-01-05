@@ -4,12 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Package, Archive, AlertTriangle, ArrowLeft, Edit, Trash2 } from 'lucide-react';
 import { ProductType, Product } from '@/types/products';
 import { fetchProductsWithType } from '@/services/enhancedProductService';
 import { useProductBatches } from '@/hooks/useProductBatches';
 import { useCategories } from '@/hooks/useCategories';
+import { useBulkSelection } from '@/hooks/useBulkSelection';
 import { ProductTypeSelector } from '@/components/products/ProductTypeSelector';
 import { ProductPackageManager } from '@/components/products/ProductPackageManager';
 import { BatchManagement } from '@/components/products/BatchManagement';
@@ -17,8 +19,10 @@ import { ExpiryMonitoring } from '@/components/products/ExpiryMonitoring';
 import { EnhancedAddProductDialog } from '@/components/products/EnhancedAddProductDialog';
 import { EditProductDialog } from '@/components/products/EditProductDialog';
 import { DeleteProductDialog } from '@/components/products/DeleteProductDialog';
+import { BulkDeleteProductsDialog } from '@/components/products/BulkDeleteProductsDialog';
 import { ProductSearchCommand } from '@/components/products/ProductSearchCommand';
 import { CategoryManager } from '@/components/products/CategoryManager';
+import { BulkSelectionToolbar, DeleteBulkAction } from '@/components/common/BulkSelectionToolbar';
 import { useNavigate } from 'react-router-dom';
 import { getCategoryLabel } from '@/constants/productCategories';
 
@@ -32,6 +36,7 @@ const EnhancedProducts = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [lastEditedProductId, setLastEditedProductId] = useState<string | null>(null);
   const { toast } = useToast();
   const { expiringProducts, fetchExpiring } = useProductBatches();
@@ -44,6 +49,22 @@ const EnhancedProducts = () => {
     }
     return products.filter(p => (p as any).category === selectedCategory);
   }, [products, selectedCategory]);
+
+  // Bulk selection hook - must be after filteredProducts
+  const {
+    isSelected,
+    toggleSelection,
+    toggleSelectAll,
+    deselectAll,
+    isAllSelected,
+    isPartiallySelected,
+    selectedCount,
+    selectedItems,
+    hasSelection
+  } = useBulkSelection({
+    items: filteredProducts,
+    getItemId: (product) => product.id
+  });
 
   // Get unique categories that have products
   const availableCategories = useMemo(() => {
@@ -247,6 +268,29 @@ const EnhancedProducts = () => {
                       </TabsList>
                     </Tabs>
 
+                    {/* Select All option when there are products */}
+                    {filteredProducts.length > 0 && (
+                      <div className="flex items-center gap-2 py-2 border-b">
+                        <Checkbox
+                          checked={isAllSelected}
+                          ref={(ref) => {
+                            if (ref) {
+                              (ref as HTMLButtonElement).dataset.state = isPartiallySelected ? 'indeterminate' : isAllSelected ? 'checked' : 'unchecked';
+                            }
+                          }}
+                          onCheckedChange={toggleSelectAll}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {isAllSelected 
+                            ? `Semua ${filteredProducts.length} produk dipilih` 
+                            : selectedCount > 0 
+                              ? `${selectedCount} produk dipilih`
+                              : 'Pilih semua produk'
+                          }
+                        </span>
+                      </div>
+                    )}
+
                     {products.length === 0 ? (
                       <div className="text-center py-8 space-y-4">
                         <div className="text-muted-foreground">
@@ -268,17 +312,24 @@ const EnhancedProducts = () => {
                                 <div 
                                   key={product.id} 
                                   id={`product-${product.id}`}
-                                  className="flex items-center justify-between p-4 border rounded-lg transition-all duration-300"
+                                  className={`flex items-center gap-3 p-4 border rounded-lg transition-all duration-300 ${
+                                    isSelected(product.id) ? 'bg-primary/5 border-primary/30' : ''
+                                  }`}
                                 >
-                                  <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
+                                  <Checkbox
+                                    checked={isSelected(product.id)}
+                                    onCheckedChange={() => toggleSelection(product.id)}
+                                    className="shrink-0"
+                                  />
+                                  <div className="flex-1 min-w-0 space-y-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                       <h3 className="font-semibold">{product.name}</h3>
                                       {getProductTypeBadge(product.product_type)}
                                     </div>
-                                    <p className="text-sm text-muted-foreground">{product.description}</p>
+                                    <p className="text-sm text-muted-foreground line-clamp-1">{product.description}</p>
                                     <p className="font-bold text-green-600">Rp {product.price.toLocaleString('id-ID')}</p>
                                   </div>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 shrink-0">
                                     <Button 
                                       variant="outline" 
                                       size="sm"
@@ -339,6 +390,29 @@ const EnhancedProducts = () => {
           onOpenChange={setDeleteDialogOpen}
           onProductDeleted={handleProductUpdated}
         />
+
+        <BulkDeleteProductsDialog
+          open={bulkDeleteDialogOpen}
+          onOpenChange={setBulkDeleteDialogOpen}
+          products={selectedItems}
+          onSuccess={() => {
+            deselectAll();
+            fetchProducts();
+          }}
+        />
+
+        {/* Bulk Selection Toolbar */}
+        {hasSelection && (
+          <BulkSelectionToolbar
+            selectedCount={selectedCount}
+            totalCount={filteredProducts.length}
+            onDeselectAll={deselectAll}
+            itemLabel="produk"
+            actions={[
+              DeleteBulkAction(() => setBulkDeleteDialogOpen(true))
+            ]}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
