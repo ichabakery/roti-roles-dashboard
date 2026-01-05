@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Search, Calendar, Filter, Eye, BarChart3, Download, Receipt, LayoutGrid, TableIcon, CheckCircle, XCircle, Edit } from 'lucide-react';
+import { Plus, Search, Calendar, Filter, Eye, BarChart3, Download, Receipt, LayoutGrid, TableIcon, CheckCircle, XCircle, Edit, CalendarDays } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { EnhancedCreateOrderDialog } from '@/components/orders/EnhancedCreateOrderDialog';
 import { OrderDetailDialog } from '@/components/orders/OrderDetailDialog';
@@ -244,6 +244,13 @@ const Orders = () => {
     setDateTo(undefined);
   };
 
+  const handleTodayFilter = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    setDateFrom(today);
+    setDateTo(today);
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -253,31 +260,41 @@ const Orders = () => {
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Manajemen Pesanan</h1>
             <p className="text-muted-foreground">Kelola pesanan pelanggan dan jadwal pengiriman</p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2 w-full">
-            <div className="flex flex-col sm:flex-row gap-2 flex-1">
-              <Button 
-                variant="outline" 
-                onClick={() => setShowBulkActions(!showBulkActions)}
-                className="w-full sm:w-auto"
-              >
-                <BarChart3 className="mr-2 h-4 w-4" />
-                Aksi Massal
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setShowExport(!showExport)}
-                className="w-full sm:w-auto"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Export
-              </Button>
-            </div>
+          <div className="flex flex-row gap-2 w-full flex-wrap sm:flex-nowrap">
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => setShowBulkActions(!showBulkActions)}
+              className="sm:w-auto sm:px-4"
+            >
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline ml-2">Aksi Massal</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => setShowExport(!showExport)}
+              className="sm:w-auto sm:px-4"
+            >
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline ml-2">Export</span>
+            </Button>
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={handleTodayFilter}
+              className="flex-shrink-0"
+            >
+              <CalendarDays className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Hari Ini</span>
+            </Button>
             <Button 
               onClick={handleCreateOrder}
-              className="w-full sm:w-auto sm:min-w-48"
+              className="flex-1 sm:flex-none sm:min-w-48"
             >
               <Plus className="mr-2 h-4 w-4" />
-              Buat Pesanan Baru
+              <span className="hidden sm:inline">Buat Pesanan Baru</span>
+              <span className="sm:hidden">Buat Pesanan</span>
             </Button>
           </div>
         </div>
@@ -345,48 +362,52 @@ const Orders = () => {
               
               {/* Date Filter and View Toggle */}
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                <div className="flex flex-wrap gap-2 items-center">
+                <div className="flex flex-col gap-2">
                   <span className="text-sm text-muted-foreground">Tanggal Kirim:</span>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="w-[130px] justify-start text-left font-normal">
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Dari'}
+                  <div className="flex flex-nowrap items-center gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="w-[105px] justify-start text-left font-normal text-xs">
+                          <Calendar className="mr-1 h-3 w-3" />
+                          {dateFrom ? format(dateFrom, 'dd/MM/yy') : 'Dari'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarComponent
+                          mode="single"
+                          selected={dateFrom}
+                          onSelect={setDateFrom}
+                          locale={localeId}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <span className="text-muted-foreground text-sm">-</span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="w-[105px] justify-start text-left font-normal text-xs">
+                          <Calendar className="mr-1 h-3 w-3" />
+                          {dateTo ? format(dateTo, 'dd/MM/yy') : 'Sampai'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarComponent
+                          mode="single"
+                          selected={dateTo}
+                          onSelect={setDateTo}
+                          locale={localeId}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    {(dateFrom || dateTo) && (
+                      <Button variant="ghost" size="sm" onClick={clearDateFilter} className="px-2 text-xs">
+                        Reset
                       </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={dateFrom}
-                        onSelect={setDateFrom}
-                        locale={localeId}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <span className="text-muted-foreground">-</span>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="w-[130px] justify-start text-left font-normal">
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Sampai'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={dateTo}
-                        onSelect={setDateTo}
-                        locale={localeId}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  {(dateFrom || dateTo) && (
-                    <Button variant="ghost" size="sm" onClick={clearDateFilter}>
-                      Reset
-                    </Button>
-                  )}
+                    )}
+                  </div>
                 </div>
                 
                 {/* View Toggle - only visible on desktop */}
