@@ -118,7 +118,7 @@ export const EnhancedAddProductDialog: React.FC<EnhancedAddProductDialogProps> =
               onChange={(e) => handleInputChange('price', e.target.value)}
               placeholder="Masukkan harga produk"
               min="0"
-              step="100"
+              step="1"
               required
             />
           </div>
