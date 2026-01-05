@@ -14,7 +14,8 @@ import { ProductType, Product } from '@/types/products';
 import { useEnhancedProducts } from '@/hooks/useEnhancedProducts';
 import { isInventoryV1Enabled, INVENTORY_DEFAULTS } from '@/utils/featureFlags';
 import { supabase } from '@/integrations/supabase/client';
-import { PRODUCT_CATEGORIES, DEFAULT_CATEGORY } from '@/constants/productCategories';
+import { DEFAULT_CATEGORY_VALUE } from '@/constants/productCategories';
+import { useCategories } from '@/hooks/useCategories';
 
 interface EditProductDialogProps {
   product: Product | null;
@@ -35,7 +36,7 @@ export const EditProductDialog: React.FC<EditProductDialogProps> = ({
     name: '',
     description: '',
     price: '',
-    category: DEFAULT_CATEGORY,
+    category: DEFAULT_CATEGORY_VALUE,
     productType: 'regular' as ProductType,
     hasExpiry: false,
     defaultExpiryDays: '',
@@ -48,6 +49,7 @@ export const EditProductDialog: React.FC<EditProductDialogProps> = ({
   });
   const { toast } = useToast();
   const { changeProductType } = useEnhancedProducts();
+  const { categories } = useCategories();
 
   useEffect(() => {
     if (product) {
@@ -55,7 +57,7 @@ export const EditProductDialog: React.FC<EditProductDialogProps> = ({
         name: product.name,
         description: product.description || '',
         price: product.price.toString(),
-        category: (product as any).category || DEFAULT_CATEGORY,
+        category: (product as any).category || DEFAULT_CATEGORY_VALUE,
         productType: product.product_type,
         hasExpiry: product.has_expiry || false,
         defaultExpiryDays: product.default_expiry_days?.toString() || '',
@@ -189,7 +191,7 @@ export const EditProductDialog: React.FC<EditProductDialogProps> = ({
                 <SelectValue placeholder="Pilih kategori" />
               </SelectTrigger>
               <SelectContent>
-                {PRODUCT_CATEGORIES.map(cat => (
+                {categories.map(cat => (
                   <SelectItem key={cat.value} value={cat.value}>
                     {cat.label}
                   </SelectItem>

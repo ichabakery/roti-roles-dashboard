@@ -14,7 +14,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { isInventoryV1Enabled, INVENTORY_DEFAULTS } from '@/utils/featureFlags';
 import { createInitialStock } from '@/services/inventoryV1Service';
 import { useBranches } from '@/hooks/useBranches';
-import { PRODUCT_CATEGORIES, DEFAULT_CATEGORY } from '@/constants/productCategories';
+import { DEFAULT_CATEGORY_VALUE } from '@/constants/productCategories';
+import { useCategories } from '@/hooks/useCategories';
 
 interface AddProductDialogProps {
   onProductAdded: () => void;
@@ -28,7 +29,7 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
     name: '',
     description: '',
     price: '',
-    category: DEFAULT_CATEGORY,
+    category: DEFAULT_CATEGORY_VALUE,
     hasExpiry: false,
     defaultExpiryDays: '',
     // Inventory V1 fields
@@ -42,6 +43,7 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
   });
   const { toast } = useToast();
   const { branches } = useBranches();
+  const { categories } = useCategories();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +101,7 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
         name: '', 
         description: '', 
         price: '', 
-        category: DEFAULT_CATEGORY,
+        category: DEFAULT_CATEGORY_VALUE,
         hasExpiry: false, 
         defaultExpiryDays: '',
         sku: '',
@@ -187,7 +189,7 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
                 <SelectValue placeholder="Pilih kategori" />
               </SelectTrigger>
               <SelectContent>
-                {PRODUCT_CATEGORIES.map(cat => (
+                {categories.map(cat => (
                   <SelectItem key={cat.value} value={cat.value}>
                     {cat.label}
                   </SelectItem>

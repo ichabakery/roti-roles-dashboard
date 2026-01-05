@@ -6,14 +6,15 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AddProductDialog } from '@/components/products/AddProductDialog';
 import { ProductExpiryBadge } from '@/components/products/ProductExpiryBadge';
 import { useProducts } from '@/hooks/useProducts';
-import { Package } from 'lucide-react';
+import { useCategories } from '@/hooks/useCategories';
+import { Package, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
-import { PRODUCT_CATEGORIES, getCategoryLabel } from '@/constants/productCategories';
+import { getCategoryLabel } from '@/constants/productCategories';
 
 const Products = () => {
   const navigate = useNavigate();
   const { products, loading, error, refetchProducts } = useProducts();
+  const { categories } = useCategories();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   // Filter products by category
@@ -27,8 +28,8 @@ const Products = () => {
   // Get unique categories that have products
   const availableCategories = useMemo(() => {
     const categoriesWithProducts = new Set(products.map(p => (p as any).category || 'produk_utama'));
-    return PRODUCT_CATEGORIES.filter(cat => categoriesWithProducts.has(cat.value));
-  }, [products]);
+    return categories.filter(cat => categoriesWithProducts.has(cat.value));
+  }, [products, categories]);
 
   // Group products by category
   const groupedProducts = useMemo(() => {
@@ -47,14 +48,14 @@ const Products = () => {
     
     // Sort by category order
     const orderedGroups: Record<string, typeof filteredProducts> = {};
-    PRODUCT_CATEGORIES.forEach(cat => {
+    categories.forEach(cat => {
       if (groups[cat.value]) {
         orderedGroups[cat.value] = groups[cat.value];
       }
     });
     
     return orderedGroups;
-  }, [filteredProducts, selectedCategory]);
+  }, [filteredProducts, selectedCategory, categories]);
 
   return (
     <DashboardLayout>
@@ -126,7 +127,7 @@ const Products = () => {
                 <div key={category} className="space-y-3">
                   {selectedCategory === 'all' && (
                     <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
-                      {getCategoryLabel(category)}
+                      {getCategoryLabel(category, categories)}
                     </h3>
                   )}
                   <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">

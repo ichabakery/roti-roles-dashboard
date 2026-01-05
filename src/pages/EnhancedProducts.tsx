@@ -9,6 +9,7 @@ import { Package, Archive, AlertTriangle, ArrowLeft, Edit, Trash2 } from 'lucide
 import { ProductType, Product } from '@/types/products';
 import { fetchProductsWithType } from '@/services/enhancedProductService';
 import { useProductBatches } from '@/hooks/useProductBatches';
+import { useCategories } from '@/hooks/useCategories';
 import { ProductTypeSelector } from '@/components/products/ProductTypeSelector';
 import { ProductPackageManager } from '@/components/products/ProductPackageManager';
 import { BatchManagement } from '@/components/products/BatchManagement';
@@ -17,8 +18,9 @@ import { EnhancedAddProductDialog } from '@/components/products/EnhancedAddProdu
 import { EditProductDialog } from '@/components/products/EditProductDialog';
 import { DeleteProductDialog } from '@/components/products/DeleteProductDialog';
 import { ProductSearchCommand } from '@/components/products/ProductSearchCommand';
+import { CategoryManager } from '@/components/products/CategoryManager';
 import { useNavigate } from 'react-router-dom';
-import { PRODUCT_CATEGORIES, getCategoryLabel } from '@/constants/productCategories';
+import { getCategoryLabel } from '@/constants/productCategories';
 
 const EnhancedProducts = () => {
   const navigate = useNavigate();
@@ -33,6 +35,7 @@ const EnhancedProducts = () => {
   const [lastEditedProductId, setLastEditedProductId] = useState<string | null>(null);
   const { toast } = useToast();
   const { expiringProducts, fetchExpiring } = useProductBatches();
+  const { categories } = useCategories();
 
   // Filter products by category
   const filteredProducts = useMemo(() => {
@@ -45,8 +48,8 @@ const EnhancedProducts = () => {
   // Get unique categories that have products
   const availableCategories = useMemo(() => {
     const categoriesWithProducts = new Set(products.map(p => (p as any).category || 'produk_utama'));
-    return PRODUCT_CATEGORIES.filter(cat => categoriesWithProducts.has(cat.value));
-  }, [products]);
+    return categories.filter(cat => categoriesWithProducts.has(cat.value));
+  }, [products, categories]);
 
   // Group products by category
   const groupedProducts = useMemo(() => {
@@ -65,14 +68,14 @@ const EnhancedProducts = () => {
     
     // Sort by category order
     const orderedGroups: Record<string, Product[]> = {};
-    PRODUCT_CATEGORIES.forEach(cat => {
+    categories.forEach(cat => {
       if (groups[cat.value]) {
         orderedGroups[cat.value] = groups[cat.value];
       }
     });
     
     return orderedGroups;
-  }, [filteredProducts, selectedCategory]);
+  }, [filteredProducts, selectedCategory, categories]);
 
   useEffect(() => {
     fetchProducts();
@@ -194,11 +197,12 @@ const EnhancedProducts = () => {
         </div>
 
         <Tabs defaultValue="products" className="space-y-4 sm:space-y-6">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 h-auto">
             <TabsTrigger value="products" className="text-xs sm:text-sm py-2">Produk</TabsTrigger>
             <TabsTrigger value="packages" className="text-xs sm:text-sm py-2">Paket & Bundling</TabsTrigger>
             <TabsTrigger value="batches" className="text-xs sm:text-sm py-2">Batch</TabsTrigger>
             <TabsTrigger value="expiry" className="text-xs sm:text-sm py-2">Monitoring</TabsTrigger>
+            <TabsTrigger value="categories" className="text-xs sm:text-sm py-2">Kategori</TabsTrigger>
           </TabsList>
 
           <TabsContent value="products">
@@ -256,7 +260,7 @@ const EnhancedProducts = () => {
                           <div key={category} className="space-y-3">
                             {selectedCategory === 'all' && (
                               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
-                                {getCategoryLabel(category)}
+                                {getCategoryLabel(category, categories)}
                               </h3>
                             )}
                             <div className="grid gap-4">
@@ -315,6 +319,10 @@ const EnhancedProducts = () => {
 
           <TabsContent value="expiry">
             <ExpiryMonitoring />
+          </TabsContent>
+
+          <TabsContent value="categories">
+            <CategoryManager />
           </TabsContent>
         </Tabs>
 
