@@ -154,8 +154,8 @@ const DesktopTableView: React.FC<BatchStockTableProps> = ({
   onStockChange,
 }) => {
   return (
-    <div className="border rounded-lg overflow-hidden">
-      <ScrollArea className="h-[500px]" type="always">
+    <div className="border rounded-lg">
+      <div className="overflow-x-auto" style={{ maxHeight: '500px' }}>
         <div className="min-w-max">
           <Table>
             <TableHeader className="sticky top-0 z-20 bg-background">
@@ -238,8 +238,7 @@ const DesktopTableView: React.FC<BatchStockTableProps> = ({
             </TableBody>
           </Table>
         </div>
-        <ScrollBar orientation="horizontal" className="opacity-100" />
-      </ScrollArea>
+      </div>
     </div>
   );
 };
