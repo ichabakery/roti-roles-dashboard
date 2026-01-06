@@ -1,15 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -112,179 +110,185 @@ export const BulkEditInventoryDialog: React.FC<BulkEditInventoryDialogProps> = (
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="max-w-lg">
-        <AlertDialogHeader>
-          <div className="flex items-center gap-3">
-            {isCompleted ? (
-              <CheckCircle2 className="h-6 w-6 text-green-500" />
-            ) : (
-              <AlertTriangle className="h-6 w-6 text-orange-500" />
-            )}
-            <AlertDialogTitle>
-              {isCompleted ? 'Proses Selesai' : 'Edit Quantity Inventori Massal'}
-            </AlertDialogTitle>
-          </div>
-          <AlertDialogDescription className="text-left">
-            {isCompleted 
-              ? 'Perubahan quantity inventori telah selesai.'
-              : `Anda akan mengubah quantity ${inventoryIds.length} item inventori.`
-            }
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-
-        {!isCompleted && (
-          <div className="space-y-4 py-4">
-            {/* Operation selection */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Pilih Operasi:</Label>
-              <RadioGroup value={operation} onValueChange={(v) => setOperation(v as InventoryOperation)}>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted cursor-pointer">
-                    <RadioGroupItem value="set" id="set" />
-                    <Label htmlFor="set" className="cursor-pointer flex items-center gap-2">
-                      <span className="text-lg">=</span> Set Nilai
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted cursor-pointer">
-                    <RadioGroupItem value="add" id="add" />
-                    <Label htmlFor="add" className="cursor-pointer flex items-center gap-2">
-                      <Plus className="h-4 w-4" /> Tambah
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted cursor-pointer">
-                    <RadioGroupItem value="subtract" id="subtract" />
-                    <Label htmlFor="subtract" className="cursor-pointer flex items-center gap-2">
-                      <Minus className="h-4 w-4" /> Kurangi
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted cursor-pointer">
-                    <RadioGroupItem value="reset" id="reset" />
-                    <Label htmlFor="reset" className="cursor-pointer flex items-center gap-2">
-                      <RotateCcw className="h-4 w-4" /> Reset ke 0
-                    </Label>
-                  </div>
-                </div>
-              </RadioGroup>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg max-h-[90dvh] overflow-y-auto p-0">
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-10 bg-background border-b px-6 pt-6 pb-4">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              {isCompleted ? (
+                <CheckCircle2 className="h-6 w-6 text-green-500" />
+              ) : (
+                <AlertTriangle className="h-6 w-6 text-orange-500" />
+              )}
+              <DialogTitle>
+                {isCompleted ? 'Proses Selesai' : 'Edit Quantity Inventori Massal'}
+              </DialogTitle>
             </div>
+            <DialogDescription className="text-left">
+              {isCompleted 
+                ? 'Perubahan quantity inventori telah selesai.'
+                : `Anda akan mengubah quantity ${inventoryIds.length} item inventori.`
+              }
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-            {/* Value input (hidden for reset) */}
-            {operation !== 'reset' && (
+        {/* Scrollable Content */}
+        <div className="px-6 pb-4">
+          {!isCompleted && (
+            <div className="space-y-4 py-4">
+              {/* Operation selection */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Pilih Operasi:</Label>
+                <RadioGroup value={operation} onValueChange={(v) => setOperation(v as InventoryOperation)}>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted cursor-pointer">
+                      <RadioGroupItem value="set" id="set" />
+                      <Label htmlFor="set" className="cursor-pointer flex items-center gap-2">
+                        <span className="text-lg">=</span> Set Nilai
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted cursor-pointer">
+                      <RadioGroupItem value="add" id="add" />
+                      <Label htmlFor="add" className="cursor-pointer flex items-center gap-2">
+                        <Plus className="h-4 w-4" /> Tambah
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted cursor-pointer">
+                      <RadioGroupItem value="subtract" id="subtract" />
+                      <Label htmlFor="subtract" className="cursor-pointer flex items-center gap-2">
+                        <Minus className="h-4 w-4" /> Kurangi
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted cursor-pointer">
+                      <RadioGroupItem value="reset" id="reset" />
+                      <Label htmlFor="reset" className="cursor-pointer flex items-center gap-2">
+                        <RotateCcw className="h-4 w-4" /> Reset ke 0
+                      </Label>
+                    </div>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {/* Value input (hidden for reset) */}
+              {operation !== 'reset' && (
+                <div className="space-y-2">
+                  <Label htmlFor="value" className="text-sm font-medium">
+                    {operation === 'set' ? 'Nilai Baru:' : operation === 'add' ? 'Tambah:' : 'Kurangi:'}
+                  </Label>
+                  <Input
+                    id="value"
+                    type="number"
+                    min="0"
+                    value={value}
+                    onChange={(e) => setValue(parseInt(e.target.value) || 0)}
+                    placeholder="Masukkan angka..."
+                  />
+                </div>
+              )}
+
+              {/* Preview */}
               <div className="space-y-2">
-                <Label htmlFor="value" className="text-sm font-medium">
-                  {operation === 'set' ? 'Nilai Baru:' : operation === 'add' ? 'Tambah:' : 'Kurangi:'}
+                <Label className="text-sm font-medium">Preview Perubahan:</Label>
+                <ScrollArea className="h-[120px] rounded-md border">
+                  <div className="p-2 space-y-1">
+                    {loadingItems ? (
+                      <div className="flex items-center justify-center py-4 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Memuat data...
+                      </div>
+                    ) : (
+                      inventoryItems.map((item) => (
+                        <div key={item.id} className="flex items-center justify-between text-sm py-1.5 px-2 hover:bg-muted rounded">
+                          <span className="font-medium truncate">{item.product_name}</span>
+                          <div className="flex items-center gap-2 shrink-0 ml-2">
+                            <span className="text-muted-foreground">{item.quantity}</span>
+                            <span>→</span>
+                            <span className={cn(
+                              "font-medium",
+                              getOperationPreview(item.quantity) !== item.quantity && "text-primary"
+                            )}>
+                              {getOperationPreview(item.quantity)}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+
+              {/* Reason input */}
+              <div className="space-y-2">
+                <Label htmlFor="reason" className="text-sm font-medium">
+                  Alasan Perubahan <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  id="value"
-                  type="number"
-                  min="0"
-                  value={value}
-                  onChange={(e) => setValue(parseInt(e.target.value) || 0)}
-                  placeholder="Masukkan angka..."
+                <Textarea
+                  id="reason"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Contoh: Koreksi stock opname, penyesuaian data..."
+                  className="min-h-[60px]"
                 />
               </div>
-            )}
 
-            {/* Preview */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Preview Perubahan:</Label>
-              <ScrollArea className="h-[120px] rounded-md border">
-                <div className="p-2 space-y-1">
-                  {loadingItems ? (
-                    <div className="flex items-center justify-center py-4 text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Memuat data...
-                    </div>
-                  ) : (
-                    inventoryItems.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between text-sm py-1.5 px-2 hover:bg-muted rounded">
-                        <span className="font-medium truncate">{item.product_name}</span>
-                        <div className="flex items-center gap-2 shrink-0 ml-2">
-                          <span className="text-muted-foreground">{item.quantity}</span>
-                          <span>→</span>
-                          <span className={cn(
-                            "font-medium",
-                            getOperationPreview(item.quantity) !== item.quantity && "text-primary"
-                          )}>
-                            {getOperationPreview(item.quantity)}
-                          </span>
-                        </div>
-                      </div>
-                    ))
+              {/* Confirmation input */}
+              <div className="space-y-2">
+                <Label htmlFor="confirmation" className="text-sm font-medium">
+                  Ketik "{confirmationWord}" untuk konfirmasi:
+                </Label>
+                <Input
+                  id="confirmation"
+                  value={confirmInput}
+                  onChange={(e) => setConfirmInput(e.target.value.toUpperCase())}
+                  placeholder={confirmationWord}
+                  className={cn(
+                    isConfirmationValid && "border-green-500 focus-visible:ring-green-500"
                   )}
-                </div>
-              </ScrollArea>
-            </div>
-
-            {/* Reason input */}
-            <div className="space-y-2">
-              <Label htmlFor="reason" className="text-sm font-medium">
-                Alasan Perubahan <span className="text-destructive">*</span>
-              </Label>
-              <Textarea
-                id="reason"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Contoh: Koreksi stock opname, penyesuaian data..."
-                className="min-h-[60px]"
-              />
-            </div>
-
-            {/* Confirmation input */}
-            <div className="space-y-2">
-              <Label htmlFor="confirmation" className="text-sm font-medium">
-                Ketik "{confirmationWord}" untuk konfirmasi:
-              </Label>
-              <Input
-                id="confirmation"
-                value={confirmInput}
-                onChange={(e) => setConfirmInput(e.target.value.toUpperCase())}
-                placeholder={confirmationWord}
-                className={cn(
-                  isConfirmationValid && "border-green-500 focus-visible:ring-green-500"
-                )}
-                autoComplete="off"
-              />
-            </div>
-          </div>
-        )}
-
-        {isCompleted && result && (
-          <div className="py-4 space-y-3">
-            <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-md">
-              <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-              <div className="text-sm text-green-700 dark:text-green-400">
-                <p><strong>{result.updated.length}</strong> item berhasil diperbarui</p>
-                {result.failed.length > 0 && (
-                  <p className="text-orange-600"><strong>{result.failed.length}</strong> gagal diproses</p>
-                )}
+                  autoComplete="off"
+                />
               </div>
             </div>
+          )}
+
+          {isCompleted && result && (
+            <div className="py-4 space-y-3">
+              <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-md">
+                <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                <div className="text-sm text-green-700 dark:text-green-400">
+                  <p><strong>{result.updated.length}</strong> item berhasil diperbarui</p>
+                  {result.failed.length > 0 && (
+                    <p className="text-orange-600"><strong>{result.failed.length}</strong> gagal diproses</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Sticky Footer */}
+        {!isCompleted && (
+          <div className="sticky bottom-0 z-10 bg-background border-t px-6 py-4 flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}>
+              Batal
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={!canConfirm}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Memproses...
+                </>
+              ) : (
+                'Konfirmasi Perubahan'
+              )}
+            </Button>
           </div>
         )}
-
-        <AlertDialogFooter>
-          {!isCompleted && (
-            <>
-              <AlertDialogCancel disabled={isProcessing}>Batal</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleConfirm}
-                disabled={!canConfirm}
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Memproses...
-                  </>
-                ) : (
-                  'Konfirmasi Perubahan'
-                )}
-              </AlertDialogAction>
-            </>
-          )}
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      </DialogContent>
+    </Dialog>
   );
 };
