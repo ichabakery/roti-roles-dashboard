@@ -113,6 +113,10 @@ export interface Return {
   status: 'pending' | 'approved' | 'rejected';
   notes: string | null;
   created_at: string;
+  branches?: {
+    id: string;
+    name: string;
+  };
 }
 
 export interface ReturnItem {
