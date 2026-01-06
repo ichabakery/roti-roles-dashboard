@@ -9,7 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -155,27 +155,30 @@ const DesktopTableView: React.FC<BatchStockTableProps> = ({
 }) => {
   return (
     <div className="border rounded-lg">
-      <div className="overflow-x-auto" style={{ maxHeight: '500px' }}>
+      <div className="max-h-[500px] overflow-auto">
         <div className="min-w-max">
           <Table>
-            <TableHeader className="sticky top-0 z-20 bg-background">
+            <TableHeader className="bg-background">
               <TableRow className="hover:bg-transparent">
                 {/* Frozen columns header - No, Produk, Harga, Kategori */}
-                <TableHead className="w-12 sticky left-0 z-30 bg-background border-r">
+                <TableHead className="w-12 sticky top-0 left-0 z-50 bg-background border-r">
                   No
                 </TableHead>
-                <TableHead className="min-w-[180px] sticky left-12 z-30 bg-background">
+                <TableHead className="min-w-[180px] sticky top-0 left-12 z-50 bg-background">
                   Produk
                 </TableHead>
-                <TableHead className="w-28 sticky left-[228px] z-30 bg-background">
+                <TableHead className="w-28 sticky top-0 left-[228px] z-50 bg-background">
                   Harga
                 </TableHead>
-                <TableHead className="w-32 sticky left-[340px] z-30 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">
+                <TableHead className="w-32 sticky top-0 left-[340px] z-50 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">
                   Kategori
                 </TableHead>
                 {/* Dynamic branch columns */}
                 {branches.map((branch) => (
-                  <TableHead key={branch.id} className="min-w-[120px] text-center">
+                  <TableHead
+                    key={branch.id}
+                    className="min-w-[120px] text-center sticky top-0 z-40 bg-background"
+                  >
                     {branch.name}
                   </TableHead>
                 ))}

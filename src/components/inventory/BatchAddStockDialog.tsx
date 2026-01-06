@@ -354,7 +354,7 @@ export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
         </div>
 
         {/* Table - takes remaining space */}
-        <div className="flex-1 min-h-0 overflow-hidden py-2">
+        <div className="flex-1 min-h-0 py-2">
           {selectedBranches.length === 0 ? (
             <div className="flex items-center justify-center h-64 text-muted-foreground">
               Pilih minimal satu cabang untuk menampilkan tabel
