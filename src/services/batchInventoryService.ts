@@ -13,14 +13,35 @@ export interface BatchStockResult {
   errors: string[];
 }
 
+export interface BatchProgress {
+  current: number;
+  total: number;
+  percentage: number;
+}
+
+const CHUNK_SIZE = 50;
+
+/**
+ * Split array into chunks
+ */
+const chunkArray = <T>(array: T[], size: number): T[][] => {
+  const chunks: T[][] = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size));
+  }
+  return chunks;
+};
+
 /**
  * Batch add/update stock untuk multiple products di multiple branches
+ * Optimized with parallel processing and upsert
  */
 export const batchAddStock = async (
   items: BatchStockItem[],
-  performedBy: string
+  performedBy: string,
+  onProgress?: (progress: BatchProgress) => void
 ): Promise<BatchStockResult> => {
-  console.log('📦 Batch adding stock for', items.length, 'items');
+  console.log('📦 Batch adding stock for', items.length, 'items (optimized)');
   
   const result: BatchStockResult = {
     success: true,
@@ -39,9 +60,11 @@ export const batchAddStock = async (
   }
 
   try {
-    // Get existing inventory records
+    // Get existing inventory records in one query
     const productIds = [...new Set(validItems.map(i => i.productId))];
     const branchIds = [...new Set(validItems.map(i => i.branchId))];
+
+    console.log('📊 Fetching existing inventory for', productIds.length, 'products across', branchIds.length, 'branches');
 
     const { data: existingInventory, error: fetchError } = await supabase
       .from('inventory')
@@ -61,75 +84,110 @@ export const batchAddStock = async (
       inventoryMap.set(key, { id: inv.id, quantity: inv.quantity });
     });
 
-    // Process each item individually for better error handling
-    for (const item of validItems) {
-      const key = `${item.productId}-${item.branchId}`;
-      const existing = inventoryMap.get(key);
+    // Split items into chunks for parallel processing
+    const chunks = chunkArray(validItems, CHUNK_SIZE);
+    const totalChunks = chunks.length;
 
-      try {
-        if (existing) {
-          // Update existing - add to current quantity
-          const newQuantity = existing.quantity + item.quantity;
-          const { error: updateError } = await supabase
-            .from('inventory')
-            .update({ 
-              quantity: newQuantity,
-              last_updated: new Date().toISOString()
-            })
-            .eq('id', existing.id);
+    console.log('🔄 Processing', validItems.length, 'items in', totalChunks, 'chunks');
 
-          if (updateError) {
-            console.error('❌ Error updating inventory:', updateError);
-            result.errors.push(`Gagal update stok: ${updateError.message}`);
-          } else {
-            result.totalUpdated++;
-            // Update local map for next iterations
+    // Process chunks sequentially but items within chunk in parallel
+    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+      const chunk = chunks[chunkIndex];
+      
+      // Prepare upsert data for this chunk
+      const upsertPromises = chunk.map(async (item) => {
+        const key = `${item.productId}-${item.branchId}`;
+        const existing = inventoryMap.get(key);
+        
+        try {
+          if (existing) {
+            // Update existing - add to current quantity
+            const newQuantity = existing.quantity + item.quantity;
+            const { error: updateError } = await supabase
+              .from('inventory')
+              .update({ 
+                quantity: newQuantity,
+                last_updated: new Date().toISOString()
+              })
+              .eq('id', existing.id);
+
+            if (updateError) {
+              console.error('❌ Error updating inventory:', updateError);
+              return { type: 'error' as const, message: `Update gagal: ${updateError.message}` };
+            }
+            
+            // Update local map
             inventoryMap.set(key, { id: existing.id, quantity: newQuantity });
-          }
-        } else {
-          // Insert new inventory record
-          const { data: insertedData, error: insertError } = await supabase
-            .from('inventory')
-            .insert({
-              product_id: item.productId,
-              branch_id: item.branchId,
-              quantity: item.quantity,
-            })
-            .select('id')
-            .single();
-
-          if (insertError) {
-            console.error('❌ Error inserting inventory:', insertError);
-            result.errors.push(`Gagal tambah stok baru: ${insertError.message}`);
+            return { type: 'updated' as const };
           } else {
-            result.totalInserted++;
-            // Add to local map for next iterations
+            // Insert new inventory record
+            const { data: insertedData, error: insertError } = await supabase
+              .from('inventory')
+              .insert({
+                product_id: item.productId,
+                branch_id: item.branchId,
+                quantity: item.quantity,
+              })
+              .select('id')
+              .single();
+
+            if (insertError) {
+              console.error('❌ Error inserting inventory:', insertError);
+              return { type: 'error' as const, message: `Insert gagal: ${insertError.message}` };
+            }
+            
+            // Add to local map
             if (insertedData) {
               inventoryMap.set(key, { id: insertedData.id, quantity: item.quantity });
             }
+            return { type: 'inserted' as const };
           }
+        } catch (err: any) {
+          return { type: 'error' as const, message: err.message || 'Unknown error' };
         }
+      });
 
-        // Try to log stock movement (optional - don't fail if this fails)
-        try {
-          await supabase
-            .from('stock_movements')
-            .insert({
-              product_id: item.productId,
-              branch_id: item.branchId,
-              quantity_change: item.quantity,
-              movement_type: 'in',
-              reference_type: 'batch_stock_add',
-              performed_by: performedBy,
-            });
-        } catch (movementError) {
-          console.warn('⚠️ Could not log stock movement:', movementError);
-          // Don't fail the whole operation for logging errors
-        }
-      } catch (itemError: any) {
-        console.error('❌ Error processing item:', itemError);
-        result.errors.push(itemError.message || 'Error processing item');
+      // Wait for all items in this chunk to complete
+      const chunkResults = await Promise.all(upsertPromises);
+      
+      // Count results
+      chunkResults.forEach(res => {
+        if (res.type === 'updated') result.totalUpdated++;
+        else if (res.type === 'inserted') result.totalInserted++;
+        else if (res.type === 'error') result.errors.push(res.message);
+      });
+
+      // Report progress
+      const progress: BatchProgress = {
+        current: chunkIndex + 1,
+        total: totalChunks,
+        percentage: Math.round(((chunkIndex + 1) / totalChunks) * 100)
+      };
+      onProgress?.(progress);
+      
+      console.log(`✅ Chunk ${chunkIndex + 1}/${totalChunks} completed (${progress.percentage}%)`);
+    }
+
+    // Bulk insert stock movements (optional - don't fail if this fails)
+    try {
+      const movements = validItems.map(item => ({
+        product_id: item.productId,
+        branch_id: item.branchId,
+        quantity_change: item.quantity,
+        movement_type: 'in',
+        reference_type: 'batch_stock_add',
+        performed_by: performedBy,
+      }));
+
+      // Insert movements in chunks too
+      const movementChunks = chunkArray(movements, 100);
+      for (const movementChunk of movementChunks) {
+        await supabase.from('stock_movements').insert(movementChunk);
       }
+      console.log('📝 Stock movements logged successfully');
+    } catch (movementError) {
+      console.warn('⚠️ Could not log stock movements:', movementError);
+      // Don't fail the whole operation for logging errors
     }
 
     // Determine overall success

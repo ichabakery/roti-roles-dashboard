@@ -19,12 +19,13 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { Search, Package, Save, X, Layers } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { BatchStockTable } from './BatchStockTable';
 import { BranchFilterPopover } from './BranchFilterPopover';
-import { batchAddStock, fetchProductsWithStock, BatchStockItem } from '@/services/batchInventoryService';
+import { batchAddStock, fetchProductsWithStock, BatchStockItem, BatchProgress } from '@/services/batchInventoryService';
 
 interface Branch {
   id: string;
@@ -76,6 +77,7 @@ export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
   const [products, setProducts] = useState<ProductWithStock[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveProgress, setSaveProgress] = useState<BatchProgress | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [stockInputs, setStockInputs] = useState<StockInputs>({});
@@ -197,8 +199,12 @@ export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
     }
 
     setSaving(true);
+    setSaveProgress(null);
+    
     try {
-      const result = await batchAddStock(items, userId);
+      const result = await batchAddStock(items, userId, (progress) => {
+        setSaveProgress(progress);
+      });
       
       if (result.success) {
         toast({
@@ -224,6 +230,7 @@ export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
       });
     } finally {
       setSaving(false);
+      setSaveProgress(null);
     }
   };
 
@@ -364,19 +371,32 @@ export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
         </div>
 
         {/* Footer */}
-        <DialogFooter className="gap-2 border-t pt-3 flex-col-reverse sm:flex-row">
-          <Button variant="outline" onClick={handleClose} disabled={saving} className="w-full sm:w-auto">
-            <X className="h-4 w-4 mr-2" />
-            Batal
-          </Button>
-          <Button 
-            onClick={handleSave} 
-            disabled={saving || totalChanges === 0}
-            className="w-full sm:w-auto"
-          >
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? 'Menyimpan...' : `Simpan (${totalChanges})`}
-          </Button>
+        <DialogFooter className="gap-2 border-t pt-3 flex-col sm:flex-row">
+          {/* Progress indicator during save */}
+          {saving && saveProgress && (
+            <div className="w-full flex flex-col gap-1 mr-auto">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Menyimpan batch {saveProgress.current}/{saveProgress.total}</span>
+                <span>{saveProgress.percentage}%</span>
+              </div>
+              <Progress value={saveProgress.percentage} className="h-2" />
+            </div>
+          )}
+          
+          <div className="flex gap-2 w-full sm:w-auto flex-col-reverse sm:flex-row">
+            <Button variant="outline" onClick={handleClose} disabled={saving} className="w-full sm:w-auto">
+              <X className="h-4 w-4 mr-2" />
+              Batal
+            </Button>
+            <Button 
+              onClick={handleSave} 
+              disabled={saving || totalChanges === 0}
+              className="w-full sm:w-auto"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? 'Menyimpan...' : `Simpan (${totalChanges})`}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

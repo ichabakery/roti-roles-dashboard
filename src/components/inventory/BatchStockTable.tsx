@@ -155,20 +155,24 @@ const DesktopTableView: React.FC<BatchStockTableProps> = ({
 }) => {
   return (
     <div className="border rounded-lg overflow-hidden">
-      <ScrollArea className="h-[500px]">
+      <ScrollArea className="h-[500px]" type="always">
         <div className="min-w-max">
           <Table>
             <TableHeader className="sticky top-0 z-20 bg-background">
               <TableRow className="hover:bg-transparent">
-                {/* Frozen columns header */}
+                {/* Frozen columns header - No, Produk, Harga, Kategori */}
                 <TableHead className="w-12 sticky left-0 z-30 bg-background border-r">
                   No
                 </TableHead>
-                <TableHead className="min-w-[180px] sticky left-12 z-30 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                <TableHead className="min-w-[180px] sticky left-12 z-30 bg-background">
                   Produk
                 </TableHead>
-                <TableHead className="w-28">Harga</TableHead>
-                <TableHead className="w-32">Kategori</TableHead>
+                <TableHead className="w-28 sticky left-[228px] z-30 bg-background">
+                  Harga
+                </TableHead>
+                <TableHead className="w-32 sticky left-[340px] z-30 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">
+                  Kategori
+                </TableHead>
                 {/* Dynamic branch columns */}
                 {branches.map((branch) => (
                   <TableHead key={branch.id} className="min-w-[120px] text-center">
@@ -180,11 +184,11 @@ const DesktopTableView: React.FC<BatchStockTableProps> = ({
             <TableBody>
               {products.map((product, index) => (
                 <TableRow key={product.id} className="hover:bg-muted/50">
-                  {/* Frozen columns */}
+                  {/* Frozen columns - No, Produk, Harga, Kategori */}
                   <TableCell className="font-medium sticky left-0 z-10 bg-background border-r">
                     {index + 1}
                   </TableCell>
-                  <TableCell className="sticky left-12 z-10 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                  <TableCell className="sticky left-12 z-10 bg-background">
                     <div className="flex flex-col">
                       <span className="font-medium">{product.name}</span>
                       {product.sku && (
@@ -192,10 +196,10 @@ const DesktopTableView: React.FC<BatchStockTableProps> = ({
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="text-sm sticky left-[228px] z-10 bg-background">
                     {formatPrice(product.price)}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="sticky left-[340px] z-10 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">
                     <Badge variant="secondary" className={getCategoryColor(product.category)}>
                       {getCategoryLabel(product.category)}
                     </Badge>
@@ -234,7 +238,7 @@ const DesktopTableView: React.FC<BatchStockTableProps> = ({
             </TableBody>
           </Table>
         </div>
-        <ScrollBar orientation="horizontal" />
+        <ScrollBar orientation="horizontal" className="opacity-100" />
       </ScrollArea>
     </div>
   );
