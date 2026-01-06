@@ -47,7 +47,7 @@ export const ReturnInfo: React.FC<ReturnInfoProps> = ({ returnItem }) => {
           <div className="mt-1 flex items-center gap-2">
             <MapPin className="h-4 w-4 text-muted-foreground" />
             <span className="font-medium">
-              {(returnItem as any).branch?.name || 'Unknown Branch'}
+              {(returnItem as any).branches?.name || 'Unknown Branch'}
             </span>
           </div>
         </div>
