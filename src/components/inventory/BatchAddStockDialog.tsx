@@ -368,20 +368,22 @@ export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
           </div>
         </div>
 
-        {/* Table - takes remaining space */}
-        <div className="flex-1 min-h-0 py-2">
+        {/* Table - takes remaining space with overflow handling */}
+        <div className="flex-1 min-h-0 py-2 flex flex-col overflow-hidden">
           {selectedBranches.length === 0 ? (
             <div className="flex items-center justify-center h-64 text-muted-foreground">
               Pilih minimal satu cabang untuk menampilkan tabel
             </div>
           ) : (
-            <BatchStockTable
-              products={filteredProducts}
-              branches={filteredBranches}
-              stockInputs={stockInputs}
-              onStockChange={handleStockChange}
-              loading={loading}
-            />
+            <div className="flex-1 min-h-0">
+              <BatchStockTable
+                products={filteredProducts}
+                branches={filteredBranches}
+                stockInputs={stockInputs}
+                onStockChange={handleStockChange}
+                loading={loading}
+              />
+            </div>
           )}
         </div>
 
