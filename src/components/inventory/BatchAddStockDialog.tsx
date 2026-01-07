@@ -20,7 +20,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Search, Package, Save, X, Layers } from 'lucide-react';
+import { Search, Package, Save, X, Layers, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { BatchStockTable } from './BatchStockTable';
@@ -211,10 +211,15 @@ export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
           title: 'Berhasil',
           description: `${result.totalUpdated + result.totalInserted} stok berhasil ditambahkan`,
         });
+        
+        // Refresh data untuk update label "Stok: X" dengan nilai terbaru
+        await loadProducts();
+        
+        // Reset inputs setelah refresh
         setStockInputs({});
         setUniformValue(0);
         onSuccess();
-        onOpenChange(false);
+        // Jangan tutup dialog agar user bisa lihat hasil update
       } else {
         toast({
           variant: 'destructive',
@@ -304,8 +309,18 @@ export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
               onSelectionChange={setSelectedBranches}
             />
 
-            {/* Stats */}
+            {/* Stats + Refresh Button */}
             <div className="flex items-center gap-2 ml-auto">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={loadProducts}
+                disabled={loading}
+                className="h-8 w-8 p-0"
+                title="Refresh data"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
               <Badge variant="outline" className="gap-1 text-xs">
                 <Package className="h-3 w-3" />
                 {filteredProducts.length}
