@@ -154,60 +154,63 @@ const DesktopTableView: React.FC<BatchStockTableProps> = ({
   onStockChange,
 }) => {
   return (
-    <div className="border rounded-lg overflow-hidden">
-      {/* Single scroll container for both horizontal and vertical scrolling */}
-      <div className="max-h-[500px] overflow-auto">
-        <Table className="min-w-max">
+    <div className="border rounded-lg">
+      {/* Scroll container - overflow-x-auto for horizontal, overflow-y-auto for vertical */}
+      <div 
+        className="overflow-x-auto overflow-y-auto" 
+        style={{ maxHeight: '500px' }}
+      >
+        <table className="w-full border-collapse" style={{ minWidth: 'max-content' }}>
           {/* Sticky header row */}
-          <TableHeader className="sticky top-0 z-30 bg-background">
-            <TableRow className="hover:bg-transparent border-b-2">
+          <thead className="sticky top-0 z-30 bg-background border-b-2 border-border">
+            <tr>
               {/* Frozen columns header - No, Produk, Harga, Kategori */}
-              <TableHead className="w-12 sticky left-0 z-40 bg-background border-r font-semibold">
+              <th className="w-12 px-4 py-3 text-left text-sm font-semibold sticky left-0 top-0 z-40 bg-background border-r border-border">
                 No
-              </TableHead>
-              <TableHead className="min-w-[180px] sticky left-12 z-40 bg-background font-semibold">
+              </th>
+              <th className="min-w-[180px] px-4 py-3 text-left text-sm font-semibold sticky left-12 top-0 z-40 bg-background">
                 Produk
-              </TableHead>
-              <TableHead className="w-28 sticky left-[228px] z-40 bg-background font-semibold">
+              </th>
+              <th className="w-28 px-4 py-3 text-left text-sm font-semibold sticky left-[228px] top-0 z-40 bg-background">
                 Harga
-              </TableHead>
-              <TableHead className="w-32 sticky left-[340px] z-40 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)] font-semibold">
+              </th>
+              <th className="w-32 px-4 py-3 text-left text-sm font-semibold sticky left-[340px] top-0 z-40 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">
                 Kategori
-              </TableHead>
-              {/* Dynamic branch columns - sticky top only */}
+              </th>
+              {/* Dynamic branch columns */}
               {branches.map((branch) => (
-                <TableHead
+                <th
                   key={branch.id}
-                  className="min-w-[140px] text-center bg-background font-semibold"
+                  className="min-w-[140px] px-4 py-3 text-center text-sm font-semibold bg-background"
                 >
                   {branch.name}
-                </TableHead>
+                </th>
               ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+            </tr>
+          </thead>
+          <tbody>
             {products.map((product, index) => (
-              <TableRow key={product.id} className="hover:bg-muted/50">
+              <tr key={product.id} className="border-b border-border hover:bg-muted/50">
                 {/* Frozen columns - No, Produk, Harga, Kategori */}
-                <TableCell className="font-medium sticky left-0 z-20 bg-background border-r">
+                <td className="px-4 py-2 text-sm font-medium sticky left-0 z-20 bg-background border-r border-border">
                   {index + 1}
-                </TableCell>
-                <TableCell className="sticky left-12 z-20 bg-background">
+                </td>
+                <td className="px-4 py-2 sticky left-12 z-20 bg-background">
                   <div className="flex flex-col">
-                    <span className="font-medium">{product.name}</span>
+                    <span className="font-medium text-sm">{product.name}</span>
                     {product.sku && (
                       <span className="text-xs text-muted-foreground">{product.sku}</span>
                     )}
                   </div>
-                </TableCell>
-                <TableCell className="text-sm sticky left-[228px] z-20 bg-background">
+                </td>
+                <td className="px-4 py-2 text-sm sticky left-[228px] z-20 bg-background">
                   {formatPrice(product.price)}
-                </TableCell>
-                <TableCell className="sticky left-[340px] z-20 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">
+                </td>
+                <td className="px-4 py-2 sticky left-[340px] z-20 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">
                   <Badge variant="secondary" className={getCategoryColor(product.category)}>
                     {getCategoryLabel(product.category)}
                   </Badge>
-                </TableCell>
+                </td>
                 {/* Dynamic branch inputs */}
                 {branches.map((branch) => {
                   const currentStock = product.stockByBranch.get(branch.id) || 0;
@@ -216,7 +219,7 @@ const DesktopTableView: React.FC<BatchStockTableProps> = ({
                   const finalStock = currentStock + inputValue;
 
                   return (
-                    <TableCell key={branch.id} className="text-center p-2">
+                    <td key={branch.id} className="px-2 py-2 text-center">
                       <div className="flex flex-col items-center gap-1">
                         <span className="text-xs text-muted-foreground whitespace-nowrap">
                           Stok: {currentStock}
@@ -240,13 +243,13 @@ const DesktopTableView: React.FC<BatchStockTableProps> = ({
                           }`}
                         />
                       </div>
-                    </TableCell>
+                    </td>
                   );
                 })}
-              </TableRow>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
     </div>
   );
