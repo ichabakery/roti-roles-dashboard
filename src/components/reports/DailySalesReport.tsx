@@ -27,36 +27,61 @@ export const DailySalesReport: React.FC = () => {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [userBranchId, setUserBranchId] = useState<string | null>(null);
   const { toast } = useToast();
+  const [branchLoading, setBranchLoading] = useState(true);
 
   // Check if user is kasir_cabang
   const isKasir = user?.role === 'kasir_cabang';
 
-  const dateString = format(selectedDate, 'yyyy-MM-dd');
   // Kasir cabang hanya bisa melihat cabangnya sendiri
   const branchId = isKasir && userBranchId 
     ? userBranchId 
     : (selectedBranch === 'all' ? null : selectedBranch);
+
+  // Guard: Don't fetch until kasir's branch is loaded to prevent cross-branch visibility
+  const isBranchReady = !isKasir || !!userBranchId;
+  const dateString = isBranchReady ? format(selectedDate, 'yyyy-MM-dd') : '';
   
   const { items, summary, loading } = useDailySalesReport(dateString, branchId);
 
   // Fetch user's branch assignment for kasir_cabang
   useEffect(() => {
     const fetchUserBranch = async () => {
-      if (user?.role === 'kasir_cabang' && user.id) {
-        const { data: userBranch } = await supabase
-          .from('user_branches')
-          .select('branch_id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        
-        if (userBranch?.branch_id) {
-          setUserBranchId(userBranch.branch_id);
-          setSelectedBranch(userBranch.branch_id); // Auto-select their branch
+      setBranchLoading(true);
+      try {
+        if (user?.role === 'kasir_cabang' && user.id) {
+          const { data: userBranch, error } = await supabase
+            .from('user_branches')
+            .select('branch_id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          
+          if (error) {
+            console.error('Error fetching user branch:', error);
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Gagal memuat data cabang"
+            });
+            return;
+          }
+
+          if (userBranch?.branch_id) {
+            setUserBranchId(userBranch.branch_id);
+            setSelectedBranch(userBranch.branch_id); // Auto-select their branch
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Akses Ditolak",
+              description: "Akun kasir Anda belum dikaitkan dengan cabang manapun. Hubungi administrator."
+            });
+          }
         }
+      } finally {
+        setBranchLoading(false);
       }
     };
     fetchUserBranch();
-  }, [user]);
+  }, [user, toast]);
 
   useEffect(() => {
     const fetchBranches = async () => {
@@ -130,6 +155,31 @@ export const DailySalesReport: React.FC = () => {
   const handlePrint = () => {
     window.print();
   };
+
+  // Show loading or error state for kasir
+  if (isKasir && branchLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center space-y-2">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Memuat data cabang...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isKasir && !branchLoading && !userBranchId) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center space-y-2">
+          <p className="text-destructive font-medium">Akses Ditolak</p>
+          <p className="text-muted-foreground text-sm">
+            Akun kasir Anda belum dikaitkan dengan cabang manapun. Hubungi administrator.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">

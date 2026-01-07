@@ -21,11 +21,41 @@ export interface DailySalesReportSummary {
   total_stock_masuk: number;
 }
 
+/**
+ * Convert WIB date string to UTC range for database queries
+ * WIB = UTC + 7 hours
+ * Example: 2026-01-07 WIB -> 2026-01-06T17:00:00Z to 2026-01-07T16:59:59Z
+ */
+const getWIBDateRangeInUTC = (dateString: string) => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  
+  // Create WIB midnight as UTC (subtract 7 hours)
+  // 2026-01-07 00:00:00 WIB = 2026-01-06 17:00:00 UTC
+  const startUTC = new Date(Date.UTC(year, month - 1, day, 0, 0, 0) - (7 * 60 * 60 * 1000));
+  // 2026-01-07 23:59:59 WIB = 2026-01-07 16:59:59 UTC
+  const endUTC = new Date(Date.UTC(year, month - 1, day, 23, 59, 59) - (7 * 60 * 60 * 1000));
+  
+  return {
+    startUTC: startUTC.toISOString(),
+    endUTC: endUTC.toISOString()
+  };
+};
+
 export const fetchDailySalesReport = async (
   selectedDate: string,
   branchId: string | null
 ): Promise<{ items: DailySalesReportItem[]; summary: DailySalesReportSummary }> => {
   try {
+    // Get UTC range for WIB date
+    const { startUTC, endUTC } = getWIBDateRangeInUTC(selectedDate);
+    
+    console.log('📊 [DailySalesReport] Fetching data:', {
+      selectedDate,
+      branchId,
+      startUTC,
+      endUTC
+    });
+
     // Fetch all active products
     const { data: products, error: productsError } = await supabase
       .from('products')
@@ -47,15 +77,12 @@ export const fetchDailySalesReport = async (
     const { data: inventory, error: inventoryError } = await inventoryQuery;
     if (inventoryError) throw inventoryError;
 
-    // Fetch stock movements for the selected date
-    const startOfDay = `${selectedDate}T00:00:00`;
-    const endOfDay = `${selectedDate}T23:59:59`;
-
+    // Fetch stock movements for the selected date (using UTC range)
     let stockMovementsQuery = supabase
       .from('stock_movements')
       .select('product_id, quantity_change, movement_type, branch_id')
-      .gte('movement_date', startOfDay)
-      .lte('movement_date', endOfDay);
+      .gte('movement_date', startUTC)
+      .lte('movement_date', endUTC);
 
     if (branchId) {
       stockMovementsQuery = stockMovementsQuery.eq('branch_id', branchId);
@@ -64,14 +91,25 @@ export const fetchDailySalesReport = async (
     const { data: stockMovements, error: stockMovementsError } = await stockMovementsQuery;
     if (stockMovementsError) throw stockMovementsError;
 
-    // Fetch transactions for the selected date - ONLY CASHIER transactions (not from orders)
-    const { data: transactions, error: transactionsError } = await supabase
+    // Fetch transactions for the selected date
+    // IMPORTANT: Use same filters as transaction reports for consistency
+    // - status = 'completed'
+    // - payment_status = 'paid'
+    // - Apply branch filter directly in query
+    let transactionsQuery = supabase
       .from('transactions')
-      .select('id, branch_id, source_type, notes')
-      .gte('transaction_date', startOfDay)
-      .lte('transaction_date', endOfDay)
-      .eq('status', 'completed');
+      .select('id, branch_id, source_type, notes, total_amount, discount_amount')
+      .gte('transaction_date', startUTC)
+      .lte('transaction_date', endUTC)
+      .eq('status', 'completed')
+      .eq('payment_status', 'paid'); // CRITICAL: Only include paid transactions
 
+    // Apply branch filter directly in query for better performance and security
+    if (branchId) {
+      transactionsQuery = transactionsQuery.eq('branch_id', branchId);
+    }
+
+    const { data: transactions, error: transactionsError } = await transactionsQuery;
     if (transactionsError) throw transactionsError;
     
     // Filter to only include cashier transactions (not from orders)
@@ -87,39 +125,52 @@ export const fetchDailySalesReport = async (
       return true;
     });
 
-    // Filter transactions by branch if specified (using cashierTransactions)
-    const filteredTransactions = branchId 
-      ? cashierTransactions.filter(t => t.branch_id === branchId)
-      : cashierTransactions;
+    console.log('📊 [DailySalesReport] Transactions found:', {
+      totalFetched: transactions?.length || 0,
+      cashierOnly: cashierTransactions.length,
+      branchId
+    });
 
-    const transactionIds = filteredTransactions.map(t => t.id);
+    const transactionIds = cashierTransactions.map(t => t.id);
 
     // Fetch transaction items for these transactions
     let transactionItems: any[] = [];
     if (transactionIds.length > 0) {
       const { data: items, error: itemsError } = await supabase
         .from('transaction_items')
-        .select('product_id, quantity, price_per_item, subtotal')
+        .select('transaction_id, product_id, quantity, price_per_item, subtotal')
         .in('transaction_id', transactionIds);
 
       if (itemsError) throw itemsError;
       transactionItems = items || [];
     }
 
-    // Fetch return items for the selected date
-    const { data: returns, error: returnsError } = await supabase
+    // Build a map of transaction_id -> total_amount for accurate revenue calculation
+    const transactionTotalMap = new Map<string, { total_amount: number; grossSum: number }>();
+    cashierTransactions.forEach(t => {
+      const transItems = transactionItems.filter(ti => ti.transaction_id === t.id);
+      const grossSum = transItems.reduce((sum, ti) => sum + (Number(ti.subtotal) || 0), 0);
+      transactionTotalMap.set(t.id, {
+        total_amount: Number(t.total_amount) || 0,
+        grossSum
+      });
+    });
+
+    // Fetch return items for the selected date (using UTC range)
+    let returnsQuery = supabase
       .from('returns')
       .select('id, branch_id')
-      .gte('return_date', startOfDay)
-      .lte('return_date', endOfDay);
+      .gte('return_date', startUTC)
+      .lte('return_date', endUTC);
 
+    if (branchId) {
+      returnsQuery = returnsQuery.eq('branch_id', branchId);
+    }
+
+    const { data: returns, error: returnsError } = await returnsQuery;
     if (returnsError) throw returnsError;
 
-    const filteredReturns = branchId 
-      ? returns?.filter(r => r.branch_id === branchId)
-      : returns;
-
-    const returnIds = filteredReturns?.map(r => r.id) || [];
+    const returnIds = returns?.map(r => r.id) || [];
 
     let returnItems: any[] = [];
     if (returnIds.length > 0) {
@@ -151,17 +202,30 @@ export const fetchDailySalesReport = async (
       const penjualan = productTransactionItems
         .reduce((sum, ti) => sum + (ti.quantity || 0), 0);
 
-      // Pendapatan - gunakan subtotal aktual dari transaksi, bukan product.price
-      const pendapatan = productTransactionItems
-        .reduce((sum, ti) => sum + (ti.subtotal || ti.quantity * product.price), 0);
+      // Calculate pendapatan with discount adjustment per transaction
+      // This ensures the sum matches transactions.total_amount exactly
+      let pendapatan = 0;
+      productTransactionItems.forEach(ti => {
+        const transData = transactionTotalMap.get(ti.transaction_id);
+        if (transData && transData.grossSum > 0) {
+          // Apply proportional discount: item_net = item_subtotal * (total_amount / grossSum)
+          const ratio = transData.total_amount / transData.grossSum;
+          pendapatan += (Number(ti.subtotal) || 0) * ratio;
+        } else {
+          // Fallback if no transaction data
+          pendapatan += Number(ti.subtotal) || (ti.quantity * product.price);
+        }
+      });
+
+      // Round to avoid floating point issues
+      pendapatan = Math.round(pendapatan);
 
       // Retur
       const retur = returnItems
         .filter(ri => ri.product_id === product.id)
         .reduce((sum, ri) => sum + (ri.quantity || 0), 0);
 
-      // Calculate stok awal: Stok Akhir - Stock Masuk + Penjualan + Retur - Retur yang masuk kembali
-      // Simplified: Stok Awal = Stok Akhir - Stock Masuk + Penjualan - Retur
+      // Calculate stok awal: Stok Akhir - Stock Masuk + Penjualan - Retur
       const stokAwal = productInventory - stockMasuk + penjualan - retur;
 
       return {
@@ -195,6 +259,16 @@ export const fetchDailySalesReport = async (
       total_retur: activeItems.reduce((sum, item) => sum + item.retur, 0),
       total_stock_masuk: activeItems.reduce((sum, item) => sum + item.stock_masuk, 0)
     };
+
+    // Debug: Verify total matches transaction sum
+    const transactionTotal = cashierTransactions.reduce((sum, t) => sum + (Number(t.total_amount) || 0), 0);
+    console.log('📊 [DailySalesReport] Summary verification:', {
+      calculated_pendapatan: summary.total_pendapatan,
+      transaction_total: transactionTotal,
+      difference: Math.abs(summary.total_pendapatan - transactionTotal),
+      total_penjualan: summary.total_penjualan,
+      total_retur: summary.total_retur
+    });
 
     return { items: activeItems, summary };
   } catch (error) {
