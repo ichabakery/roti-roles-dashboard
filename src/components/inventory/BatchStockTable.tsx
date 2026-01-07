@@ -154,93 +154,99 @@ const DesktopTableView: React.FC<BatchStockTableProps> = ({
   onStockChange,
 }) => {
   return (
-    <div className="border rounded-lg">
+    <div className="border rounded-lg overflow-hidden">
+      {/* Single scroll container for both horizontal and vertical scrolling */}
       <div className="max-h-[500px] overflow-auto">
-        <div className="min-w-max">
-          <Table>
-            <TableHeader className="bg-background">
-              <TableRow className="hover:bg-transparent">
-                {/* Frozen columns header - No, Produk, Harga, Kategori */}
-                <TableHead className="w-12 sticky top-0 left-0 z-50 bg-background border-r">
-                  No
+        <Table className="min-w-max">
+          {/* Sticky header row */}
+          <TableHeader className="sticky top-0 z-30 bg-background">
+            <TableRow className="hover:bg-transparent border-b-2">
+              {/* Frozen columns header - No, Produk, Harga, Kategori */}
+              <TableHead className="w-12 sticky left-0 z-40 bg-background border-r font-semibold">
+                No
+              </TableHead>
+              <TableHead className="min-w-[180px] sticky left-12 z-40 bg-background font-semibold">
+                Produk
+              </TableHead>
+              <TableHead className="w-28 sticky left-[228px] z-40 bg-background font-semibold">
+                Harga
+              </TableHead>
+              <TableHead className="w-32 sticky left-[340px] z-40 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)] font-semibold">
+                Kategori
+              </TableHead>
+              {/* Dynamic branch columns - sticky top only */}
+              {branches.map((branch) => (
+                <TableHead
+                  key={branch.id}
+                  className="min-w-[140px] text-center bg-background font-semibold"
+                >
+                  {branch.name}
                 </TableHead>
-                <TableHead className="min-w-[180px] sticky top-0 left-12 z-50 bg-background">
-                  Produk
-                </TableHead>
-                <TableHead className="w-28 sticky top-0 left-[228px] z-50 bg-background">
-                  Harga
-                </TableHead>
-                <TableHead className="w-32 sticky top-0 left-[340px] z-50 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">
-                  Kategori
-                </TableHead>
-                {/* Dynamic branch columns */}
-                {branches.map((branch) => (
-                  <TableHead
-                    key={branch.id}
-                    className="min-w-[120px] text-center sticky top-0 z-40 bg-background"
-                  >
-                    {branch.name}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {products.map((product, index) => (
-                <TableRow key={product.id} className="hover:bg-muted/50">
-                  {/* Frozen columns - No, Produk, Harga, Kategori */}
-                  <TableCell className="font-medium sticky left-0 z-10 bg-background border-r">
-                    {index + 1}
-                  </TableCell>
-                  <TableCell className="sticky left-12 z-10 bg-background">
-                    <div className="flex flex-col">
-                      <span className="font-medium">{product.name}</span>
-                      {product.sku && (
-                        <span className="text-xs text-muted-foreground">{product.sku}</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm sticky left-[228px] z-10 bg-background">
-                    {formatPrice(product.price)}
-                  </TableCell>
-                  <TableCell className="sticky left-[340px] z-10 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">
-                    <Badge variant="secondary" className={getCategoryColor(product.category)}>
-                      {getCategoryLabel(product.category)}
-                    </Badge>
-                  </TableCell>
-                  {/* Dynamic branch inputs */}
-                  {branches.map((branch) => {
-                    const currentStock = product.stockByBranch.get(branch.id) || 0;
-                    const inputValue = stockInputs[product.id]?.[branch.id] || 0;
-                    const hasInput = inputValue > 0;
-
-                    return (
-                      <TableCell key={branch.id} className="text-center p-2">
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="text-xs text-muted-foreground">
-                            Stok: {currentStock}
-                          </span>
-                          <Input
-                            type="number"
-                            min="0"
-                            placeholder="0"
-                            value={inputValue || ''}
-                            onChange={(e) => {
-                              const value = parseInt(e.target.value) || 0;
-                              onStockChange(product.id, branch.id, value);
-                            }}
-                            className={`w-20 h-8 text-center text-sm ${
-                              hasInput ? 'border-primary bg-primary/5' : ''
-                            }`}
-                          />
-                        </div>
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
               ))}
-            </TableBody>
-          </Table>
-        </div>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {products.map((product, index) => (
+              <TableRow key={product.id} className="hover:bg-muted/50">
+                {/* Frozen columns - No, Produk, Harga, Kategori */}
+                <TableCell className="font-medium sticky left-0 z-20 bg-background border-r">
+                  {index + 1}
+                </TableCell>
+                <TableCell className="sticky left-12 z-20 bg-background">
+                  <div className="flex flex-col">
+                    <span className="font-medium">{product.name}</span>
+                    {product.sku && (
+                      <span className="text-xs text-muted-foreground">{product.sku}</span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-sm sticky left-[228px] z-20 bg-background">
+                  {formatPrice(product.price)}
+                </TableCell>
+                <TableCell className="sticky left-[340px] z-20 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">
+                  <Badge variant="secondary" className={getCategoryColor(product.category)}>
+                    {getCategoryLabel(product.category)}
+                  </Badge>
+                </TableCell>
+                {/* Dynamic branch inputs */}
+                {branches.map((branch) => {
+                  const currentStock = product.stockByBranch.get(branch.id) || 0;
+                  const inputValue = stockInputs[product.id]?.[branch.id] || 0;
+                  const hasInput = inputValue > 0;
+                  const finalStock = currentStock + inputValue;
+
+                  return (
+                    <TableCell key={branch.id} className="text-center p-2">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          Stok: {currentStock}
+                          {hasInput && (
+                            <span className="text-green-600 dark:text-green-400 font-medium ml-1">
+                              → {finalStock}
+                            </span>
+                          )}
+                        </span>
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={inputValue || ''}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value) || 0;
+                            onStockChange(product.id, branch.id, value);
+                          }}
+                          className={`w-20 h-8 text-center text-sm ${
+                            hasInput ? 'border-primary bg-primary/5' : ''
+                          }`}
+                        />
+                      </div>
+                    </TableCell>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
