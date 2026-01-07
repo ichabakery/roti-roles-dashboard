@@ -154,9 +154,16 @@ const DesktopTableView: React.FC<BatchStockTableProps> = ({
   onStockChange,
 }) => {
   return (
-    <div className="relative border rounded-lg overflow-hidden flex flex-col">
-      {/* Scroll container - responsive height with native scrollbars */}
-      <div className="flex-1 overflow-auto h-[calc(100vh-350px)] min-h-[300px]">
+    <div className="border rounded-lg overflow-hidden">
+      {/* Scroll container dengan native scrollbar - seperti Excel/Google Sheets */}
+      <div 
+        className="overflow-x-auto overflow-y-auto"
+        style={{ 
+          maxHeight: 'calc(100vh - 400px)', 
+          minHeight: '300px',
+          height: '100%'
+        }}
+      >
         <table className="w-full border-collapse" style={{ minWidth: 'max-content' }}>
           {/* Sticky header row */}
           <thead className="sticky top-0 z-40 bg-background border-b-2 border-border">
