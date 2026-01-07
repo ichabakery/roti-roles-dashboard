@@ -13,6 +13,7 @@ import { useDailySalesReport } from '@/hooks/useDailySalesReport';
 import { DailySalesTable } from './DailySalesTable';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Branch {
   id: string;
@@ -20,15 +21,42 @@ interface Branch {
 }
 
 export const DailySalesReport: React.FC = () => {
+  const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [userBranchId, setUserBranchId] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Check if user is kasir_cabang
+  const isKasir = user?.role === 'kasir_cabang';
+
   const dateString = format(selectedDate, 'yyyy-MM-dd');
-  const branchId = selectedBranch === 'all' ? null : selectedBranch;
+  // Kasir cabang hanya bisa melihat cabangnya sendiri
+  const branchId = isKasir && userBranchId 
+    ? userBranchId 
+    : (selectedBranch === 'all' ? null : selectedBranch);
   
   const { items, summary, loading } = useDailySalesReport(dateString, branchId);
+
+  // Fetch user's branch assignment for kasir_cabang
+  useEffect(() => {
+    const fetchUserBranch = async () => {
+      if (user?.role === 'kasir_cabang' && user.id) {
+        const { data: userBranch } = await supabase
+          .from('user_branches')
+          .select('branch_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (userBranch?.branch_id) {
+          setUserBranchId(userBranch.branch_id);
+          setSelectedBranch(userBranch.branch_id); // Auto-select their branch
+        }
+      }
+    };
+    fetchUserBranch();
+  }, [user]);
 
   useEffect(() => {
     const fetchBranches = async () => {
@@ -155,17 +183,23 @@ export const DailySalesReport: React.FC = () => {
             {/* Branch Selector */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Cabang</label>
-              <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+              <Select 
+                value={selectedBranch} 
+                onValueChange={setSelectedBranch}
+                disabled={isKasir}
+              >
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Pilih cabang" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Semua Cabang</SelectItem>
-                  {branches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </SelectItem>
-                  ))}
+                  {!isKasir && <SelectItem value="all">Semua Cabang</SelectItem>}
+                  {branches
+                    .filter(branch => !isKasir || branch.id === userBranchId)
+                    .map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

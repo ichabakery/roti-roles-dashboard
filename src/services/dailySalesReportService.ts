@@ -99,7 +99,7 @@ export const fetchDailySalesReport = async (
     if (transactionIds.length > 0) {
       const { data: items, error: itemsError } = await supabase
         .from('transaction_items')
-        .select('product_id, quantity')
+        .select('product_id, quantity, price_per_item, subtotal')
         .in('transaction_id', transactionIds);
 
       if (itemsError) throw itemsError;
@@ -144,10 +144,16 @@ export const fetchDailySalesReport = async (
         .filter(sm => sm.product_id === product.id && sm.movement_type === 'in')
         .reduce((sum, sm) => sum + Math.abs(sm.quantity_change || 0), 0);
 
-      // Penjualan (sales)
-      const penjualan = transactionItems
-        .filter(ti => ti.product_id === product.id)
+      // Penjualan (sales) - filter transaction items for this product
+      const productTransactionItems = transactionItems
+        .filter(ti => ti.product_id === product.id);
+
+      const penjualan = productTransactionItems
         .reduce((sum, ti) => sum + (ti.quantity || 0), 0);
+
+      // Pendapatan - gunakan subtotal aktual dari transaksi, bukan product.price
+      const pendapatan = productTransactionItems
+        .reduce((sum, ti) => sum + (ti.subtotal || ti.quantity * product.price), 0);
 
       // Retur
       const retur = returnItems
@@ -157,9 +163,6 @@ export const fetchDailySalesReport = async (
       // Calculate stok awal: Stok Akhir - Stock Masuk + Penjualan + Retur - Retur yang masuk kembali
       // Simplified: Stok Awal = Stok Akhir - Stock Masuk + Penjualan - Retur
       const stokAwal = productInventory - stockMasuk + penjualan - retur;
-
-      // Pendapatan
-      const pendapatan = penjualan * product.price;
 
       return {
         no: index + 1,
