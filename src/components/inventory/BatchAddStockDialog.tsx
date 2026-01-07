@@ -23,6 +23,7 @@ import { Progress } from '@/components/ui/progress';
 import { Search, Package, Save, X, Layers, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useCategories } from '@/hooks/useCategories';
 import { BatchStockTable } from './BatchStockTable';
 import { BranchFilterPopover } from './BranchFilterPopover';
 import { batchAddStock, fetchProductsWithStock, BatchStockItem, BatchProgress } from '@/services/batchInventoryService';
@@ -55,15 +56,7 @@ interface BatchAddStockDialogProps {
   onSuccess: () => void;
 }
 
-const CATEGORIES = [
-  { value: 'all', label: 'Semua Kategori' },
-  { value: 'produk_utama', label: 'Produk Utama' },
-  { value: 'minuman', label: 'Minuman' },
-  { value: 'titipan', label: 'Titipan' },
-  { value: 'peralatan_ultah', label: 'Peralatan Ultah' },
-  { value: 'tart', label: 'Tart' },
-  { value: 'es_krim', label: 'Es Krim' },
-];
+// Categories are now fetched dynamically from database via useCategories hook
 
 export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
   open,
@@ -74,6 +67,7 @@ export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
 }) => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { categories } = useCategories();
   const [products, setProducts] = useState<ProductWithStock[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -293,7 +287,8 @@ export const BatchAddStockDialog: React.FC<BatchAddStockDialogProps> = ({
                   <SelectValue placeholder="Pilih kategori" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map((cat) => (
+                  <SelectItem value="all">Semua Kategori</SelectItem>
+                  {categories.map((cat) => (
                     <SelectItem key={cat.value} value={cat.value}>
                       {cat.label}
                     </SelectItem>
