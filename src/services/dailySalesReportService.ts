@@ -12,6 +12,7 @@ export interface DailySalesReportItem {
   penjualan: number;
   stok_akhir: number;
   pendapatan: number;
+  is_inactive?: boolean; // Flag untuk produk nonaktif
 }
 
 export interface DailySalesReportSummary {
@@ -56,10 +57,10 @@ export const fetchDailySalesReport = async (
       endUTC
     });
 
-    // Fetch all active products
-    const { data: products, error: productsError } = await supabase
+    // Fetch all active products first
+    const { data: activeProducts, error: productsError } = await supabase
       .from('products')
-      .select('id, name, price')
+      .select('id, name, price, active')
       .eq('active', true)
       .order('name');
 
@@ -145,6 +146,31 @@ export const fetchDailySalesReport = async (
       transactionItems = items || [];
     }
 
+    // CRITICAL FIX: Find products that were sold but are not in the active products list
+    // This handles cases where inactive products were sold (historical data)
+    const soldProductIds = [...new Set(transactionItems.map(ti => ti.product_id))];
+    const activeProductIds = new Set((activeProducts || []).map(p => p.id));
+    const missingProductIds = soldProductIds.filter(id => !activeProductIds.has(id));
+
+    let allProducts = (activeProducts || []).map(p => ({ ...p, is_inactive: false }));
+
+    if (missingProductIds.length > 0) {
+      console.log('📊 [DailySalesReport] Found sold products not in active list:', missingProductIds);
+      
+      const { data: missingProducts, error: missingError } = await supabase
+        .from('products')
+        .select('id, name, price, active')
+        .in('id', missingProductIds);
+
+      if (!missingError && missingProducts) {
+        const inactiveProducts = missingProducts.map(p => ({ ...p, is_inactive: !p.active }));
+        allProducts = [...allProducts, ...inactiveProducts];
+        console.log('📊 [DailySalesReport] Added inactive products to report:', 
+          inactiveProducts.map(p => ({ name: p.name, active: p.active }))
+        );
+      }
+    }
+
     // Build a map of transaction_id -> total_amount for accurate revenue calculation
     const transactionTotalMap = new Map<string, { total_amount: number; grossSum: number }>();
     cashierTransactions.forEach(t => {
@@ -183,8 +209,8 @@ export const fetchDailySalesReport = async (
       returnItems = items || [];
     }
 
-    // Process data for each product
-    const reportItems: DailySalesReportItem[] = (products || []).map((product, index) => {
+    // Process data for each product (now includes inactive products that were sold)
+    const reportItems: DailySalesReportItem[] = allProducts.map((product, index) => {
       // Current stock (stok akhir)
       const productInventory = (inventory || [])
         .filter(i => i.product_id === product.id)
@@ -238,7 +264,8 @@ export const fetchDailySalesReport = async (
         retur: retur,
         penjualan: penjualan,
         stok_akhir: productInventory,
-        pendapatan: pendapatan
+        pendapatan: pendapatan,
+        is_inactive: product.is_inactive || false
       };
     });
 
