@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/table';
 import { DailySalesReportItem, DailySalesReportSummary } from '@/services/dailySalesReportService';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 
 interface DailySalesTableProps {
   items: DailySalesReportItem[];
@@ -62,9 +63,16 @@ export const DailySalesTable: React.FC<DailySalesTableProps> = ({
         </TableHeader>
         <TableBody>
           {items.map((item) => (
-            <TableRow key={item.product_id}>
+            <TableRow key={item.product_id} className={item.is_inactive ? 'bg-muted/30' : ''}>
               <TableCell className="text-center">{item.no}</TableCell>
-              <TableCell className="font-medium">{item.product_name}</TableCell>
+              <TableCell className="font-medium">
+                <div className="flex items-center gap-2">
+                  {item.product_name}
+                  {item.is_inactive && (
+                    <Badge variant="destructive" className="text-xs">Nonaktif</Badge>
+                  )}
+                </div>
+              </TableCell>
               <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
               <TableCell className="text-center">{item.stok_awal}</TableCell>
               <TableCell className="text-center">

@@ -54,9 +54,9 @@ export const useProducts = (options: UseProductsOptions = {}) => {
           return;
         }
 
-        // Only include when the join succeeded and has product info
+        // Only include when the join succeeded and product is ACTIVE
         const productsWithStock: Product[] = inventoryData
-          .filter((item) => item.products)
+          .filter((item) => item.products && (item.products as any).active === true)
           .map(item => ({
             ...(item.products as Product),
             stock: item.quantity ?? 0,
