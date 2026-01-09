@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Eye, Receipt, CheckCircle, XCircle, Edit } from 'lucide-react';
 import type { Order } from '@/services/orderService';
+import { getTrackingStatusLabel } from '@/services/orderService';
 
 interface OrdersTableProps {
   orders: Order[];
@@ -24,16 +25,27 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
 }) => {
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { label: 'Menunggu', variant: 'secondary' as const },
-      confirmed: { label: 'Dikonfirmasi', variant: 'default' as const },
-      in_production: { label: 'Produksi', variant: 'outline' as const },
-      ready: { label: 'Siap', variant: 'secondary' as const },
+      new: { label: 'Baru', variant: 'secondary' as const },
       completed: { label: 'Selesai', variant: 'default' as const },
-      cancelled: { label: 'Dibatalkan', variant: 'destructive' as const }
+      cancelled: { label: 'Dibatalkan', variant: 'destructive' as const },
+      // Legacy support
+      pending: { label: 'Baru', variant: 'secondary' as const },
+      confirmed: { label: 'Baru', variant: 'secondary' as const },
+      in_production: { label: 'Baru', variant: 'secondary' as const },
+      ready: { label: 'Baru', variant: 'secondary' as const }
     };
     
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.new;
     return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const getTrackingBadge = (tracking: string | undefined) => {
+    if (!tracking) return null;
+    return (
+      <Badge variant="outline" className="text-xs">
+        {getTrackingStatusLabel(tracking)}
+      </Badge>
+    );
   };
 
   const formatDate = (dateString: string) => {
@@ -55,10 +67,10 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
           <TableRow className="bg-muted/50">
             <TableHead>No. Pesanan</TableHead>
             <TableHead>Pelanggan</TableHead>
-            <TableHead className="hidden md:table-cell">Telepon</TableHead>
-            <TableHead className="hidden lg:table-cell">Cabang</TableHead>
+            <TableHead className="hidden md:table-cell">Cabang</TableHead>
             <TableHead>Tgl Kirim</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead className="hidden lg:table-cell">Tracking</TableHead>
             <TableHead className="text-right">Total</TableHead>
             <TableHead className="text-center">Aksi</TableHead>
           </TableRow>
@@ -75,9 +87,6 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                 </div>
               </TableCell>
               <TableCell className="hidden md:table-cell text-muted-foreground">
-                {order.customer_phone || '-'}
-              </TableCell>
-              <TableCell className="hidden lg:table-cell text-muted-foreground">
                 {order.branch_name || '-'}
               </TableCell>
               <TableCell>
@@ -85,6 +94,9 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
               </TableCell>
               <TableCell>
                 {getStatusBadge(order.status)}
+              </TableCell>
+              <TableCell className="hidden lg:table-cell">
+                {getTrackingBadge(order.tracking_status)}
               </TableCell>
               <TableCell className="text-right font-medium">
                 {formatCurrency(order.total_amount)}
@@ -146,7 +158,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
           ))}
           {orders.length === 0 && (
             <TableRow>
-              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                 Tidak ada pesanan ditemukan
               </TableCell>
             </TableRow>
