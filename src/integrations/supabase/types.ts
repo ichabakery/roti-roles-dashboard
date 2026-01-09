@@ -241,6 +241,44 @@ export type Database = {
           },
         ]
       }
+      order_tracking_history: {
+        Row: {
+          id: string
+          new_tracking_status: string
+          notes: string | null
+          old_tracking_status: string | null
+          order_id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          new_tracking_status: string
+          notes?: string | null
+          old_tracking_status?: string | null
+          order_id: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          new_tracking_status?: string
+          notes?: string | null
+          old_tracking_status?: string | null
+          order_id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_tracking_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           branch_id: string
@@ -267,6 +305,7 @@ export type Database = {
           shipping_cost: number | null
           status: string
           total_amount: number
+          tracking_status: string | null
           updated_at: string
         }
         Insert: {
@@ -294,6 +333,7 @@ export type Database = {
           shipping_cost?: number | null
           status?: string
           total_amount?: number
+          tracking_status?: string | null
           updated_at?: string
         }
         Update: {
@@ -321,6 +361,7 @@ export type Database = {
           shipping_cost?: number | null
           status?: string
           total_amount?: number
+          tracking_status?: string | null
           updated_at?: string
         }
         Relationships: [
