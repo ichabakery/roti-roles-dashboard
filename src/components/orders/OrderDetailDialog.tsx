@@ -6,25 +6,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { orderService, type Order } from '@/services/orderService';
+import { orderService, type Order, getOrderStatusLabel, getTrackingStatusLabel, TrackingStatus, TRACKING_STATUS_ORDER } from '@/services/orderService';
 import { OrderPaymentDialog } from './OrderPaymentDialog';
 import { EditOrderDialog } from './EditOrderDialog';
+import { TrackingTimeline } from './TrackingTimeline';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   Clock, 
   User, 
   Phone, 
   Calendar, 
-  MapPin, 
   ShoppingCart, 
   CheckCircle, 
   XCircle, 
-  PlayCircle,
-  PauseCircle,
   AlertCircle,
   CreditCard,
-  Banknote,
   Edit,
-  Truck
+  Truck,
+  ArrowRight
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -45,6 +44,15 @@ interface OrderStatusHistory {
   notes: string | null;
 }
 
+interface OrderTrackingHistory {
+  id: string;
+  old_tracking_status: string | null;
+  new_tracking_status: string;
+  updated_at: string;
+  updated_by: string | null;
+  notes: string | null;
+}
+
 export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
   open,
   onClose,
@@ -53,12 +61,14 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
 }) => {
   const [order, setOrder] = useState<Order | null>(null);
   const [statusHistory, setStatusHistory] = useState<OrderStatusHistory[]>([]);
+  const [trackingHistory, setTrackingHistory] = useState<OrderTrackingHistory[]>([]);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [notes, setNotes] = useState('');
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (open && orderId) {
@@ -71,13 +81,15 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
     
     try {
       setLoading(true);
-      const [orderData, historyData] = await Promise.all([
+      const [orderData, historyData, trackingData] = await Promise.all([
         orderService.getOrderById(orderId),
-        orderService.getOrderStatusHistory(orderId)
+        orderService.getOrderStatusHistory(orderId),
+        orderService.getOrderTrackingHistory(orderId)
       ]);
       
       setOrder(orderData);
       setStatusHistory(historyData);
+      setTrackingHistory(trackingData);
     } catch (error) {
       console.error('Error fetching order details:', error);
       toast({
@@ -93,6 +105,16 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
   const handleStatusUpdate = async (newStatus: Order['status']) => {
     if (!order) return;
 
+    // Validate: can only complete if payment is paid
+    if (newStatus === 'completed' && order.payment_status !== 'paid') {
+      toast({
+        title: "Tidak bisa menyelesaikan pesanan",
+        description: "Pembayaran belum lunas. Lunasi pembayaran terlebih dahulu.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setUpdating(true);
       const updatedOrder = await orderService.updateOrderStatus(order.id!, newStatus, notes);
@@ -100,13 +122,17 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
       onOrderUpdate(updatedOrder);
       setNotes('');
       
-      // Refresh status history
-      const historyData = await orderService.getOrderStatusHistory(order.id!);
+      // Refresh histories
+      const [historyData, trackingData] = await Promise.all([
+        orderService.getOrderStatusHistory(order.id!),
+        orderService.getOrderTrackingHistory(order.id!)
+      ]);
       setStatusHistory(historyData);
+      setTrackingHistory(trackingData);
       
       toast({
         title: "Status pesanan diperbarui",
-        description: `Status pesanan berhasil diubah menjadi ${getStatusLabel(newStatus)}`
+        description: `Status pesanan berhasil diubah menjadi ${getOrderStatusLabel(newStatus)}`
       });
     } catch (error) {
       console.error('Error updating order status:', error);
@@ -120,24 +146,49 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    const statusLabels = {
-      pending: 'Menunggu Konfirmasi',
-      confirmed: 'Dikonfirmasi',
-      in_production: 'Dalam Produksi',
-      ready: 'Siap Diambil',
-      completed: 'Selesai',
-      cancelled: 'Dibatalkan'
-    };
-    return statusLabels[status as keyof typeof statusLabels] || status;
+  const handleTrackingUpdate = async (newTrackingStatus: TrackingStatus) => {
+    if (!order) return;
+
+    // Validate: can only mark as delivered if payment is paid
+    if (newTrackingStatus === 'delivered' && order.payment_status !== 'paid') {
+      toast({
+        title: "Tidak bisa menandai diserahkan",
+        description: "Pembayaran belum lunas. Lunasi pembayaran terlebih dahulu.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setUpdating(true);
+      const updatedOrder = await orderService.updateTrackingStatus(order.id!, newTrackingStatus, notes);
+      setOrder(updatedOrder);
+      onOrderUpdate(updatedOrder);
+      setNotes('');
+      
+      // Refresh tracking history
+      const trackingData = await orderService.getOrderTrackingHistory(order.id!);
+      setTrackingHistory(trackingData);
+      
+      toast({
+        title: "Tracking diperbarui",
+        description: `Tracking berhasil diubah menjadi ${getTrackingStatusLabel(newTrackingStatus)}`
+      });
+    } catch (error: any) {
+      console.error('Error updating tracking status:', error);
+      toast({
+        title: "Gagal memperbarui tracking",
+        description: error.message || "Terjadi kesalahan saat memperbarui tracking",
+        variant: "destructive"
+      });
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const getStatusIcon = (status: string) => {
     const icons = {
-      pending: <Clock className="h-4 w-4" />,
-      confirmed: <CheckCircle className="h-4 w-4" />,
-      in_production: <PlayCircle className="h-4 w-4" />,
-      ready: <PauseCircle className="h-4 w-4" />,
+      new: <Clock className="h-4 w-4" />,
       completed: <CheckCircle className="h-4 w-4" />,
       cancelled: <XCircle className="h-4 w-4" />
     };
@@ -146,10 +197,7 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      pending: 'secondary',
-      confirmed: 'default',
-      in_production: 'outline',
-      ready: 'secondary',
+      new: 'secondary',
       completed: 'default',
       cancelled: 'destructive'
     } as const;
@@ -158,7 +206,7 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
       <Badge variant={variants[status as keyof typeof variants] || 'secondary'}>
         <span className="flex items-center gap-1">
           {getStatusIcon(status)}
-          {getStatusLabel(status)}
+          {getOrderStatusLabel(status)}
         </span>
       </Badge>
     );
@@ -172,17 +220,42 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
     }).format(amount);
   };
 
-  // Simplified status flow - skip pending, production, ready
-  const getNextPossibleStatuses = (currentStatus: string) => {
-    const workflow = {
-      pending: ['confirmed', 'cancelled'],
-      confirmed: ['completed', 'cancelled'],
-      in_production: ['completed', 'cancelled'],
-      ready: ['completed', 'cancelled'],
-      completed: [],
-      cancelled: []
-    };
-    return workflow[currentStatus as keyof typeof workflow] || [];
+  // Get next possible tracking status based on current status and user role
+  const getNextTrackingStatuses = (currentTracking: string | undefined): TrackingStatus[] => {
+    if (!currentTracking) return [];
+    
+    const currentIndex = TRACKING_STATUS_ORDER.indexOf(currentTracking as TrackingStatus);
+    if (currentIndex === -1 || currentIndex >= TRACKING_STATUS_ORDER.length - 1) return [];
+    
+    const nextStatuses: TrackingStatus[] = [];
+    
+    // Delivery can update stages 1-4 (in_production to arrived_at_store)
+    // Cashier can only update stage 5 (delivered)
+    const isDeliveryRole = user?.role === 'owner' || user?.role === 'admin_pusat' || user?.role === 'kepala_produksi';
+    const isCashierRole = user?.role === 'kasir_cabang' || user?.role === 'owner' || user?.role === 'admin_pusat';
+    
+    for (let i = currentIndex + 1; i < TRACKING_STATUS_ORDER.length; i++) {
+      const nextStatus = TRACKING_STATUS_ORDER[i];
+      
+      // Delivery roles can update to any status except delivered (unless also cashier)
+      if (nextStatus !== 'delivered' && isDeliveryRole) {
+        nextStatuses.push(nextStatus);
+      }
+      
+      // Cashier can only mark as delivered
+      if (nextStatus === 'delivered' && isCashierRole && currentTracking === 'arrived_at_store') {
+        nextStatuses.push(nextStatus);
+      }
+    }
+    
+    return nextStatuses;
+  };
+
+  // Can user complete this order?
+  const canCompleteOrder = () => {
+    if (!order) return false;
+    if (order.status === 'completed' || order.status === 'cancelled') return false;
+    return order.payment_status === 'paid';
   };
 
   if (!open) return null;
@@ -200,7 +273,7 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
             )}
           </DialogTitle>
           <DialogDescription>
-            Informasi lengkap dan manajemen status pesanan
+            Informasi lengkap, tracking posisi, dan manajemen pesanan
           </DialogDescription>
         </DialogHeader>
 
@@ -218,7 +291,7 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
                   Dibuat pada {format(new Date(order.created_at!), 'PPpp', { locale: id })}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {getStatusBadge(order.status)}
                 {order.status !== 'completed' && order.status !== 'cancelled' && (
                   <Button 
@@ -232,6 +305,46 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
                 )}
               </div>
             </div>
+
+            {/* Tracking Timeline - Visual Progress */}
+            {order.status !== 'cancelled' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Truck className="h-4 w-4" />
+                    Tracking Posisi Produk
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <TrackingTimeline 
+                    currentStatus={order.tracking_status} 
+                    orderStatus={order.status}
+                  />
+                  
+                  {/* Tracking Update Actions */}
+                  {order.status === 'new' && getNextTrackingStatuses(order.tracking_status).length > 0 && (
+                    <div className="mt-6 pt-4 border-t">
+                      <p className="text-sm font-medium mb-3">Update Tracking:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {getNextTrackingStatuses(order.tracking_status).map((status) => (
+                          <Button
+                            key={status}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleTrackingUpdate(status)}
+                            disabled={updating}
+                            className="flex items-center gap-2"
+                          >
+                            <ArrowRight className="h-4 w-4" />
+                            {getTrackingStatusLabel(status)}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Customer Information */}
             <Card>
@@ -270,7 +383,7 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
                     <p>{format(new Date(order.order_date), 'PPP', { locale: id })}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Tanggal Pengiriman</p>
+                    <p className="text-sm font-medium text-muted-foreground">Tanggal Pengambilan</p>
                     <p>{format(new Date(order.delivery_date), 'PPP', { locale: id })}</p>
                   </div>
                   <div>
@@ -362,7 +475,7 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
             </Card>
 
             {/* Status Actions */}
-            {getNextPossibleStatuses(order.status).length > 0 && (
+            {order.status === 'new' && (
               <Card>
                 <CardHeader>
                   <CardTitle>Aksi Status Pesanan</CardTitle>
@@ -377,17 +490,65 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
                     />
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {getNextPossibleStatuses(order.status).map((status) => (
-                      <Button
-                        key={status}
-                        variant={status === 'cancelled' ? 'destructive' : 'default'}
-                        onClick={() => handleStatusUpdate(status as Order['status'])}
-                        disabled={updating}
-                        className="flex items-center gap-2"
-                      >
-                        {getStatusIcon(status)}
-                        {getStatusLabel(status)}
-                      </Button>
+                    <Button
+                      variant="default"
+                      onClick={() => handleStatusUpdate('completed')}
+                      disabled={updating || !canCompleteOrder()}
+                      className="flex items-center gap-2"
+                      title={!canCompleteOrder() ? "Pembayaran belum lunas" : undefined}
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Selesaikan Pesanan
+                    </Button>
+                    {!canCompleteOrder() && order.payment_status !== 'paid' && (
+                      <p className="text-sm text-orange-600 self-center">
+                        ⚠️ Lunasi pembayaran terlebih dahulu
+                      </p>
+                    )}
+                    <Button
+                      variant="destructive"
+                      onClick={() => handleStatusUpdate('cancelled')}
+                      disabled={updating}
+                      className="flex items-center gap-2"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Batalkan
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Tracking History */}
+            {trackingHistory.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Riwayat Tracking</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {trackingHistory.map((entry) => (
+                      <div key={entry.id} className="flex items-start gap-3 p-3 border border-border rounded-lg">
+                        <div className="flex-shrink-0">
+                          <Truck className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{getTrackingStatusLabel(entry.new_tracking_status)}</span>
+                            {entry.old_tracking_status && (
+                              <span className="text-sm text-muted-foreground">
+                                dari {getTrackingStatusLabel(entry.old_tracking_status)}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {format(new Date(entry.updated_at), 'PPpp', { locale: id })}
+                          </p>
+                          {entry.notes && (
+                            <p className="text-sm mt-1 bg-muted p-2 rounded">{entry.notes}</p>
+                          )}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </CardContent>
@@ -398,7 +559,7 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
             {statusHistory.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Riwayat Status</CardTitle>
+                  <CardTitle>Riwayat Status Pesanan</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -409,10 +570,10 @@ export const OrderDetailDialog: React.FC<OrderDetailDialogProps> = ({
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">{getStatusLabel(entry.new_status)}</span>
+                            <span className="font-medium">{getOrderStatusLabel(entry.new_status)}</span>
                             {entry.old_status && (
                               <span className="text-sm text-muted-foreground">
-                                dari {getStatusLabel(entry.old_status)}
+                                dari {getOrderStatusLabel(entry.old_status)}
                               </span>
                             )}
                           </div>

@@ -1305,8 +1305,10 @@ export type Database = {
           notes: string
           order_date: string
           order_number: string
+          payment_status: string
           status: string
           total_amount: number
+          tracking_status: string
         }[]
       }
       update_inventory: {
