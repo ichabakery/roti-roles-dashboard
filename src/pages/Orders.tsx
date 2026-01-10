@@ -2,15 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Search, Calendar, Filter, Eye, BarChart3, Download, Receipt, LayoutGrid, TableIcon, CheckCircle, XCircle, Edit, CalendarDays } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Plus, Eye, BarChart3, Download, Receipt, LayoutGrid, TableIcon, CheckCircle, XCircle, Edit, Kanban } from 'lucide-react';
 import { EnhancedCreateOrderDialog } from '@/components/orders/EnhancedCreateOrderDialog';
 import { OrderDetailDialog } from '@/components/orders/OrderDetailDialog';
 import { EditOrderDialog } from '@/components/orders/EditOrderDialog';
 import { useUserBranch } from '@/hooks/useUserBranch';
 import { useToast } from '@/hooks/use-toast';
-import { orderService, type Order } from '@/services/orderService';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { orderService, type Order, getOrderStatusLabel, getTrackingStatusLabel } from '@/services/orderService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,14 +19,15 @@ import { BulkOrderActions } from '@/components/orders/BulkOrderActions';
 import { OrderExport } from '@/components/orders/OrderExport';
 import { OrderReceiptDialog } from '@/components/orders/OrderReceiptDialog';
 import { OrdersTable } from '@/components/orders/OrdersTable';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { format } from 'date-fns';
-import { id as localeId } from 'date-fns/locale';
+import { OrderFilters } from '@/components/orders/OrderFilters';
+import { TrackingKanbanBoard } from '@/components/orders/TrackingKanbanBoard';
+import { useBranches } from '@/hooks/useBranches';
 
 const Orders = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [trackingFilter, setTrackingFilter] = useState('all');
+  const [branchFilter, setBranchFilter] = useState('all');
   const [showNewOrderDialog, setShowNewOrderDialog] = useState(false);
   const [showOrderDetail, setShowOrderDetail] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -47,9 +46,15 @@ const Orders = () => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedOrderForEdit, setSelectedOrderForEdit] = useState<Order | null>(null);
   
+  // Get branches for filter
+  const { branches } = useBranches();
+  
   // Get statistics for current branch and date range
   const branchId = user?.role === 'owner' || user?.role === 'admin_pusat' ? undefined : userBranch.branchId;
   const { statistics, loading: statsLoading } = useOrderStatistics(branchId);
+
+  // Check if user can see branch filter
+  const showBranchFilter = user?.role === 'owner' || user?.role === 'admin_pusat';
 
   // Fetch orders when branch changes
   useEffect(() => {
@@ -111,7 +116,7 @@ const Orders = () => {
       handleOrderUpdate(updatedOrder);
       toast({
         title: "Status diperbarui",
-        description: `Pesanan berhasil diubah menjadi ${status === 'completed' ? 'Selesai' : 'Dibatalkan'}`
+        description: `Pesanan berhasil diubah menjadi ${getOrderStatusLabel(status)}`
       });
     } catch (error) {
       console.error('Error updating status:', error);
@@ -134,8 +139,6 @@ const Orders = () => {
   const handleSubmitOrder = async (orderData: any) => {
     try {
       console.log('handleSubmitOrder called with:', orderData);
-      console.log('User branch:', userBranch);
-      console.log('User:', user);
       
       if (!userBranch.branchId) {
         throw new Error('Tidak ada akses cabang');
@@ -152,13 +155,9 @@ const Orders = () => {
         branch_id: userBranch.branchId,
         created_by: currentUser.data.user.id,
       };
-
-      console.log('Calling orderService.createOrder with:', orderWithBranch);
       
       // Save order to database
       const savedOrder = await orderService.createOrder(orderWithBranch);
-      
-      console.log('Order created successfully:', savedOrder);
       
       // Update orders list with proper type casting
       setOrders(prevOrders => [savedOrder as Order, ...prevOrders]);
@@ -183,22 +182,36 @@ const Orders = () => {
         description: error instanceof Error ? error.message : "Terjadi kesalahan saat membuat pesanan",
         variant: "destructive"
       });
-      throw error; // Re-throw to prevent success message in dialog
+      throw error;
     }
   };
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { label: 'Menunggu', variant: 'secondary' as const },
-      confirmed: { label: 'Dikonfirmasi', variant: 'default' as const },
-      in_production: { label: 'Produksi', variant: 'outline' as const },
-      ready: { label: 'Siap', variant: 'secondary' as const },
+      new: { label: 'Baru', variant: 'secondary' as const },
       completed: { label: 'Selesai', variant: 'default' as const },
       cancelled: { label: 'Dibatalkan', variant: 'destructive' as const }
     };
     
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.new;
     return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const getTrackingBadge = (trackingStatus: string | undefined) => {
+    if (!trackingStatus) return null;
+    
+    const trackingConfig = {
+      in_production: { label: 'Produksi', variant: 'outline' as const, className: 'border-amber-500 text-amber-600' },
+      ready_to_ship: { label: 'Siap Kirim', variant: 'outline' as const, className: 'border-blue-500 text-blue-600' },
+      in_transit: { label: 'Dikirim', variant: 'outline' as const, className: 'border-purple-500 text-purple-600' },
+      arrived_at_store: { label: 'Di Toko', variant: 'outline' as const, className: 'border-emerald-500 text-emerald-600' },
+      delivered: { label: 'Diserahkan', variant: 'default' as const, className: 'bg-green-600' }
+    };
+    
+    const config = trackingConfig[trackingStatus as keyof typeof trackingConfig];
+    if (!config) return null;
+    
+    return <Badge variant={config.variant} className={config.className}>{config.label}</Badge>;
   };
 
   const formatCurrency = (amount: number) => {
@@ -222,6 +235,8 @@ const Orders = () => {
     const matchesSearch = order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          order.order_number.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    const matchesTracking = trackingFilter === 'all' || order.tracking_status === trackingFilter;
+    const matchesBranch = branchFilter === 'all' || order.branch_id === branchFilter;
     
     // Date filter - check delivery_date
     let matchesDate = true;
@@ -236,7 +251,7 @@ const Orders = () => {
       matchesDate = matchesDate && orderDate <= endOfDay;
     }
     
-    return matchesSearch && matchesStatus && matchesDate;
+    return matchesSearch && matchesStatus && matchesTracking && matchesBranch && matchesDate;
   });
 
   const clearDateFilter = () => {
@@ -258,7 +273,7 @@ const Orders = () => {
         <div className="flex flex-col gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Manajemen Pesanan</h1>
-            <p className="text-muted-foreground">Kelola pesanan pelanggan dan jadwal pengiriman</p>
+            <p className="text-muted-foreground">Kelola pesanan pelanggan dan tracking pengiriman</p>
           </div>
           <div className="flex flex-row gap-2 w-full flex-wrap sm:flex-nowrap">
             <Button 
@@ -278,15 +293,6 @@ const Orders = () => {
             >
               <Download className="h-4 w-4" />
               <span className="hidden sm:inline ml-2">Export</span>
-            </Button>
-            <Button 
-              variant="outline"
-              size="sm"
-              onClick={handleTodayFilter}
-              className="flex-shrink-0"
-            >
-              <CalendarDays className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Hari Ini</span>
             </Button>
             <Button 
               onClick={handleCreateOrder}
@@ -333,105 +339,45 @@ const Orders = () => {
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    placeholder="Cari nama pelanggan atau nomor pesanan..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-48">
-                    <SelectValue placeholder="Filter Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Status</SelectItem>
-                    <SelectItem value="pending">Menunggu</SelectItem>
-                    <SelectItem value="confirmed">Dikonfirmasi</SelectItem>
-                    <SelectItem value="in_production">Produksi</SelectItem>
-                    <SelectItem value="ready">Siap</SelectItem>
-                    <SelectItem value="completed">Selesai</SelectItem>
-                    <SelectItem value="cancelled">Dibatalkan</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {/* Date Filter and View Toggle */}
-              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                <div className="flex flex-col gap-2">
-                  <span className="text-sm text-muted-foreground">Tanggal Kirim:</span>
-                  <div className="flex flex-nowrap items-center gap-2">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="w-[105px] justify-start text-left font-normal text-xs">
-                          <Calendar className="mr-1 h-3 w-3" />
-                          {dateFrom ? format(dateFrom, 'dd/MM/yy') : 'Dari'}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <CalendarComponent
-                          mode="single"
-                          selected={dateFrom}
-                          onSelect={setDateFrom}
-                          locale={localeId}
-                          initialFocus
-                          className="pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <span className="text-muted-foreground text-sm">-</span>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="w-[105px] justify-start text-left font-normal text-xs">
-                          <Calendar className="mr-1 h-3 w-3" />
-                          {dateTo ? format(dateTo, 'dd/MM/yy') : 'Sampai'}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <CalendarComponent
-                          mode="single"
-                          selected={dateTo}
-                          onSelect={setDateTo}
-                          locale={localeId}
-                          initialFocus
-                          className="pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    {(dateFrom || dateTo) && (
-                      <Button variant="ghost" size="sm" onClick={clearDateFilter} className="px-2 text-xs">
-                        Reset
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                
-                {/* View Toggle - only visible on desktop */}
-                <div className="hidden lg:flex items-center gap-2 border rounded-lg p-1">
-                  <Button
-                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('grid')}
-                    className="gap-2"
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                    Grid
-                  </Button>
-                  <Button
-                    variant={viewMode === 'table' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('table')}
-                    className="gap-2"
-                  >
-                    <TableIcon className="h-4 w-4" />
-                    Tabel
-                  </Button>
-                </div>
-              </div>
+            <OrderFilters
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              trackingFilter={trackingFilter}
+              onTrackingFilterChange={setTrackingFilter}
+              branchFilter={branchFilter}
+              onBranchFilterChange={setBranchFilter}
+              branches={branches}
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onDateFromChange={setDateFrom}
+              onDateToChange={setDateTo}
+              onClearDateFilter={clearDateFilter}
+              onTodayFilter={handleTodayFilter}
+              showBranchFilter={showBranchFilter}
+            />
+            
+            {/* View Toggle - only visible on desktop */}
+            <div className="hidden lg:flex items-center gap-2 border rounded-lg p-1 mt-4 w-fit">
+              <Button
+                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('grid')}
+                className="gap-2"
+              >
+                <LayoutGrid className="h-4 w-4" />
+                Grid
+              </Button>
+              <Button
+                variant={viewMode === 'table' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('table')}
+                className="gap-2"
+              >
+                <TableIcon className="h-4 w-4" />
+                Tabel
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -456,9 +402,13 @@ const Orders = () => {
 
         {/* Order Tabs */}
         <Tabs defaultValue="list" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:grid-cols-3">
-            <TabsTrigger value="list">Daftar Pesanan</TabsTrigger>
-            <TabsTrigger value="calendar">Kalender</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:grid-cols-4">
+            <TabsTrigger value="list">Daftar</TabsTrigger>
+            <TabsTrigger value="tracking" className="gap-1">
+              <Kanban className="h-4 w-4 hidden sm:inline" />
+              Tracking
+            </TabsTrigger>
+            <TabsTrigger value="calendar" className="hidden sm:flex">Kalender</TabsTrigger>
             <TabsTrigger value="stats" className="hidden sm:flex">Statistik</TabsTrigger>
           </TabsList>
 
@@ -513,6 +463,7 @@ const Orders = () => {
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
                             {getStatusBadge(order.status)}
+                            {getTrackingBadge(order.tracking_status)}
                             {order.status !== 'completed' && order.status !== 'cancelled' && (
                               <div className="flex items-center gap-1">
                                 <Button 
@@ -574,7 +525,7 @@ const Orders = () => {
                              <p className="text-muted-foreground">{order.branch_name || userBranch.branchName}</p>
                            </div>
                            <div>
-                             <p className="font-medium text-foreground">Tanggal Pengiriman</p>
+                             <p className="font-medium text-foreground">Tanggal Pengambilan</p>
                              <p className="text-muted-foreground">{formatDate(order.delivery_date)}</p>
                            </div>
                            <div>
@@ -609,6 +560,32 @@ const Orders = () => {
             )}
           </TabsContent>
 
+          {/* Tracking Kanban Tab */}
+          <TabsContent value="tracking">
+            <TrackingKanbanBoard
+              orders={filteredOrders.filter(o => o.status !== 'cancelled')}
+              onMoveOrder={async (orderId, newStatus) => {
+                try {
+                  const updatedOrder = await orderService.updateTrackingStatus(orderId, newStatus);
+                  handleOrderUpdate(updatedOrder);
+                  toast({
+                    title: "Tracking diperbarui",
+                    description: `Tracking berhasil diubah menjadi ${getTrackingStatusLabel(newStatus)}`
+                  });
+                } catch (error: any) {
+                  toast({
+                    title: "Gagal update tracking",
+                    description: error.message || "Terjadi kesalahan",
+                    variant: "destructive"
+                  });
+                }
+              }}
+              onViewDetail={handleViewOrderDetail}
+              formatCurrency={formatCurrency}
+              userRole={user?.role}
+            />
+          </TabsContent>
+
           <TabsContent value="calendar">
             <OrderCalendar />
           </TabsContent>
@@ -631,49 +608,13 @@ const Orders = () => {
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Menunggu Konfirmasi</CardTitle>
+                    <CardTitle className="text-sm font-medium">Pesanan Baru</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{statistics?.pending_orders || 0}</div>
-                    <p className="text-xs text-muted-foreground">Perlu tindakan</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Dalam Produksi</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{statistics?.in_production_orders || 0}</div>
-                    <p className="text-xs text-muted-foreground">Sedang dikerjakan</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Total Pendapatan</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{formatCurrency(statistics?.total_revenue || 0)}</div>
-                    <p className="text-xs text-muted-foreground">Pesanan selesai</p>
-                  </CardContent>
-                </Card>
-                
-                {/* Additional Stats Row */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Dikonfirmasi</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{statistics?.confirmed_orders || 0}</div>
-                    <p className="text-xs text-muted-foreground">Menunggu produksi</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Siap Diambil</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{statistics?.ready_orders || 0}</div>
-                    <p className="text-xs text-muted-foreground">Menunggu pickup</p>
+                    <div className="text-2xl font-bold">
+                      {(statistics?.pending_orders || 0) + (statistics?.confirmed_orders || 0) + (statistics?.in_production_orders || 0) + (statistics?.ready_orders || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Sedang diproses</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -683,6 +624,15 @@ const Orders = () => {
                   <CardContent>
                     <div className="text-2xl font-bold">{statistics?.completed_orders || 0}</div>
                     <p className="text-xs text-muted-foreground">Berhasil diselesaikan</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Total Pendapatan</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{formatCurrency(statistics?.total_revenue || 0)}</div>
+                    <p className="text-xs text-muted-foreground">Pesanan selesai</p>
                   </CardContent>
                 </Card>
                 <Card>
