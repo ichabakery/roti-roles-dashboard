@@ -50,8 +50,9 @@ Deno.serve(async (req) => {
       throw new Error('Unauthorized: Could not verify user role')
     }
 
-    if (currentProfile.role !== 'owner') {
-      throw new Error('Unauthorized: Only owner can create users')
+    // Allow owner and admin_pusat to create users
+    if (!['owner', 'admin_pusat'].includes(currentProfile.role)) {
+      throw new Error('Unauthorized: Only owner or admin can create users')
     }
 
     // Parse request body
@@ -107,8 +108,8 @@ Deno.serve(async (req) => {
       // Don't throw, user is already created
     }
 
-    // If kasir_cabang and has branchId, assign to branch
-    if (userData.role === 'kasir_cabang' && userData.branchId) {
+    // If kasir_cabang or kurir and has branchId, assign to branch
+    if ((userData.role === 'kasir_cabang' || userData.role === 'kurir') && userData.branchId) {
       console.log('Assigning user to branch:', userData.branchId)
       
       const { error: branchError } = await supabaseAdmin

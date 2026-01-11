@@ -4,7 +4,7 @@ import { User as SupabaseUser } from "@supabase/supabase-js";
 import { signInWithEmail, signOut, getSession, onAuthStateChange } from "@/services/authService";
 import { fetchUserProfile } from "@/services/userProfileService";
 
-export type RoleType = "owner" | "kepala_produksi" | "kasir_cabang" | "admin_pusat";
+export type RoleType = "owner" | "kepala_produksi" | "kasir_cabang" | "admin_pusat" | "kurir";
 
 export interface User {
   id: string;

@@ -76,10 +76,10 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
       return false;
     }
 
-    if (newUser.role === 'kasir_cabang' && !newUser.branchId) {
+    if ((newUser.role === 'kasir_cabang' || newUser.role === 'kurir') && !newUser.branchId) {
       toast({
         title: "Error", 
-        description: "Pilih cabang untuk kasir cabang",
+        description: `Pilih cabang untuk ${newUser.role === 'kasir_cabang' ? 'kasir cabang' : 'kurir'}`,
         variant: "destructive",
       });
       return false;
@@ -134,7 +134,8 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
 
   const handleRoleChange = (value: string) => {
     setNewUser({...newUser, role: value as RoleType});
-    if (value !== 'kasir_cabang') {
+    // kasir_cabang dan kurir butuh cabang
+    if (value !== 'kasir_cabang' && value !== 'kurir') {
       setNewUser(prev => ({...prev, branchId: ''}));
     } else if (branches.length > 0) {
       setNewUser(prev => ({...prev, branchId: branches[0].id}));
@@ -209,12 +210,13 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
               <SelectContent>
                 <SelectItem value="kepala_produksi">Kepala Produksi</SelectItem>
                 <SelectItem value="kasir_cabang">Kasir Cabang</SelectItem>
+                <SelectItem value="kurir">Kurir</SelectItem>
                 <SelectItem value="admin_pusat">Admin Pusat</SelectItem>
               </SelectContent>
             </Select>
           </div>
           
-          {newUser.role === 'kasir_cabang' && (
+          {(newUser.role === 'kasir_cabang' || newUser.role === 'kurir') && (
             <div className="space-y-2">
               <Label htmlFor="branch">Cabang</Label>
               {branchesLoading ? (
@@ -270,7 +272,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
             onClick={handleAddUser}
             disabled={
               isLoading || 
-              (newUser.role === 'kasir_cabang' && (branches.length === 0 || !newUser.branchId))
+              ((newUser.role === 'kasir_cabang' || newUser.role === 'kurir') && (branches.length === 0 || !newUser.branchId))
             }
           >
             {isLoading ? (

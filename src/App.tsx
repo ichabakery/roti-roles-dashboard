@@ -20,6 +20,7 @@ import Reports from "./pages/Reports";
 import Returns from "./pages/Returns";
 import Orders from "./pages/Orders";
 import Settings from "./pages/Settings";
+import Delivery from "./pages/Delivery";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -91,8 +92,13 @@ function App() {
                 </AuthGuard>
               } />
               <Route path="/settings" element={
-                <AuthGuard allowedRoles={['owner', 'admin_pusat', 'kepala_produksi', 'kasir_cabang']}>
+                <AuthGuard allowedRoles={['owner', 'admin_pusat', 'kepala_produksi', 'kasir_cabang', 'kurir']}>
                   <Settings />
+                </AuthGuard>
+              } />
+              <Route path="/delivery" element={
+                <AuthGuard allowedRoles={['kurir', 'owner', 'admin_pusat']}>
+                  <Delivery />
                 </AuthGuard>
               } />
               <Route path="*" element={<NotFound />} />
