@@ -43,6 +43,9 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
         return <Navigate to="/cashier" replace />;
       case 'admin_pusat':
         return <Navigate to="/products" replace />;
+      case 'kurir':
+        // Kurir hanya bisa akses halaman delivery
+        return <Navigate to="/delivery" replace />;
       default:
         return <Navigate to="/dashboard" replace />;
     }

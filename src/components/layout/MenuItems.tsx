@@ -10,7 +10,8 @@ import {
   BarChart3, 
   Settings,
   RotateCcw,
-  ClipboardList
+  ClipboardList,
+  Truck
 } from 'lucide-react';
 
 export interface MenuItem {
@@ -58,6 +59,12 @@ export const menuItems: MenuItem[] = [
     roles: ['owner', 'admin_pusat', 'kasir_cabang']
   },
   { 
+    name: 'Tracking Pengantaran', 
+    href: '/delivery', 
+    icon: Truck,
+    roles: ['kurir', 'owner', 'admin_pusat']
+  },
+  { 
     name: 'Kasir', 
     href: '/cashier', 
     icon: ShoppingCart,
@@ -85,6 +92,6 @@ export const menuItems: MenuItem[] = [
     name: 'Pengaturan', 
     href: '/settings', 
     icon: Settings,
-    roles: ['owner', 'admin_pusat', 'kepala_produksi', 'kasir_cabang']
+    roles: ['owner', 'admin_pusat', 'kepala_produksi', 'kasir_cabang', 'kurir']
   },
 ];
