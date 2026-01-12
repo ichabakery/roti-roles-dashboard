@@ -60,6 +60,7 @@ const Returns = () => {
           open={isCreateDialogOpen}
           onOpenChange={setIsCreateDialogOpen}
           userRole={user?.role}
+          canApprove={canApproveReturn}
         />
       </div>
     </DashboardLayout>

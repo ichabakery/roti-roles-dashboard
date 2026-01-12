@@ -7,6 +7,7 @@ export const createReturn = async (returnData: {
   branchId: string;
   reason: string;
   notes?: string;
+  autoApprove?: boolean;
   items: {
     productId: string;
     batchId?: string;
@@ -17,15 +18,17 @@ export const createReturn = async (returnData: {
 }) => {
   console.log('Creating return:', returnData);
 
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+
   const { data: returnRecord, error: returnError } = await supabase
     .from('returns')
     .insert({
       transaction_id: returnData.transactionId,
       branch_id: returnData.branchId,
-      processed_by: (await supabase.auth.getUser()).data.user?.id,
+      processed_by: userId,
       reason: returnData.reason,
       notes: returnData.notes,
-      status: 'pending'
+      status: returnData.autoApprove ? 'approved' : 'pending'
     })
     .select()
     .single();
@@ -48,6 +51,55 @@ export const createReturn = async (returnData: {
     .select();
 
   if (itemsError) throw itemsError;
+
+  // If auto-approve, process inventory adjustments immediately
+  if (returnData.autoApprove) {
+    for (const item of returnData.items) {
+      if (item.condition === 'resaleable') {
+        // Add back to inventory if resaleable
+        const { data: existingInventory } = await supabase
+          .from('inventory')
+          .select('id, quantity')
+          .eq('product_id', item.productId)
+          .eq('branch_id', returnData.branchId)
+          .maybeSingle();
+
+        if (existingInventory) {
+          await supabase
+            .from('inventory')
+            .update({ 
+              quantity: existingInventory.quantity + item.quantity,
+              last_updated: new Date().toISOString()
+            })
+            .eq('id', existingInventory.id);
+        } else {
+          await supabase
+            .from('inventory')
+            .insert({
+              product_id: item.productId,
+              branch_id: returnData.branchId,
+              batch_id: item.batchId,
+              quantity: item.quantity
+            });
+        }
+      }
+
+      // Log stock movement
+      await supabase
+        .from('stock_movements')
+        .insert({
+          product_id: item.productId,
+          branch_id: returnData.branchId,
+          batch_id: item.batchId,
+          movement_type: 'return',
+          quantity_change: item.condition === 'resaleable' ? item.quantity : 0,
+          reference_type: 'return',
+          reference_id: returnRecord.id,
+          reason: `Return: ${item.reason} - Condition: ${item.condition}`,
+          performed_by: userId
+        });
+    }
+  }
 
   return { return: returnRecord, items: itemsData };
 };
@@ -142,17 +194,31 @@ export const processReturn = async (
     for (const item of returnItems) {
       if (item.condition === 'resaleable') {
         // Add back to inventory if resaleable
-        await supabase
+        const { data: existingInventory } = await supabase
           .from('inventory')
-          .upsert({
-            product_id: item.product_id,
-            branch_id: returnData.data.branch_id,
-            batch_id: item.batch_id,
-            quantity: item.quantity
-          }, {
-            onConflict: 'product_id,branch_id',
-            ignoreDuplicates: false
-          });
+          .select('id, quantity')
+          .eq('product_id', item.product_id)
+          .eq('branch_id', returnData.data.branch_id)
+          .maybeSingle();
+
+        if (existingInventory) {
+          await supabase
+            .from('inventory')
+            .update({ 
+              quantity: existingInventory.quantity + item.quantity,
+              last_updated: new Date().toISOString()
+            })
+            .eq('id', existingInventory.id);
+        } else {
+          await supabase
+            .from('inventory')
+            .insert({
+              product_id: item.product_id,
+              branch_id: returnData.data.branch_id,
+              batch_id: item.batch_id,
+              quantity: item.quantity
+            });
+        }
       }
 
       // Log stock movement
