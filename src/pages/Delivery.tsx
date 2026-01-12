@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { useDeliveryOrders } from '@/hooks/useDeliveryOrders';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { DeliveryHeader } from '@/components/delivery/DeliveryHeader';
 import { DeliveryTabs } from '@/components/delivery/DeliveryTabs';
 import { DeliveryOrderCard } from '@/components/delivery/DeliveryOrderCard';
@@ -35,46 +36,48 @@ const Delivery: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30 flex flex-col">
-      <DeliveryHeader 
-        onRefresh={handleRefresh} 
-        isRefreshing={isRefreshing} 
-      />
-      
-      <DeliveryTabs 
-        activeTab={activeTab} 
-        onTabChange={setActiveTab}
-        counts={orderCounts}
-      />
+    <DashboardLayout>
+      <div className="min-h-screen bg-muted/30 flex flex-col -m-3 sm:-m-6">
+        <DeliveryHeader 
+          onRefresh={handleRefresh} 
+          isRefreshing={isRefreshing} 
+        />
+        
+        <DeliveryTabs 
+          activeTab={activeTab} 
+          onTabChange={setActiveTab}
+          counts={orderCounts}
+        />
 
-      <ScrollArea className="flex-1">
-        <div className="p-4">
-          {loading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map(i => (
-                <Skeleton key={i} className="h-40 w-full rounded-lg" />
-              ))}
-            </div>
-          ) : orders.length === 0 ? (
-            <DeliveryEmptyState tab={activeTab} />
-          ) : (
-            <div className="space-y-3">
-              {orders.map(order => (
-                <DeliveryOrderCard
-                  key={order.id}
-                  order={order}
-                  onUpdateStatus={handleUpdateStatus}
-                  isUpdating={isUpdating === order.id}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </ScrollArea>
+        <ScrollArea className="flex-1">
+          <div className="p-4">
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <Skeleton key={i} className="h-40 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : orders.length === 0 ? (
+              <DeliveryEmptyState tab={activeTab} />
+            ) : (
+              <div className="space-y-3">
+                {orders.map(order => (
+                  <DeliveryOrderCard
+                    key={order.id}
+                    order={order}
+                    onUpdateStatus={handleUpdateStatus}
+                    isUpdating={isUpdating === order.id}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </ScrollArea>
 
-      {/* Bottom padding for mobile navigation */}
-      <div className="h-20" />
-    </div>
+        {/* Bottom padding for mobile navigation */}
+        <div className="h-20" />
+      </div>
+    </DashboardLayout>
   );
 };
 
