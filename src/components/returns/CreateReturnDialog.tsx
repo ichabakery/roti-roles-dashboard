@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useEnhancedProducts } from '@/hooks/useEnhancedProducts';
@@ -8,8 +8,9 @@ import { useBranches } from '@/hooks/useBranches';
 import { useUserBranch } from '@/hooks/useUserBranch';
 import { createReturn } from '@/services/returnService';
 import { ReturnFormFields } from './ReturnFormFields';
-import { ReturnItemsManager } from './ReturnItemsManager';
+import { HybridReturnInput } from './HybridReturnInput';
 import { ReturnCondition } from '@/types/products';
+import { Badge } from '@/components/ui/badge';
 
 interface ReturnItem {
   productId: string;
@@ -22,12 +23,14 @@ interface CreateReturnDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userRole?: string;
+  canApprove?: boolean;
 }
 
 export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
   open,
   onOpenChange,
-  userRole
+  userRole,
+  canApprove = false
 }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -36,12 +39,10 @@ export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
     notes: '',
     transactionId: ''
   });
-  const [returnItems, setReturnItems] = useState<ReturnItem[]>([{
-    productId: '',
-    quantity: 1,
-    reason: '',
-    condition: 'resaleable' as const
-  }]);
+  const [returnItems, setReturnItems] = useState<ReturnItem[]>([]);
+
+  // Read auto-confirm setting
+  const autoConfirmEnabled = localStorage.getItem('returnAutoConfirm') === 'true';
 
   const { toast } = useToast();
   const { products } = useEnhancedProducts();
@@ -60,11 +61,23 @@ export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.branchId || returnItems.some(item => !item.productId)) {
+    
+    // Validate
+    if (!formData.branchId) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Mohon lengkapi semua field yang wajib"
+        description: "Mohon pilih cabang"
+      });
+      return;
+    }
+
+    const validItems = returnItems.filter(item => item.productId);
+    if (validItems.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Mohon tambahkan minimal 1 produk"
       });
       return;
     }
@@ -72,12 +85,16 @@ export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
     setLoading(true);
 
     try {
+      // Determine if we should auto-approve
+      const shouldAutoApprove = autoConfirmEnabled && canApprove;
+
       await createReturn({
         branchId: formData.branchId,
         reason: formData.reason,
         notes: formData.notes,
         transactionId: formData.transactionId || undefined,
-        items: returnItems.map(item => ({
+        autoApprove: shouldAutoApprove,
+        items: validItems.map(item => ({
           productId: item.productId,
           quantity: item.quantity,
           reason: item.reason,
@@ -87,7 +104,9 @@ export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
 
       toast({
         title: "Berhasil",
-        description: "Retur berhasil dibuat dan menunggu persetujuan"
+        description: shouldAutoApprove 
+          ? "Retur berhasil dibuat dan langsung disetujui"
+          : "Retur berhasil dibuat dan menunggu persetujuan"
       });
 
       // Reset form
@@ -97,7 +116,7 @@ export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
         notes: '', 
         transactionId: '' 
       });
-      setReturnItems([{ productId: '', quantity: 1, reason: '', condition: 'resaleable' }]);
+      setReturnItems([]);
       onOpenChange(false);
     } catch (error: any) {
       console.error('Error creating return:', error);
@@ -116,7 +135,14 @@ export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
       <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-4xl max-h-[90dvh] overflow-y-auto p-0">
         {/* Sticky Header */}
         <div className="sticky top-0 z-10 bg-background border-b px-6 pt-6 pb-3">
-          <DialogTitle>Buat Retur Baru</DialogTitle>
+          <div className="flex items-center gap-3">
+            <DialogTitle>Buat Retur Baru</DialogTitle>
+            {autoConfirmEnabled && canApprove && (
+              <Badge variant="secondary" className="text-xs">
+                Auto-Approve Aktif
+              </Badge>
+            )}
+          </div>
         </div>
         
         {/* Scrollable Form Content */}
@@ -129,7 +155,7 @@ export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
             userBranchName={userBranch.branchName}
           />
 
-          <ReturnItemsManager
+          <HybridReturnInput
             returnItems={returnItems}
             setReturnItems={setReturnItems}
             products={products}
