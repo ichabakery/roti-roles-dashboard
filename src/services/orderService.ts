@@ -45,6 +45,8 @@ export interface Order {
   items?: any;
   created_at?: string;
   created_by: string;
+  courier_id?: string | null;
+  courier_name?: string | null;
 }
 
 export interface TrackingHistoryEntry {
@@ -451,6 +453,38 @@ export const orderService = {
     } catch (error: any) {
       console.error('Error updating order:', error);
       throw new Error(error.message || 'Gagal memperbarui pesanan');
+    }
+  },
+
+  // Assign courier to order (admin/owner)
+  async assignCourier(orderId: string, courierId: string | null) {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .update({ 
+          courier_id: courierId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      // Get branch name
+      const { data: branchData } = await supabase
+        .from('branches')
+        .select('name')
+        .eq('id', data.branch_id)
+        .single();
+
+      return {
+        ...data,
+        branch_name: branchData?.name
+      } as Order;
+    } catch (error: any) {
+      console.error('Error assigning courier:', error);
+      throw new Error(error.message || 'Gagal menugaskan kurir');
     }
   }
 };

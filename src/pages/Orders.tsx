@@ -581,6 +581,24 @@ const Orders = () => {
                 }
               }}
               onViewDetail={handleViewOrderDetail}
+              onAssignCourier={async (orderId, courierId) => {
+                try {
+                  const updatedOrder = await orderService.assignCourier(orderId, courierId);
+                  handleOrderUpdate(updatedOrder);
+                  toast({
+                    title: courierId ? "Kurir ditugaskan" : "Kurir dihapus",
+                    description: courierId 
+                      ? "Kurir berhasil ditugaskan untuk pesanan ini" 
+                      : "Penugasan kurir dihapus dari pesanan ini"
+                  });
+                } catch (error: any) {
+                  toast({
+                    title: "Gagal menugaskan kurir",
+                    description: error.message || "Terjadi kesalahan",
+                    variant: "destructive"
+                  });
+                }
+              }}
               formatCurrency={formatCurrency}
               userRole={user?.role}
             />

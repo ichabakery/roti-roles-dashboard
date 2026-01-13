@@ -283,6 +283,8 @@ export type Database = {
         Row: {
           branch_id: string
           branch_name: string | null
+          courier_id: string | null
+          courier_name: string | null
           created_at: string
           created_by: string
           customer_name: string
@@ -311,6 +313,8 @@ export type Database = {
         Insert: {
           branch_id: string
           branch_name?: string | null
+          courier_id?: string | null
+          courier_name?: string | null
           created_at?: string
           created_by: string
           customer_name: string
@@ -339,6 +343,8 @@ export type Database = {
         Update: {
           branch_id?: string
           branch_name?: string | null
+          courier_id?: string | null
+          courier_name?: string | null
           created_at?: string
           created_by?: string
           customer_name?: string
