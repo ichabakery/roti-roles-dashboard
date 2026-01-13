@@ -12,7 +12,9 @@ import {
   Truck,
   Store,
   CheckCircle2,
-  Factory
+  Factory,
+  Hand,
+  User
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -21,7 +23,9 @@ import { DeliveryOrder } from '@/hooks/useDeliveryOrders';
 interface DeliveryOrderCardProps {
   order: DeliveryOrder;
   onUpdateStatus: (orderId: string, newStatus: string) => void;
+  onAssignToSelf?: (orderId: string) => void;
   isUpdating?: boolean;
+  isKurir?: boolean;
 }
 
 const TRACKING_STATUS_CONFIG: Record<string, {
@@ -77,7 +81,9 @@ const formatCurrency = (amount: number) => {
 export const DeliveryOrderCard: React.FC<DeliveryOrderCardProps> = ({
   order,
   onUpdateStatus,
-  isUpdating = false
+  onAssignToSelf,
+  isUpdating = false,
+  isKurir = false
 }) => {
   const config = TRACKING_STATUS_CONFIG[order.tracking_status] || TRACKING_STATUS_CONFIG.in_production;
   const StatusIcon = config.icon;
@@ -87,6 +93,20 @@ export const DeliveryOrderCard: React.FC<DeliveryOrderCardProps> = ({
       onUpdateStatus(order.id, config.nextStatus);
     }
   };
+
+  const handleAssignToSelf = () => {
+    if (onAssignToSelf) {
+      onAssignToSelf(order.id);
+    }
+  };
+
+  // Untuk kurir di tab pending, tampilkan tombol "Ambil Pesanan"
+  const showAssignButton = isKurir && !order.courier_id && order.tracking_status === 'ready_to_ship';
+  
+  // Untuk kurir, hanya tampilkan tombol next status jika sudah jadi miliknya
+  const canShowNextStatus = isKurir 
+    ? order.courier_id && config.nextStatus 
+    : config.nextStatus;
 
   return (
     <Card className="mb-3 overflow-hidden hover:shadow-md transition-shadow">
@@ -141,6 +161,15 @@ export const DeliveryOrderCard: React.FC<DeliveryOrderCardProps> = ({
               📍 {order.delivery_address}
             </div>
           )}
+
+          {/* Courier Info */}
+          {order.courier_name && (
+            <div className="flex items-center gap-2 text-sm">
+              <User className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-muted-foreground">Kurir:</span>
+              <span className="font-medium text-primary">{order.courier_name}</span>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -152,7 +181,21 @@ export const DeliveryOrderCard: React.FC<DeliveryOrderCardProps> = ({
             </span>
           </div>
 
-          {config.nextStatus && (
+          {/* Tombol Ambil Pesanan untuk kurir */}
+          {showAssignButton && (
+            <Button 
+              size="sm" 
+              onClick={handleAssignToSelf}
+              disabled={isUpdating}
+              className="min-w-[140px] bg-green-600 hover:bg-green-700"
+            >
+              <Hand className="w-4 h-4 mr-1" />
+              Ambil Pesanan
+            </Button>
+          )}
+
+          {/* Tombol update status */}
+          {canShowNextStatus && !showAssignButton && (
             <Button 
               size="sm" 
               onClick={handleNextStatus}

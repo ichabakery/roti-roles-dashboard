@@ -16,8 +16,10 @@ const Delivery: React.FC = () => {
     activeTab,
     setActiveTab,
     updateTrackingStatus,
+    assignToSelf,
     refreshOrders,
-    orderCounts
+    orderCounts,
+    isKurir
   } = useDeliveryOrders();
 
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
@@ -32,6 +34,12 @@ const Delivery: React.FC = () => {
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     setIsUpdating(orderId);
     await updateTrackingStatus(orderId, newStatus);
+    setIsUpdating(null);
+  };
+
+  const handleAssignToSelf = async (orderId: string) => {
+    setIsUpdating(orderId);
+    await assignToSelf(orderId);
     setIsUpdating(null);
   };
 
@@ -66,7 +74,9 @@ const Delivery: React.FC = () => {
                     key={order.id}
                     order={order}
                     onUpdateStatus={handleUpdateStatus}
+                    onAssignToSelf={handleAssignToSelf}
                     isUpdating={isUpdating === order.id}
+                    isKurir={isKurir}
                   />
                 ))}
               </div>

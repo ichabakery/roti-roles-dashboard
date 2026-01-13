@@ -18,21 +18,18 @@ export interface DeliveryOrder {
   total_amount: number;
   notes: string | null;
   created_at: string;
+  courier_id: string | null;
+  courier_name: string | null;
 }
 
 export type DeliveryTab = 'pending' | 'in_transit' | 'history';
-
-const TRACKING_STATUS_MAP: Record<DeliveryTab, string[]> = {
-  pending: ['in_production', 'ready_to_ship'],
-  in_transit: ['in_transit', 'arrived_at_store'],
-  history: ['delivered']
-};
 
 export const useDeliveryOrders = () => {
   const { user } = useAuth();
   const [orders, setOrders] = useState<DeliveryOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<DeliveryTab>('pending');
+  const [allOrderCounts, setAllOrderCounts] = useState({ pending: 0, in_transit: 0, history: 0 });
 
   const fetchOrders = useCallback(async () => {
     if (!user) return;
@@ -40,9 +37,9 @@ export const useDeliveryOrders = () => {
     try {
       setLoading(true);
       
-      const trackingStatuses = TRACKING_STATUS_MAP[activeTab];
+      const isKurir = user.role === 'kurir';
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('orders')
         .select(`
           id,
@@ -57,10 +54,42 @@ export const useDeliveryOrders = () => {
           total_amount,
           notes,
           created_at,
+          courier_id,
+          courier_name,
           branches:branch_id (name)
         `)
-        .in('tracking_status', trackingStatuses)
         .order('delivery_date', { ascending: true });
+
+      // Filter berdasarkan tab dan role
+      if (isKurir) {
+        if (activeTab === 'pending') {
+          // Pesanan ready_to_ship yang BELUM ada kurir (tersedia untuk diambil)
+          query = query
+            .eq('tracking_status', 'ready_to_ship')
+            .is('courier_id', null);
+        } else if (activeTab === 'in_transit') {
+          // Pesanan milik kurir ini yang sedang dalam perjalanan
+          query = query
+            .in('tracking_status', ['in_transit', 'arrived_at_store'])
+            .eq('courier_id', user.id);
+        } else {
+          // Riwayat pengantaran kurir ini
+          query = query
+            .eq('tracking_status', 'delivered')
+            .eq('courier_id', user.id);
+        }
+      } else {
+        // Untuk non-kurir (owner, admin, kasir) - lihat semua berdasarkan tracking status
+        if (activeTab === 'pending') {
+          query = query.in('tracking_status', ['in_production', 'ready_to_ship']);
+        } else if (activeTab === 'in_transit') {
+          query = query.in('tracking_status', ['in_transit', 'arrived_at_store']);
+        } else {
+          query = query.eq('tracking_status', 'delivered');
+        }
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -77,10 +106,17 @@ export const useDeliveryOrders = () => {
         payment_status: order.payment_status,
         total_amount: order.total_amount,
         notes: order.notes,
-        created_at: order.created_at
+        created_at: order.created_at,
+        courier_id: order.courier_id,
+        courier_name: order.courier_name
       }));
 
       setOrders(formattedOrders);
+      
+      // Update counts untuk kurir
+      if (isKurir) {
+        await fetchOrderCounts();
+      }
     } catch (error: any) {
       console.error('Error fetching delivery orders:', error);
       toast.error('Gagal mengambil data pesanan');
@@ -88,6 +124,95 @@ export const useDeliveryOrders = () => {
       setLoading(false);
     }
   }, [user, activeTab]);
+
+  // Fetch order counts untuk badge di tabs
+  const fetchOrderCounts = useCallback(async () => {
+    if (!user) return;
+
+    const isKurir = user.role === 'kurir';
+
+    try {
+      if (isKurir) {
+        // Count pesanan tersedia untuk diambil
+        const { count: pendingCount } = await supabase
+          .from('orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('tracking_status', 'ready_to_ship')
+          .is('courier_id', null);
+
+        // Count pesanan sedang diantar oleh kurir ini
+        const { count: inTransitCount } = await supabase
+          .from('orders')
+          .select('*', { count: 'exact', head: true })
+          .in('tracking_status', ['in_transit', 'arrived_at_store'])
+          .eq('courier_id', user.id);
+
+        // Count riwayat pengantaran kurir ini
+        const { count: historyCount } = await supabase
+          .from('orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('tracking_status', 'delivered')
+          .eq('courier_id', user.id);
+
+        setAllOrderCounts({
+          pending: pendingCount || 0,
+          in_transit: inTransitCount || 0,
+          history: historyCount || 0
+        });
+      } else {
+        // Untuk non-kurir, count berdasarkan tracking status saja
+        const { count: pendingCount } = await supabase
+          .from('orders')
+          .select('*', { count: 'exact', head: true })
+          .in('tracking_status', ['in_production', 'ready_to_ship']);
+
+        const { count: inTransitCount } = await supabase
+          .from('orders')
+          .select('*', { count: 'exact', head: true })
+          .in('tracking_status', ['in_transit', 'arrived_at_store']);
+
+        const { count: historyCount } = await supabase
+          .from('orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('tracking_status', 'delivered');
+
+        setAllOrderCounts({
+          pending: pendingCount || 0,
+          in_transit: inTransitCount || 0,
+          history: historyCount || 0
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching order counts:', error);
+    }
+  }, [user]);
+
+  // Kurir self-assign pesanan
+  const assignToSelf = async (orderId: string) => {
+    if (!user) return false;
+
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ 
+          courier_id: user.id,
+          tracking_status: 'in_transit', // Auto update ke in_transit saat diambil
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
+        .is('courier_id', null); // Hanya jika belum ada kurir
+
+      if (error) throw error;
+
+      toast.success('Pesanan berhasil diambil!');
+      await fetchOrders();
+      return true;
+    } catch (error: any) {
+      console.error('Error assigning order:', error);
+      toast.error('Gagal mengambil pesanan');
+      return false;
+    }
+  };
 
   const updateTrackingStatus = async (orderId: string, newStatus: string) => {
     try {
@@ -136,6 +261,7 @@ export const useDeliveryOrders = () => {
         () => {
           console.log('Order changed, refreshing...');
           fetchOrders();
+          fetchOrderCounts();
         }
       )
       .subscribe();
@@ -143,17 +269,12 @@ export const useDeliveryOrders = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, fetchOrders]);
+  }, [user, fetchOrders, fetchOrderCounts]);
 
   useEffect(() => {
     fetchOrders();
-  }, [fetchOrders]);
-
-  const orderCounts = {
-    pending: orders.filter(o => ['in_production', 'ready_to_ship'].includes(o.tracking_status)).length,
-    in_transit: orders.filter(o => ['in_transit', 'arrived_at_store'].includes(o.tracking_status)).length,
-    history: orders.filter(o => o.tracking_status === 'delivered').length
-  };
+    fetchOrderCounts();
+  }, [fetchOrders, fetchOrderCounts]);
 
   return {
     orders,
@@ -161,7 +282,9 @@ export const useDeliveryOrders = () => {
     activeTab,
     setActiveTab,
     updateTrackingStatus,
+    assignToSelf,
     refreshOrders: fetchOrders,
-    orderCounts
+    orderCounts: allOrderCounts,
+    isKurir: user?.role === 'kurir'
   };
 };

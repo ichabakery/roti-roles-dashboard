@@ -3,16 +3,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ChevronRight, User, Calendar, CreditCard, Eye } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
+import { ChevronRight, User, Calendar, CreditCard, Truck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Order, TrackingStatus, getTrackingStatusLabel, TRACKING_STATUS_ORDER } from '@/services/orderService';
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
+import { useCouriers } from '@/hooks/useCouriers';
 
 interface TrackingKanbanBoardProps {
   orders: Order[];
   onMoveOrder: (orderId: string, newStatus: TrackingStatus) => void;
   onViewDetail: (orderId: string) => void;
+  onAssignCourier?: (orderId: string, courierId: string | null) => void;
   formatCurrency: (amount: number) => string;
   userRole?: string;
 }
@@ -43,9 +52,12 @@ export const TrackingKanbanBoard: React.FC<TrackingKanbanBoardProps> = ({
   orders,
   onMoveOrder,
   onViewDetail,
+  onAssignCourier,
   formatCurrency,
   userRole
 }) => {
+  const { couriers } = useCouriers();
+  
   // Filter out cancelled orders
   const activeOrders = orders.filter(o => o.status !== 'cancelled');
 
@@ -63,7 +75,7 @@ export const TrackingKanbanBoard: React.FC<TrackingKanbanBoardProps> = ({
       return currentStatus === 'arrived_at_store';
     }
     
-    // Others (owner, admin, pengantaran) can move 1-4
+    // Others (owner, admin, kurir) can move 1-4
     return currentIndex < TRACKING_STATUS_ORDER.length - 1;
   };
 
@@ -74,6 +86,8 @@ export const TrackingKanbanBoard: React.FC<TrackingKanbanBoardProps> = ({
     }
     return null;
   };
+
+  const canAssignCourier = userRole === 'owner' || userRole === 'admin_pusat';
 
   const renderOrderCard = (order: Order) => {
     const nextStatus = order.tracking_status ? getNextStatus(order.tracking_status as TrackingStatus) : null;
@@ -113,6 +127,46 @@ export const TrackingKanbanBoard: React.FC<TrackingKanbanBoardProps> = ({
             <div className="flex items-center gap-1 text-muted-foreground">
               <CreditCard className="h-3 w-3" />
               <span>{formatCurrency(order.total_amount)}</span>
+            </div>
+            
+            {/* Courier Info / Selector */}
+            <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+              {canAssignCourier && onAssignCourier ? (
+                <Select
+                  value={order.courier_id || 'unassigned'}
+                  onValueChange={(value) => {
+                    onAssignCourier(order.id!, value === 'unassigned' ? null : value);
+                  }}
+                >
+                  <SelectTrigger className="h-7 text-xs">
+                    <div className="flex items-center gap-1">
+                      <Truck className="h-3 w-3" />
+                      <SelectValue placeholder="Pilih Kurir..." />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">
+                      <span className="text-muted-foreground">Belum Ditugaskan</span>
+                    </SelectItem>
+                    {couriers.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : order.courier_name ? (
+                <div className="flex items-center gap-1 text-xs">
+                  <Truck className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-muted-foreground">Kurir:</span>
+                  <span className="font-medium text-primary truncate">{order.courier_name}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Truck className="h-3 w-3" />
+                  <span className="italic">Belum ada kurir</span>
+                </div>
+              )}
             </div>
           </div>
 
