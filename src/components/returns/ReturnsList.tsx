@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -7,12 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Eye, Search, Filter, MapPin, Check, X, Loader2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Eye, Search, Filter, MapPin, Check, X, Loader2, Calendar as CalendarIcon } from 'lucide-react';
 import { fetchReturns, processReturn } from '@/services/returnService';
 import { Return } from '@/types/products';
 import { ReturnDetailDialog } from './ReturnDetailDialog';
 import { useUserBranch } from '@/hooks/useUserBranch';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
+import { id as localeId } from 'date-fns/locale';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -35,6 +37,8 @@ export const ReturnsList: React.FC<ReturnsListProps> = ({ canApprove, userRole }
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
   const [selectedReturn, setSelectedReturn] = useState<Return | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const { userBranch } = useUserBranch();
@@ -97,8 +101,25 @@ export const ReturnsList: React.FC<ReturnsListProps> = ({ canApprove, userRole }
                          returnItem.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          ((returnItem as any).branches?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || returnItem.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    
+    // Date filter
+    const returnDate = new Date(returnItem.return_date);
+    const matchesDateFrom = !dateFrom || returnDate >= startOfDay(dateFrom);
+    const matchesDateTo = !dateTo || returnDate <= endOfDay(dateTo);
+    
+    return matchesSearch && matchesStatus && matchesDateFrom && matchesDateTo;
   });
+
+  const handleTodayFilter = () => {
+    const today = new Date();
+    setDateFrom(today);
+    setDateTo(today);
+  };
+
+  const clearDateFilter = () => {
+    setDateFrom(undefined);
+    setDateTo(undefined);
+  };
 
   const handleViewDetails = (returnItem: Return) => {
     setSelectedReturn(returnItem);
@@ -150,20 +171,24 @@ export const ReturnsList: React.FC<ReturnsListProps> = ({ canApprove, userRole }
 
   return (
     <div className="space-y-4">
-      {/* Filters and Auto-Confirm Toggle */}
-      <div className="flex flex-wrap gap-4 items-center justify-between">
-        <div className="flex gap-4 items-center flex-1">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Cari berdasarkan ID, alasan retur, atau cabang..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+      {/* Filters */}
+      <div className="flex flex-col gap-3">
+        {/* Row 1: Search */}
+        <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Cari berdasarkan ID, alasan retur, atau cabang..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        {/* Row 2: Status + Date Filter - Responsive */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Status Filter */}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-full sm:w-40">
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue />
             </SelectTrigger>
@@ -174,26 +199,75 @@ export const ReturnsList: React.FC<ReturnsListProps> = ({ canApprove, userRole }
               <SelectItem value="rejected">Ditolak</SelectItem>
             </SelectContent>
           </Select>
-        </div>
 
-        {/* Auto-Confirm Toggle - Only for admin/owner */}
-        {canApprove && (
-          <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
-            <Switch
-              id="auto-confirm"
-              checked={autoConfirm}
-              onCheckedChange={setAutoConfirm}
-            />
-            <Label htmlFor="auto-confirm" className="text-sm cursor-pointer">
-              Auto-Confirm Retur
-            </Label>
-            {autoConfirm && (
-              <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                ON
-              </Badge>
+          {/* Date Filter - Responsive */}
+          <div className="flex flex-wrap items-center gap-2 flex-1">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="w-[100px] sm:w-[110px] justify-start text-left font-normal text-xs">
+                  <CalendarIcon className="mr-1 h-3 w-3" />
+                  {dateFrom ? format(dateFrom, 'dd/MM/yy') : 'Dari'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateFrom}
+                  onSelect={setDateFrom}
+                  locale={localeId}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            <span className="text-muted-foreground text-sm">-</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="w-[100px] sm:w-[110px] justify-start text-left font-normal text-xs">
+                  <CalendarIcon className="mr-1 h-3 w-3" />
+                  {dateTo ? format(dateTo, 'dd/MM/yy') : 'Sampai'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateTo}
+                  onSelect={setDateTo}
+                  locale={localeId}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            <Button variant="outline" size="sm" onClick={handleTodayFilter} className="px-2 text-xs">
+              Hari Ini
+            </Button>
+            {(dateFrom || dateTo) && (
+              <Button variant="ghost" size="sm" onClick={clearDateFilter} className="px-2 text-xs">
+                Reset
+              </Button>
             )}
           </div>
-        )}
+
+          {/* Auto-Confirm Toggle - Only for admin/owner */}
+          {canApprove && (
+            <div className="flex items-center gap-2 p-2 bg-muted rounded-lg shrink-0">
+              <Switch
+                id="auto-confirm"
+                checked={autoConfirm}
+                onCheckedChange={setAutoConfirm}
+              />
+              <Label htmlFor="auto-confirm" className="text-sm cursor-pointer whitespace-nowrap">
+                Auto-Confirm
+              </Label>
+              {autoConfirm && (
+                <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                  ON
+                </Badge>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -214,7 +288,7 @@ export const ReturnsList: React.FC<ReturnsListProps> = ({ canApprove, userRole }
             {filteredReturns.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  {searchQuery || statusFilter !== 'all' 
+                  {searchQuery || statusFilter !== 'all' || dateFrom || dateTo
                     ? 'Tidak ada retur yang sesuai dengan filter'
                     : 'Belum ada retur yang dibuat'
                   }
