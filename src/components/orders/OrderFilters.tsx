@@ -49,21 +49,22 @@ export const OrderFilters: React.FC<OrderFiltersProps> = ({
 }) => {
   return (
     <div className="flex flex-col gap-4">
-      {/* Search and Status Filter */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Cari nama pelanggan atau nomor pesanan..."
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        
-        {/* Status Filter - Simplified 3 states */}
+      {/* Search */}
+      <div className="relative w-full">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+        <Input
+          placeholder="Cari nama pelanggan atau nomor pesanan..."
+          value={searchTerm}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
+      {/* 3 Filters in Grid - Status, Tracking, Branch */}
+      <div className="grid grid-cols-3 gap-2">
+        {/* Status Filter */}
         <Select value={statusFilter} onValueChange={onStatusFilterChange}>
-          <SelectTrigger className="w-full sm:w-36">
+          <SelectTrigger className="w-full text-xs sm:text-sm">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -74,9 +75,9 @@ export const OrderFilters: React.FC<OrderFiltersProps> = ({
           </SelectContent>
         </Select>
 
-        {/* Tracking Filter - 5 stages */}
+        {/* Tracking Filter */}
         <Select value={trackingFilter} onValueChange={onTrackingFilterChange}>
-          <SelectTrigger className="w-full sm:w-44">
+          <SelectTrigger className="w-full text-xs sm:text-sm">
             <SelectValue placeholder="Tracking" />
           </SelectTrigger>
           <SelectContent>
@@ -90,9 +91,9 @@ export const OrderFilters: React.FC<OrderFiltersProps> = ({
         </Select>
 
         {/* Branch Filter */}
-        {showBranchFilter && (
+        {showBranchFilter ? (
           <Select value={branchFilter} onValueChange={onBranchFilterChange}>
-            <SelectTrigger className="w-full sm:w-40">
+            <SelectTrigger className="w-full text-xs sm:text-sm">
               <SelectValue placeholder="Cabang" />
             </SelectTrigger>
             <SelectContent>
@@ -104,17 +105,20 @@ export const OrderFilters: React.FC<OrderFiltersProps> = ({
               ))}
             </SelectContent>
           </Select>
+        ) : (
+          <div /> // Placeholder to maintain grid
         )}
       </div>
       
-      {/* Date Filter */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-        <div className="flex flex-col gap-2">
-          <span className="text-sm text-muted-foreground">Tanggal Pengambilan:</span>
-          <div className="flex flex-nowrap items-center gap-2">
+      {/* Date Filter - Responsive */}
+      <div className="flex flex-col gap-2">
+        <span className="text-sm text-muted-foreground">Tanggal Pengambilan:</span>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Date pickers */}
+          <div className="flex items-center gap-2">
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="w-[105px] justify-start text-left font-normal text-xs">
+                <Button variant="outline" size="sm" className="w-[100px] sm:w-[110px] justify-start text-left font-normal text-xs">
                   <Calendar className="mr-1 h-3 w-3" />
                   {dateFrom ? format(dateFrom, 'dd/MM/yy') : 'Dari'}
                 </Button>
@@ -133,7 +137,7 @@ export const OrderFilters: React.FC<OrderFiltersProps> = ({
             <span className="text-muted-foreground text-sm">-</span>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="w-[105px] justify-start text-left font-normal text-xs">
+                <Button variant="outline" size="sm" className="w-[100px] sm:w-[110px] justify-start text-left font-normal text-xs">
                   <Calendar className="mr-1 h-3 w-3" />
                   {dateTo ? format(dateTo, 'dd/MM/yy') : 'Sampai'}
                 </Button>
@@ -149,6 +153,9 @@ export const OrderFilters: React.FC<OrderFiltersProps> = ({
                 />
               </PopoverContent>
             </Popover>
+          </div>
+          {/* Action buttons */}
+          <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={onTodayFilter} className="px-2 text-xs">
               Hari Ini
             </Button>
