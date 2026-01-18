@@ -13,6 +13,8 @@ interface ReceiptProduct {
 interface UnifiedReceiptData {
   type: 'transaction' | 'order';
   branchName: string;
+  branchAddress?: string;
+  branchPhone?: string;
   cashierName: string;
   transactionDate: string;
   products: ReceiptProduct[];
@@ -98,8 +100,8 @@ export const UnifiedThermalReceipt: React.FC<UnifiedThermalReceiptProps> = ({
 
       // Header
       addText('ICHA BAKERY', 10, 'center', true);
-      addText('Jl. Raya Bakery No. 123, Jakarta', 8, 'center');
-      addText('Telp: 021-12345678', 7, 'center');
+      addText(receiptData.branchAddress || 'Alamat cabang', 8, 'center');
+      addText(`Telp: ${receiptData.branchPhone || '-'}`, 7, 'center');
       addText(receiptData.branchName, 8, 'center');
       addText(new Date().toLocaleString('id-ID'), 7, 'center');
       y += 2;

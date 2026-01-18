@@ -74,8 +74,8 @@ export const OrderReceiptPrinter: React.FC<OrderReceiptPrinterProps> = ({ order 
 
       // Header
       addText('ICHA BAKERY', 10, 'center', true);
-      addText('Jl. Raya Bakery No. 123, Jakarta', 8, 'center');
-      addText('Telp: 021-12345678', 7, 'center');
+      addText(order.branch_address || 'Alamat cabang', 8, 'center');
+      addText(`Telp: ${order.branch_phone || '-'}`, 7, 'center');
       addText(order.branch_name || '', 8, 'center');
       addText(new Date().toLocaleString('id-ID'), 7, 'center');
       currentY += 2;

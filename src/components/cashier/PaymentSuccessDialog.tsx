@@ -29,6 +29,8 @@ interface Transaction {
   }[];
   cashier_name?: string;
   branch_name?: string;
+  branch_address?: string;
+  branch_phone?: string;
   received?: number;
   change?: number;
 }
@@ -55,6 +57,8 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
   transaction
 }) => {
   const branchName = transaction?.branch_name || "Cabang";
+  const branchAddress = transaction?.branch_address || '';
+  const branchPhone = transaction?.branch_phone || '';
   const cashierName = transaction?.cashier_name || "Kasir";
   const transactionDate = transaction?.transaction_date || new Date().toISOString();
   const products = transaction?.products || [];
@@ -117,9 +121,9 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
     try {
       const branding = {
         logoUrl: "",
-        storeName: "Icha Bakery", // Updated store name
-        address: "Jl. Raya Bakery No. 123, Jakarta",
-        phone: "021-12345678"
+        storeName: "Icha Bakery",
+        address: branchAddress || 'Alamat cabang',
+        phone: branchPhone || '-'
       };
       
       if (!transaction) {
@@ -208,9 +212,9 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
             change={change}
             transactionId={transactionId}
             logoUrl=""
-            storeName="Icha Bakery" // Updated store name
-            address="Jl. Raya Bakery No. 123, Jakarta"
-            phone="021-12345678"
+            storeName="Icha Bakery"
+            address={branchAddress || 'Alamat cabang'}
+            phone={branchPhone || '-'}
           />
         </div>
         
@@ -218,6 +222,8 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
           <ImprovedReceiptPrinter
             receiptData={{
               branchName,
+              branchAddress,
+              branchPhone,
               cashierName,
               transactionDate,
               products: validatedProducts,
