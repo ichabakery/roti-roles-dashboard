@@ -100,9 +100,18 @@ const Orders = () => {
     setShowOrderDetail(true);
   };
 
-  const handleShowReceipt = (order: Order) => {
-    setSelectedOrderForReceipt(order);
-    setShowReceiptDialog(true);
+  const handleShowReceipt = async (order: Order) => {
+    try {
+      // Fetch full order with branch info (address, phone)
+      const fullOrder = await orderService.getOrderById(order.id!);
+      setSelectedOrderForReceipt(fullOrder);
+      setShowReceiptDialog(true);
+    } catch (error) {
+      console.error('Error fetching order details:', error);
+      // Fallback to original order
+      setSelectedOrderForReceipt(order);
+      setShowReceiptDialog(true);
+    }
   };
 
   const handleEditOrder = (order: Order) => {

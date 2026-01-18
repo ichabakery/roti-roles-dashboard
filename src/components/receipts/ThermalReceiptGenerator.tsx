@@ -12,6 +12,8 @@ interface ReceiptProduct {
 
 interface ThermalReceiptData {
   branchName: string;
+  branchAddress?: string;
+  branchPhone?: string;
   cashierName: string;
   transactionDate: string;
   products: ReceiptProduct[];
@@ -246,9 +248,8 @@ export const ThermalReceiptGenerator: React.FC<ThermalReceiptGeneratorProps> = (
           <!-- Store Header -->
           <div class="store-header">
             <div class="store-name">ICHA BAKERY</div>
-            <div class="store-info">Jl. Raya Bakery No. 123</div>
-            <div class="store-info">Jakarta</div>
-            <div class="store-info">Telp: 021-12345678</div>
+            <div class="store-info">${receiptData.branchAddress || 'Alamat cabang'}</div>
+            <div class="store-info">Telp: ${receiptData.branchPhone || '-'}</div>
             <div class="branch-name">${receiptData.branchName}</div>
           </div>
           
@@ -349,9 +350,8 @@ export const ThermalReceiptGenerator: React.FC<ThermalReceiptGeneratorProps> = (
       {/* Store Header */}
       <div className="text-center mb-2 pb-1" style={{ borderBottom: '1px dashed #000' }}>
         <div className="font-bold text-sm mb-1">ICHA BAKERY</div>
-        <div className="text-[7px] leading-tight">Jl. Raya Bakery No. 123</div>
-        <div className="text-[7px] leading-tight">Jakarta</div>
-        <div className="text-[7px] leading-tight">Telp: 021-12345678</div>
+        <div className="text-[7px] leading-tight">{receiptData.branchAddress || 'Alamat cabang'}</div>
+        <div className="text-[7px] leading-tight">Telp: {receiptData.branchPhone || '-'}</div>
         <div className="font-bold text-[9px] mt-1">{receiptData.branchName}</div>
       </div>
       

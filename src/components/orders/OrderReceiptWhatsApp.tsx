@@ -34,6 +34,8 @@ export const OrderReceiptWhatsApp: React.FC<OrderReceiptWhatsAppProps> = ({ orde
 
   const generateWhatsAppMessage = () => {
     const header = `*🍞 ICHA BAKERY - ${order.branch_name?.toUpperCase()}*`;
+    const branchInfo = order.branch_address ? `📍 ${order.branch_address}` : '';
+    const branchPhone = order.branch_phone ? `📞 ${order.branch_phone}` : '';
     const orderInfo = `📋 *BUKTI PEMESANAN*`;
     const orderNumber = `🧾 No. Pesanan: *${order.order_number}*`;
     const status = `📊 Status: *${getStatusLabel(order.status)}*`;
@@ -61,6 +63,8 @@ export const OrderReceiptWhatsApp: React.FC<OrderReceiptWhatsAppProps> = ({ orde
 
     return [
       header,
+      branchInfo,
+      branchPhone,
       orderInfo,
       orderNumber,
       status,

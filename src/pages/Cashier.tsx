@@ -8,6 +8,7 @@ import { useCart } from '@/hooks/useCart';
 import { useCashierAuth } from '@/hooks/useCashierAuth';
 import { useCashierPayment } from '@/hooks/useCashierPayment';
 import { useCashierState } from '@/hooks/useCashierState';
+import { useBranchInfo } from '@/hooks/useBranchInfo';
 import { ProductGrid } from '@/components/cashier/ProductGrid';
 import { ProductTable } from '@/components/cashier/ProductTable';
 import { CartPanel } from '@/components/cashier/CartPanel';
@@ -33,6 +34,7 @@ const Cashier = () => {
   } = useCashierAuth();
   
   const { viewMode, setViewMode, searchQuery, setSearchQuery, paymentMethod, setPaymentMethod } = useCashierState();
+  const { branchInfo } = useBranchInfo(selectedBranch);
   const { products, loading: productsLoading } = useProducts({
     branchId: selectedBranch,
     filterByStock: true,
@@ -46,6 +48,13 @@ const Cashier = () => {
     setShowSuccessDialog,
     processPayment
   } = useCashierPayment();
+
+  // Enrich transaction with branch info
+  const enrichedTransaction = lastTransaction ? {
+    ...lastTransaction,
+    branch_address: branchInfo?.address,
+    branch_phone: branchInfo?.phone
+  } : null;
 
   // Filter produk berdasarkan pencarian
   const filteredProducts = products.filter(product => 
@@ -171,7 +180,7 @@ const Cashier = () => {
       <PaymentSuccessDialog
         open={showSuccessDialog}
         onOpenChange={setShowSuccessDialog}
-        transaction={lastTransaction}
+        transaction={enrichedTransaction}
       />
     </DashboardLayout>
   );

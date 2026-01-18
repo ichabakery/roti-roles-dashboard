@@ -27,6 +27,8 @@ export interface Order {
   order_number: string;
   branch_id: string;
   branch_name?: string;
+  branch_address?: string;
+  branch_phone?: string;
   customer_name: string;
   customer_phone?: string;
   order_date: string;
@@ -252,10 +254,10 @@ export const orderService = {
 
     if (error) throw error;
     
-    // Get branch name separately
+    // Get branch info separately (name, address, phone)
     const { data: branchData } = await supabase
       .from('branches')
-      .select('name')
+      .select('name, address, phone')
       .eq('id', data.branch_id)
       .single();
     
@@ -265,7 +267,9 @@ export const orderService = {
     return {
       ...data,
       items: parsedItems,
-      branch_name: branchData?.name
+      branch_name: branchData?.name,
+      branch_address: branchData?.address || '',
+      branch_phone: branchData?.phone || ''
     } as Order;
   },
 

@@ -15,6 +15,8 @@ interface ReceiptProduct {
 
 interface ImprovedReceiptData {
   branchName: string;
+  branchAddress?: string;
+  branchPhone?: string;
   cashierName: string;
   transactionDate: string;
   products: ReceiptProduct[];
@@ -103,9 +105,8 @@ export const ImprovedReceiptPrinter: React.FC<ImprovedReceiptPrinterProps> = ({
 
       // Header - Store Info
       addText('ICHA BAKERY', 10, 'center', true);
-      addText('Jl. Raya Bakery No. 123', 7, 'center');
-      addText('Jakarta', 7, 'center');  
-      addText('Telp: 021-12345678', 7, 'center');
+      addText(receiptData.branchAddress || 'Alamat cabang', 7, 'center');
+      addText(`Telp: ${receiptData.branchPhone || '-'}`, 7, 'center');
       addText(receiptData.branchName, 8, 'center');
       y += 1;
       addLine();
@@ -355,9 +356,8 @@ export const ImprovedReceiptPrinter: React.FC<ImprovedReceiptPrinterProps> = ({
         <div class="receipt">
           <div class="header">
             <div class="store-name">ICHA BAKERY</div>
-            <div class="store-info">Jl. Raya Bakery No. 123</div>
-            <div class="store-info">Jakarta</div>
-            <div class="store-info">Telp: 021-12345678</div>
+            <div class="store-info">${receiptData.branchAddress || 'Alamat cabang'}</div>
+            <div class="store-info">Telp: ${receiptData.branchPhone || '-'}</div>
             <div class="branch-name">${receiptData.branchName}</div>
           </div>
           
