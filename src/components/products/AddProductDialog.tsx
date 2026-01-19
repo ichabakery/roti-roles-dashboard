@@ -8,14 +8,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Package, ChevronDown } from 'lucide-react';
+import { Plus, Package, ChevronDown, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { isInventoryV1Enabled, INVENTORY_DEFAULTS } from '@/utils/featureFlags';
 import { createInitialStock } from '@/services/inventoryV1Service';
 import { useBranches } from '@/hooks/useBranches';
 import { DEFAULT_CATEGORY_VALUE } from '@/constants/productCategories';
 import { useCategories } from '@/hooks/useCategories';
+import { checkDuplicateProductName, DuplicateCheckResult } from '@/services/productValidationService';
 
 interface AddProductDialogProps {
   onProductAdded: () => void;
@@ -25,6 +27,7 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [inventorySectionOpen, setInventorySectionOpen] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState<DuplicateCheckResult | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -45,11 +48,36 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
   const { branches } = useBranches();
   const { categories } = useCategories();
 
+  const handleNameBlur = async () => {
+    if (!formData.name.trim()) {
+      setDuplicateWarning(null);
+      return;
+    }
+    
+    try {
+      const result = await checkDuplicateProductName(formData.name);
+      setDuplicateWarning(result);
+    } catch (error) {
+      console.error('Error checking duplicate:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      // Final duplicate check before submit
+      const duplicateCheck = await checkDuplicateProductName(formData.name);
+      if (duplicateCheck.isDuplicate) {
+        toast({
+          variant: "destructive",
+          title: "Produk sudah ada",
+          description: `Produk dengan nama "${duplicateCheck.existingProduct?.name}" sudah terdaftar. Silakan gunakan nama lain.`,
+        });
+        setLoading(false);
+        return;
+      }
       const productData = {
         name: formData.name,
         description: formData.description,
@@ -128,6 +156,10 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
 
   const handleInputChange = (field: keyof typeof formData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear duplicate warning when name changes
+    if (field === 'name') {
+      setDuplicateWarning(null);
+    }
   };
 
   return (
@@ -149,8 +181,10 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
               id="name"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
+              onBlur={handleNameBlur}
               placeholder="Masukkan nama produk"
               required
+              className={duplicateWarning?.isDuplicate ? 'border-destructive' : ''}
             />
           </div>
           
@@ -177,6 +211,23 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({ onProductAdd
               step="100"
               required
             />
+            {duplicateWarning?.isDuplicate && (
+              <Alert variant="destructive" className="py-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  Produk dengan nama "{duplicateWarning.existingProduct?.name}" sudah ada. 
+                  {!duplicateWarning.existingProduct?.active && ' (Nonaktif)'}
+                </AlertDescription>
+              </Alert>
+            )}
+            {!duplicateWarning?.isDuplicate && duplicateWarning?.similarProducts && duplicateWarning.similarProducts.length > 0 && (
+              <Alert className="py-2 border-amber-500 bg-amber-50">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-xs text-amber-800">
+                  Produk dengan nama mirip: {duplicateWarning.similarProducts.map(p => p.name).join(', ')}
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
 
           <div className="space-y-2">

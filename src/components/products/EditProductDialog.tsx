@@ -8,14 +8,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Package, ChevronDown } from 'lucide-react';
+import { Package, ChevronDown, AlertTriangle } from 'lucide-react';
 import { ProductType, Product } from '@/types/products';
 import { useEnhancedProducts } from '@/hooks/useEnhancedProducts';
 import { isInventoryV1Enabled, INVENTORY_DEFAULTS } from '@/utils/featureFlags';
 import { supabase } from '@/integrations/supabase/client';
 import { DEFAULT_CATEGORY_VALUE } from '@/constants/productCategories';
 import { useCategories } from '@/hooks/useCategories';
+import { checkDuplicateProductName, DuplicateCheckResult } from '@/services/productValidationService';
 
 interface EditProductDialogProps {
   product: Product | null;
@@ -32,6 +34,7 @@ export const EditProductDialog: React.FC<EditProductDialogProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [inventorySectionOpen, setInventorySectionOpen] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState<DuplicateCheckResult | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -68,8 +71,29 @@ export const EditProductDialog: React.FC<EditProductDialogProps> = ({
         leadTimeDays: product.lead_time_days?.toString() || INVENTORY_DEFAULTS.LEAD_TIME_DAYS.toString(),
         shelfLifeDays: product.shelf_life_days?.toString() || '',
       });
+      setDuplicateWarning(null);
     }
   }, [product]);
+
+  const handleNameBlur = async () => {
+    if (!formData.name.trim() || !product) {
+      setDuplicateWarning(null);
+      return;
+    }
+    
+    // Only check if name changed
+    if (formData.name.trim().toLowerCase() === product.name.toLowerCase()) {
+      setDuplicateWarning(null);
+      return;
+    }
+    
+    try {
+      const result = await checkDuplicateProductName(formData.name, product.id);
+      setDuplicateWarning(result);
+    } catch (error) {
+      console.error('Error checking duplicate:', error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,6 +102,20 @@ export const EditProductDialog: React.FC<EditProductDialogProps> = ({
     setLoading(true);
 
     try {
+      // Check for duplicate name if changed
+      if (formData.name.trim().toLowerCase() !== product.name.toLowerCase()) {
+        const duplicateCheck = await checkDuplicateProductName(formData.name, product.id);
+        if (duplicateCheck.isDuplicate) {
+          toast({
+            variant: "destructive",
+            title: "Produk sudah ada",
+            description: `Produk dengan nama "${duplicateCheck.existingProduct?.name}" sudah terdaftar. Silakan gunakan nama lain.`,
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
       // Update basic product info
       const updateData = {
         name: formData.name,
@@ -133,6 +171,10 @@ export const EditProductDialog: React.FC<EditProductDialogProps> = ({
 
   const handleInputChange = (field: keyof typeof formData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear duplicate warning when name changes
+    if (field === 'name') {
+      setDuplicateWarning(null);
+    }
   };
 
   if (!product) return null;
@@ -151,9 +193,28 @@ export const EditProductDialog: React.FC<EditProductDialogProps> = ({
               id="edit-name"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
+              onBlur={handleNameBlur}
               placeholder="Masukkan nama produk"
               required
+              className={duplicateWarning?.isDuplicate ? 'border-destructive' : ''}
             />
+            {duplicateWarning?.isDuplicate && (
+              <Alert variant="destructive" className="py-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  Produk dengan nama "{duplicateWarning.existingProduct?.name}" sudah ada. 
+                  {!duplicateWarning.existingProduct?.active && ' (Nonaktif)'}
+                </AlertDescription>
+              </Alert>
+            )}
+            {!duplicateWarning?.isDuplicate && duplicateWarning?.similarProducts && duplicateWarning.similarProducts.length > 0 && (
+              <Alert className="py-2 border-amber-500 bg-amber-50">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-xs text-amber-800">
+                  Produk dengan nama mirip: {duplicateWarning.similarProducts.map(p => p.name).join(', ')}
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
           
           <div className="space-y-2">
