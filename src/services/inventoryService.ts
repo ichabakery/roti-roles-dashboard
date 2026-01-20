@@ -13,7 +13,7 @@ export const fetchInventoryData = async (userRole: string, branchId?: string, se
       branch_id, 
       quantity, 
       last_updated,
-      products!fk_inventory_product_id (id, name), 
+      products!fk_inventory_product_id (id, name, active), 
       branches!fk_inventory_branch_id (id, name)
     `);
 
@@ -33,16 +33,27 @@ export const fetchInventoryData = async (userRole: string, branchId?: string, se
   
   console.log('✅ Inventory data fetched:', data?.length, 'records');
   
+  // Filter out inactive products first
+  const activeProductsData = (data || []).filter(item => {
+    const product = item.products as { id: string; name: string; active?: boolean } | null;
+    return product && product.active !== false;
+  });
+  
+  console.log('✅ Active products inventory:', activeProductsData.length, 'records (filtered from', data?.length, ')');
+  
   // Transform the data to match InventoryItem interface
-  const transformedData: InventoryItem[] = (data || []).map(item => ({
-    id: item.id,
-    product_id: item.product_id,
-    branch_id: item.branch_id,
-    quantity: item.quantity,
-    last_updated: item.last_updated,
-    product: item.products || { id: '', name: '' },
-    branch: item.branches || { id: '', name: '' }
-  }));
+  const transformedData: InventoryItem[] = activeProductsData.map(item => {
+    const product = item.products as { id: string; name: string; active?: boolean } | null;
+    return {
+      id: item.id,
+      product_id: item.product_id,
+      branch_id: item.branch_id,
+      quantity: item.quantity,
+      last_updated: item.last_updated,
+      product: product || { id: '', name: '', active: true },
+      branch: item.branches || { id: '', name: '' }
+    };
+  });
   
   return transformedData;
 };

@@ -5,6 +5,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 interface Product {
   id: string;
   name: string;
+  active?: boolean;
 }
 
 interface Branch {
@@ -33,9 +34,12 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
   loading,
   searchQuery
 }) => {
-  const filteredInventory = inventory.filter(item => 
-    item.product.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter out inactive products as backup, then apply search filter
+  const filteredInventory = inventory
+    .filter(item => item.product?.active !== false)
+    .filter(item => 
+      item.product.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
   if (loading) {
     return (
