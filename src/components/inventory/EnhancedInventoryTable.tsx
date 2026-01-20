@@ -14,6 +14,7 @@ interface EnhancedInventoryTableProps {
     product: {
       id: string;
       name: string;
+      active?: boolean;
       sku?: string;
       uom?: string;
       reorder_point?: number;
@@ -72,11 +73,14 @@ export const EnhancedInventoryTable: React.FC<EnhancedInventoryTableProps> = ({
   toggleSelectAll,
   enableSelection = false,
 }) => {
-  const filteredInventory = inventory.filter((item) =>
-    item.product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.product.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.branch.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter out inactive products as backup, then apply search filter
+  const filteredInventory = inventory
+    .filter((item) => item.product?.active !== false)
+    .filter((item) =>
+      item.product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.product.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.branch.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
   if (loading) {
     return (
