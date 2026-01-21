@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Search, X } from 'lucide-react';
+import { Plus, Search, X } from 'lucide-react';
 import { ReturnCondition } from '@/types/products';
 import {
   Table,
@@ -16,7 +16,6 @@ import {
 interface ReturnItem {
   productId: string;
   quantity: number;
-  reason: string;
   condition: ReturnCondition;
 }
 
@@ -25,7 +24,6 @@ interface BulkReturnTableProps {
   setReturnItems: React.Dispatch<React.SetStateAction<ReturnItem[]>>;
   products: Array<{ id: string; name: string; active: boolean; }>;
   defaultCondition: ReturnCondition;
-  defaultReason: string;
 }
 
 // Simple fuzzy search function
@@ -62,8 +60,7 @@ export const BulkReturnTable: React.FC<BulkReturnTableProps> = ({
   returnItems,
   setReturnItems,
   products,
-  defaultCondition,
-  defaultReason
+  defaultCondition
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -111,7 +108,6 @@ export const BulkReturnTable: React.FC<BulkReturnTableProps> = ({
     setReturnItems(prev => [...prev, {
       productId,
       quantity: 1,
-      reason: defaultReason,
       condition: defaultCondition
     }]);
     setSearchQuery('');
@@ -127,14 +123,6 @@ export const BulkReturnTable: React.FC<BulkReturnTableProps> = ({
     setReturnItems(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], quantity: Math.max(1, quantity) };
-      return updated;
-    });
-  };
-
-  const updateReason = (index: number, reason: string) => {
-    setReturnItems(prev => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], reason };
       return updated;
     });
   };
@@ -203,15 +191,14 @@ export const BulkReturnTable: React.FC<BulkReturnTableProps> = ({
         )}
       </div>
 
-      {/* Products Table */}
+      {/* Products Table - Simplified: only Product + Quantity */}
       {returnItems.length > 0 && (
         <div className="border rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="w-[40%]">Produk</TableHead>
-                <TableHead className="w-[15%] text-center">Jumlah</TableHead>
-                <TableHead className="w-[35%]">Alasan Spesifik</TableHead>
+                <TableHead className="w-[60%]">Produk</TableHead>
+                <TableHead className="w-[30%] text-center">Jumlah</TableHead>
                 <TableHead className="w-[10%]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -249,14 +236,6 @@ export const BulkReturnTable: React.FC<BulkReturnTableProps> = ({
                         +
                       </Button>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      value={item.reason}
-                      onChange={(e) => updateReason(index, e.target.value)}
-                      placeholder="Opsional"
-                      className="h-8"
-                    />
                   </TableCell>
                   <TableCell>
                     <Button

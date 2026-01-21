@@ -8,13 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 interface ReturnFormFieldsProps {
   formData: {
     branchId: string;
-    reason: string;
+    condition: string;
     notes: string;
     transactionId: string;
   };
   setFormData: React.Dispatch<React.SetStateAction<{
     branchId: string;
-    reason: string;
+    condition: string;
     notes: string;
     transactionId: string;
   }>>;
@@ -23,14 +23,16 @@ interface ReturnFormFieldsProps {
   userBranchName?: string;
 }
 
-const reasonOptions = [
-  'Produk rusak/cacat',
-  'Produk kadaluarsa',
-  'Salah pesanan',
-  'Tidak sesuai harapan pelanggan',
-  'Stok berlebih (cabang)',
-  'Rotasi stok',
-  'Lainnya'
+// Combined condition + reason options
+const conditionOptions = [
+  { value: 'resaleable', label: 'Bisa Dijual Ulang' },
+  { value: 'damaged', label: 'Produk Rusak/Cacat' },
+  { value: 'expired', label: 'Produk Kadaluarsa' },
+  { value: 'wrong_order', label: 'Salah Pesanan' },
+  { value: 'customer_return', label: 'Dikembalikan Pelanggan' },
+  { value: 'sample', label: 'Icipan' },
+  { value: 'bonus', label: 'Imbohan' },
+  { value: 'stock_rotation', label: 'Rotasi Stok' }
 ];
 
 export const ReturnFormFields: React.FC<ReturnFormFieldsProps> = ({
@@ -83,17 +85,17 @@ export const ReturnFormFields: React.FC<ReturnFormFieldsProps> = ({
       </div>
 
       <div>
-        <Label htmlFor="reason">Alasan Retur *</Label>
-        <Select value={formData.reason} onValueChange={(value) => 
-          setFormData(prev => ({ ...prev, reason: value }))
+        <Label htmlFor="condition">Alasan Retur *</Label>
+        <Select value={formData.condition} onValueChange={(value) => 
+          setFormData(prev => ({ ...prev, condition: value }))
         }>
           <SelectTrigger>
             <SelectValue placeholder="Pilih alasan retur" />
           </SelectTrigger>
           <SelectContent>
-            {reasonOptions.map((reason) => (
-              <SelectItem key={reason} value={reason}>
-                {reason}
+            {conditionOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
               </SelectItem>
             ))}
           </SelectContent>

@@ -10,7 +10,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 interface ReturnItem {
   productId: string;
   quantity: number;
-  reason: string;
   condition: ReturnCondition;
 }
 
@@ -19,15 +18,13 @@ interface QuickReturnGridProps {
   setReturnItems: React.Dispatch<React.SetStateAction<ReturnItem[]>>;
   products: Array<{ id: string; name: string; active: boolean; }>;
   defaultCondition: ReturnCondition;
-  defaultReason: string;
 }
 
 export const QuickReturnGrid: React.FC<QuickReturnGridProps> = ({
   returnItems,
   setReturnItems,
   products,
-  defaultCondition,
-  defaultReason
+  defaultCondition
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -73,7 +70,6 @@ export const QuickReturnGrid: React.FC<QuickReturnGridProps> = ({
       setReturnItems(prev => [...prev, {
         productId,
         quantity: delta,
-        reason: defaultReason,
         condition: defaultCondition
       }]);
     }
