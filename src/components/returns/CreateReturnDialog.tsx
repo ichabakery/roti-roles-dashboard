@@ -15,7 +15,6 @@ import { Badge } from '@/components/ui/badge';
 interface ReturnItem {
   productId: string;
   quantity: number;
-  reason: string;
   condition: ReturnCondition;
 }
 
@@ -26,6 +25,36 @@ interface CreateReturnDialogProps {
   canApprove?: boolean;
 }
 
+// Map simplified condition values to ReturnCondition type
+const mapConditionToReturnCondition = (condition: string): ReturnCondition => {
+  const mapping: Record<string, ReturnCondition> = {
+    'resaleable': 'resaleable',
+    'damaged': 'damaged',
+    'expired': 'expired',
+    'wrong_order': 'damaged', // Map to damaged as it's not resaleable
+    'customer_return': 'resaleable', // Customer returns can be resold
+    'sample': 'sample',
+    'bonus': 'bonus',
+    'stock_rotation': 'resaleable' // Stock rotation items can be resold
+  };
+  return mapping[condition] || 'damaged';
+};
+
+// Get label for condition
+const getConditionLabel = (condition: string): string => {
+  const labels: Record<string, string> = {
+    'resaleable': 'Bisa Dijual Ulang',
+    'damaged': 'Produk Rusak/Cacat',
+    'expired': 'Produk Kadaluarsa',
+    'wrong_order': 'Salah Pesanan',
+    'customer_return': 'Dikembalikan Pelanggan',
+    'sample': 'Icipan',
+    'bonus': 'Imbohan',
+    'stock_rotation': 'Rotasi Stok'
+  };
+  return labels[condition] || condition;
+};
+
 export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
   open,
   onOpenChange,
@@ -35,7 +64,7 @@ export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     branchId: '',
-    reason: '',
+    condition: 'resaleable',
     notes: '',
     transactionId: ''
   });
@@ -72,6 +101,15 @@ export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
       return;
     }
 
+    if (!formData.condition) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Mohon pilih alasan retur"
+      });
+      return;
+    }
+
     const validItems = returnItems.filter(item => item.productId);
     if (validItems.length === 0) {
       toast({
@@ -87,18 +125,21 @@ export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
     try {
       // Determine if we should auto-approve
       const shouldAutoApprove = autoConfirmEnabled && canApprove;
+      
+      // Map condition to ReturnCondition
+      const returnCondition = mapConditionToReturnCondition(formData.condition);
 
       await createReturn({
         branchId: formData.branchId,
-        reason: formData.reason,
+        reason: getConditionLabel(formData.condition),
         notes: formData.notes,
         transactionId: formData.transactionId || undefined,
         autoApprove: shouldAutoApprove,
         items: validItems.map(item => ({
           productId: item.productId,
           quantity: item.quantity,
-          reason: item.reason,
-          condition: item.condition
+          reason: getConditionLabel(formData.condition),
+          condition: returnCondition
         }))
       });
 
@@ -112,7 +153,7 @@ export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
       // Reset form
       setFormData({ 
         branchId: userRole === 'kasir_cabang' ? (userBranch.branchId || '') : '', 
-        reason: '', 
+        condition: 'resaleable', 
         notes: '', 
         transactionId: '' 
       });
@@ -130,9 +171,12 @@ export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
     }
   };
 
+  // Get default condition as ReturnCondition
+  const defaultCondition = mapConditionToReturnCondition(formData.condition);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-4xl max-h-[90dvh] overflow-y-auto p-0">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[90dvh] overflow-y-auto p-0">
         {/* Sticky Header */}
         <div className="sticky top-0 z-10 bg-background border-b px-6 pt-6 pb-3">
           <div className="flex items-center gap-3">
@@ -159,6 +203,7 @@ export const CreateReturnDialog: React.FC<CreateReturnDialogProps> = ({
             returnItems={returnItems}
             setReturnItems={setReturnItems}
             products={products}
+            defaultCondition={defaultCondition}
           />
         </form>
 
