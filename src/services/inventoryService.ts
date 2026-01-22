@@ -100,3 +100,61 @@ export const addStockToInventory = async (productId: string, branchId: string, q
 
   return true;
 };
+
+export const quickUpdateInventory = async (
+  inventoryId: string, 
+  newQuantity: number, 
+  performedBy: string,
+  reason: string = 'Quick Edit'
+): Promise<boolean> => {
+  console.log('⚡ Quick update inventory:', { inventoryId, newQuantity, reason });
+  
+  // Get current inventory item
+  const { data: current, error: fetchError } = await supabase
+    .from('inventory')
+    .select('id, product_id, branch_id, quantity')
+    .eq('id', inventoryId)
+    .single();
+
+  if (fetchError || !current) {
+    console.error('❌ Failed to fetch inventory item:', fetchError);
+    throw fetchError || new Error('Inventory item not found');
+  }
+
+  const quantityChange = newQuantity - current.quantity;
+  
+  // Update inventory
+  const { error: updateError } = await supabase
+    .from('inventory')
+    .update({ 
+      quantity: newQuantity,
+      last_updated: new Date().toISOString()
+    })
+    .eq('id', inventoryId);
+
+  if (updateError) {
+    console.error('❌ Failed to update inventory:', updateError);
+    throw updateError;
+  }
+
+  // Log stock adjustment for audit trail
+  const { error: logError } = await supabase
+    .from('stock_adjustments')
+    .insert({
+      product_id: current.product_id,
+      branch_id: current.branch_id,
+      adjustment_type: quantityChange >= 0 ? 'adjust_in' : 'adjust_out',
+      quantity_change: quantityChange,
+      reason: reason,
+      performed_by: performedBy,
+      adjustment_date: new Date().toISOString()
+    });
+
+  if (logError) {
+    console.warn('⚠️ Failed to log stock adjustment:', logError);
+    // Don't throw - the update succeeded
+  }
+
+  console.log('✅ Quick update successful:', current.quantity, '->', newQuantity);
+  return true;
+};

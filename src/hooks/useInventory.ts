@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { InventoryItem, Product, Branch } from '@/types/inventory';
-import { fetchInventoryData, addStockToInventory } from '@/services/inventoryService';
+import { fetchInventoryData, addStockToInventory, quickUpdateInventory } from '@/services/inventoryService';
 import { fetchBranchesForUser } from '@/services/branchService';
 import { fetchActiveProducts } from '@/services/productService';
 import { useInventoryRealtime } from '@/hooks/useInventoryRealtime';
@@ -174,6 +174,38 @@ export const useInventory = () => {
     }
   }, [user, products, branches, fetchInventory]);
 
+  // Quick update single inventory item (inline edit)
+  const quickUpdate = useCallback(async (inventoryId: string, newQuantity: number, reason?: string) => {
+    if (!user || user.role === "kasir_cabang") {
+      toast({
+        variant: "destructive",
+        title: "Akses Ditolak",
+        description: "Anda tidak memiliki izin untuk mengubah stok.",
+      });
+      return false;
+    }
+    try {
+      await quickUpdateInventory(inventoryId, newQuantity, user.id, reason || 'Quick Edit');
+      
+      // Update local state immediately for instant feedback
+      setInventory(prev => prev.map(item => 
+        item.id === inventoryId 
+          ? { ...item, quantity: newQuantity, last_updated: new Date().toISOString() }
+          : item
+      ));
+
+      return true;
+    } catch (error: any) {
+      console.error('❌ [Inventory] Error quick updating stock:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Gagal mengubah stok: ${error.message}`,
+      });
+      return false;
+    }
+  }, [user]);
+
   // Setup real-time updates
   useInventoryRealtime(user, fetchInventory);
 
@@ -220,6 +252,7 @@ export const useInventory = () => {
     setSelectedBranch,
     fetchInventory,
     addStock,
+    quickUpdate,
     user
   };
 };

@@ -49,6 +49,7 @@ const Inventory = () => {
     setSelectedBranch,
     fetchInventory,
     addStock,
+    quickUpdate,
     user
   } = useInventory();
 
@@ -240,6 +241,7 @@ const Inventory = () => {
                 isAllSelected={isAllSelected}
                 isPartiallySelected={isPartiallySelected}
                 toggleSelectAll={toggleSelectAll}
+                onQuickUpdate={canAddStock ? quickUpdate : undefined}
               />
             ) : (
               <InventoryTable
